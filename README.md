@@ -1,10 +1,6 @@
 # 🌿 INUK - Infaq untuk Umat & Kesejahteraan
 
 Website donasi digital dan sistem transparansi infaq yang dikembangkan untuk mendukung program **LAZISNU Kudus**.  
-Aplikasi ini terdiri dari dua bagian utama:
-
-1. **Landing Page Publik** — menampilkan informasi program, layanan, dan ajakan donasi.  
-2. **Dashboard Admin** — untuk mengelola data donatur, transaksi, dan penyaluran dana secara transparan.
 
 ---
 
@@ -18,31 +14,6 @@ Aplikasi ini terdiri dari dua bagian utama:
 | Ikon | **React Icons** |
 | Build Tool | **Vite** (bisa juga disesuaikan ke Next.js) |
 | Data | Dummy statis (bisa dikembangkan menjadi API backend) |
-
----
-
-## 📂 **Struktur Folder (utama)**
-
-```
-src/
-├── components/
-│   ├── landing/
-│   │   ├── HeroSection.tsx
-│   │   ├── Keunggulan.tsx
-│   │   ├── Layanan.tsx
-│   │   ├── Program.tsx
-│   │   └── Tentang.tsx
-│   └── dashboard/
-│       ├── DashboardLayout.tsx
-│       ├── TransaksiDonasi.tsx
-│       ├── PenyaluranDana.tsx
-│       └── DonaturPenerima.tsx
-├── assets/
-│   └── (gambar dan ikon pendukung)
-├── App.tsx
-├── main.tsx
-└── index.css
-```
 
 ---
 
@@ -74,7 +45,7 @@ Akses melalui:
 
 ## 🧠 **Rencana Pengembangan Selanjutnya**
 
-- [ ] Integrasi dengan backend (Laravel/Express)
+- [ ] Integrasi dengan backend
 - [ ] Sistem autentikasi admin (Login Dashboard)
 - [ ] Upload & ekspor laporan Excel otomatis
 - [ ] API publik untuk transparansi data donasi
