@@ -1,11 +1,12 @@
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Visualisasi from "../components/dashboard/Visualisasi";
 import TransaksiDonasi from "../components/dashboard/TransaksiDonasi";
 import PenyaluranDana from "../components/dashboard/PenyaluranDana";
 import DonaturPenerima from "../components/dashboard/DonaturPenerima";
 import CMSBerita from "../components/dashboard/CMSBerita";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 // Halaman Dummy Dashboard Utama
 const DashboardUtama = () => (
@@ -18,22 +19,58 @@ const DashboardUtama = () => (
 );
 
 const DashboardRoutes: React.FC = () => {
-  // const { isAuthenticated } = useAuth();
-
-  // Jika user belum login
-  // if (!isAuthenticated) {
-  //     return <Navigate to="/login" replace />;
-  // }
-
   return (
     <Routes>
       <Route index element={<DashboardUtama />} />
 
-      <Route path="/visualisasi" element={<Visualisasi />} />
-      <Route path="/transaksi" element={<TransaksiDonasi />} />
-      <Route path="/penyaluran" element={<PenyaluranDana />} />
-      <Route path="/donatur-penerima" element={<DonaturPenerima />} />
-      <Route path="/cms-berita" element={<CMSBerita />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardUtama />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/visualisasi"
+        element={
+          <ProtectedRoute>
+            <Visualisasi />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/transaksi"
+        element={
+          <ProtectedRoute>
+            <TransaksiDonasi />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/penyaluran"
+        element={
+          <ProtectedRoute>
+            <PenyaluranDana />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/donatur-penerima"
+        element={
+          <ProtectedRoute>
+            <DonaturPenerima />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/cms-berita"
+        element={
+          <ProtectedRoute>
+            <CMSBerita />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Rute 404 Dashboard */}
       <Route
