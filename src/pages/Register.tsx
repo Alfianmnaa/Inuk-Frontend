@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { FaEye, FaEyeSlash, FaUser, FaPhoneAlt, FaLock, FaArrowRight } from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
+import axios from "axios";
 
 // Varian Framer Motion untuk seluruh halaman
 const pageVariants = {
@@ -17,16 +19,62 @@ const itemVariants = {
 };
 
 const Register: React.FC = () => {
+  const navigate = useNavigate(); // Hook untuk redirect
+  const { login } = useAuth(); // Hook untuk menyimpan status login
+  const VITE_API_URL = import.meta.env.VITE_API_URL;
+
   const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    username: "",
+    phone: "",
+    password: "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-    toast.success("Pendaftaran berhasil! 🎉");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    // 1. Format nomor telepon ke format E.164 (cth: dari '0812' menjadi '+62812')
+    let phoneInput = formData.phone;
+    if (phoneInput.startsWith("0")) {
+      phoneInput = `+62${phoneInput.substring(1)}`;
+    } else if (!phoneInput.startsWith("+")) {
+      phoneInput = `+62${phoneInput}`;
+    }
+
+    try {
+      // 2. Kirim request ke backend Go
+      const response = await axios.post(`${VITE_API_URL}/register`, {
+        name: formData.username,
+        phone: phoneInput,
+        password: formData.password,
+      });
+
+      // 3. Jika berhasil (Status 201 Created)
+      const { token } = response.data;
+      // Asumsi: Endpoint '/register' selalu mendaftarkan sebagai 'user'
+      login(token, "user");
+      toast.success("Pendaftaran berhasil! Mengarahkan ke Dashboard...");
+
+      // 4. Redirect ke Dashboard (Sesuai permintaan)
+      navigate("/dashboard");
+    } catch (error: any) {
+      // 5. Handle Error dari Backend (response 400 Bad Request)
+      const errorMsg = error.response?.data?.message || error.response?.data?.error || "Pendaftaran gagal. Coba lagi.";
+      toast.error(errorMsg);
+      console.error("Registration Error:", error.response?.data || error.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -47,6 +95,10 @@ const Register: React.FC = () => {
               <input
                 type="text"
                 placeholder="Enter Your Username"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                disabled={isLoading}
                 required
                 className="w-full border border-gray-300 rounded-xl py-3 pl-12 pr-4 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               />
@@ -58,7 +110,11 @@ const Register: React.FC = () => {
               <input
                 type="tel"
                 placeholder="Nomor Handphone (cth: 0812xxxx)"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
                 required
+                disabled={isLoading}
                 className="w-full border border-gray-300 rounded-xl py-3 pl-12 pr-4 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               />
             </motion.div>
@@ -69,7 +125,12 @@ const Register: React.FC = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 placeholder="Kata Sandi"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
                 required
+                disabled={isLoading}
+                minLength={6}
                 className="w-full border border-gray-300 rounded-xl py-3 pl-12 pr-12 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               />
               <button type="button" onClick={togglePasswordVisibility} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors">
@@ -81,15 +142,17 @@ const Register: React.FC = () => {
             <motion.button
               variants={itemVariants}
               type="submit"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full bg-primary text-white font-bold py-3 rounded-xl hover:bg-green-600 transition-colors flex items-center justify-center space-x-2 shadow-md"
+              whileHover={{ scale: isLoading ? 1 : 1.02 }}
+              whileTap={{ scale: isLoading ? 1 : 0.98 }}
+              disabled={isLoading}
+              className={`w-full text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center space-x-2 shadow-md
+                ${isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-primary hover:bg-green-600"}
+              `}
             >
-              <span>Daftar Sekarang</span>
-              <FaArrowRight className="w-4 h-4" />
+              <span>{isLoading ? "Memproses..." : "Daftar Sekarang"}</span>
+              {!isLoading && <FaArrowRight className="w-4 h-4" />}
             </motion.button>
           </form>
-
           {/* Link Sudah Punya Akun */}
           <motion.div variants={itemVariants} className="mt-8 text-center">
             <p className="text-gray-600">
