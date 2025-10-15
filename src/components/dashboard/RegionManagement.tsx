@@ -7,7 +7,7 @@ import DashboardLayout from "./DashboardLayout";
 import { useAuth } from "../../context/AuthContext";
 import { getRegions, createRegion, deleteRegion } from "../../services/RegionService";
 import type { RegionDetail } from "../../services/RegionService";
-import AddressSelector, { type AddressSelection } from "./AddressSelector"; // Sesuaikan path
+import AddressSelector, { type AddressSelection } from "./AddressSelector";
 
 // Data model untuk tampilan daftar (Admin)
 interface RegionData extends RegionDetail {}

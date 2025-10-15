@@ -3,6 +3,9 @@ import { motion } from "framer-motion";
 import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSortUp, FaSortDown, FaWallet, FaCheckCircle, FaMinusCircle } from "react-icons/fa";
 import DashboardLayout from "./DashboardLayout";
 
+// Import AddressSelector dan tipenya
+import AddressSelector, { type AddressSelection } from "./AddressSelector";
+
 // Data Type Transaksi
 interface Transaction {
   id: number;
@@ -27,10 +30,8 @@ const ALL_TRANSACTIONS: Transaction[] = [
   { id: 1008, tanggal: "2025-09-01", bulanTahun: "09/2025", donatur: "Mukhsin", kecamatan: "JEKULO", desa: "KANDANGMAS", jumlah: 150000, metode: "Tunai", status: "Lunas" },
 ];
 
-const KECAMATAN_LIST = Array.from(new Set(ALL_TRANSACTIONS.map((t) => t.kecamatan)));
 const METODE_LIST = ["Transfer Bank", "QRIS", "Tunai"];
 const STATUS_LIST = ["Lunas", "Pending", "Gagal"];
-// Data Dummy
 
 // Helper function
 const formatRupiah = (angka: number) => {
@@ -76,9 +77,17 @@ const StatusBadge: React.FC<{ status: Transaction["status"] }> = ({ status }) =>
 const TransaksiDonasi: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBulanTahun, setFilterBulanTahun] = useState(""); // Format MM/YYYY
-  const [filterKecamatan, setFilterKecamatan] = useState("");
   const [filterMetode, setFilterMetode] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+
+  // State untuk AddressSelector
+  const [addressFilters, setAddressFilters] = useState<AddressSelection>({
+    province: "",
+    city: "",
+    subdistrict: "",
+    village: "",
+  });
+
   const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction | null; direction: "ascending" | "descending" }>({
     key: "tanggal",
     direction: "descending",
@@ -95,10 +104,15 @@ const TransaksiDonasi: React.FC = () => {
     if (filterBulanTahun) {
       filtered = filtered.filter((t) => t.bulanTahun === filterBulanTahun);
     }
-    if (filterKecamatan) {
-      filtered = filtered.filter((t) => t.kecamatan === filterKecamatan);
+
+    // Filter berdasarkan AddressSelector (Kecamatan dan Desa)
+    if (addressFilters.subdistrict) {
+      filtered = filtered.filter((t) => t.kecamatan === addressFilters.subdistrict);
     }
-    //  Filter Desa
+    if (addressFilters.village) {
+      filtered = filtered.filter((t) => t.desa === addressFilters.village);
+    }
+
     if (filterMetode) {
       filtered = filtered.filter((t) => t.metode === filterMetode);
     }
@@ -107,7 +121,7 @@ const TransaksiDonasi: React.FC = () => {
     }
 
     return filtered;
-  }, [searchTerm, filterBulanTahun, filterKecamatan, filterMetode, filterStatus]);
+  }, [searchTerm, filterBulanTahun, addressFilters, filterMetode, filterStatus]);
 
   // 2. Logika Sorting
   const sortedTransactions = useMemo(() => {
@@ -139,12 +153,12 @@ const TransaksiDonasi: React.FC = () => {
 
   const totalFilteredDonasi = filteredTransactions.reduce((sum, t) => (t.status === "Lunas" ? sum + t.jumlah : sum), 0);
 
-  const isFiltered = filterBulanTahun || filterKecamatan || filterMetode || filterStatus || searchTerm;
+  const isFiltered = filterBulanTahun || addressFilters.subdistrict || addressFilters.village || filterMetode || filterStatus || searchTerm;
 
   const clearFilters = () => {
     setSearchTerm("");
     setFilterBulanTahun("");
-    setFilterKecamatan("");
+    setAddressFilters({ province: "", city: "", subdistrict: "", village: "" }); // Reset filter alamat
     setFilterMetode("");
     setFilterStatus("");
   };
@@ -191,61 +205,62 @@ const TransaksiDonasi: React.FC = () => {
           </div>
 
           {/* Input Filter Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {/* Search Bar */}
-            <div className="md:col-span-2 relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Cari Donatur atau ID Transaksi..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 focus:ring-primary focus:border-primary transition-colors"
-              />
-            </div>
+          <div className="space-y-4">
+            {/* Row 1: Search, Periode, Metode */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Search Bar */}
+              <div className="relative md:col-span-2">
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Cari Donatur atau ID Transaksi..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 focus:ring-primary focus:border-primary transition-colors"
+                />
+              </div>
 
-            {/* Filter Bulan/Tahun (Sangat Penting) */}
-            <select value={filterBulanTahun} onChange={(e) => setFilterBulanTahun(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
-              <option value="">Semua Periode</option>
-              {/* Ambil list bulan/tahun unik dari data */}
-              {Array.from(new Set(ALL_TRANSACTIONS.map((t) => t.bulanTahun)))
-                .sort()
-                .map((bt) => (
-                  <option key={bt} value={bt}>
-                    {bt}
+              {/* Filter Bulan/Tahun */}
+              <select value={filterBulanTahun} onChange={(e) => setFilterBulanTahun(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
+                <option value="">Semua Periode</option>
+                {/* Ambil list bulan/tahun unik dari data */}
+                {Array.from(new Set(ALL_TRANSACTIONS.map((t) => t.bulanTahun)))
+                  .sort()
+                  .map((bt) => (
+                    <option key={bt} value={bt}>
+                      {bt}
+                    </option>
+                  ))}
+              </select>
+
+              {/* Filter Metode */}
+              <select value={filterMetode} onChange={(e) => setFilterMetode(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
+                <option value="">Semua Metode</option>
+                {METODE_LIST.map((metode) => (
+                  <option key={metode} value={metode}>
+                    {metode}
                   </option>
                 ))}
-            </select>
+              </select>
+            </div>
 
-            {/* Filter Kecamatan */}
-            <select value={filterKecamatan} onChange={(e) => setFilterKecamatan(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
-              <option value="">Semua Kecamatan</option>
-              {KECAMATAN_LIST.map((kec) => (
-                <option key={kec} value={kec}>
-                  {kec}
-                </option>
-              ))}
-            </select>
+            {/* Row 2: Address Selector & Status */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Address Selector (Filter Lokasi) */}
+              <div className="md:col-span-3">
+                <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["province", "city", "subdistrict", "village"]} kecamatanName="Kecamatan Donatur" />
+              </div>
 
-            {/* Filter Metode */}
-            <select value={filterMetode} onChange={(e) => setFilterMetode(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
-              <option value="">Semua Metode</option>
-              {METODE_LIST.map((metode) => (
-                <option key={metode} value={metode}>
-                  {metode}
-                </option>
-              ))}
-            </select>
-
-            {/* Filter Status */}
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
-              <option value="">Semua Status</option>
-              {STATUS_LIST.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
+              {/* Filter Status */}
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
+                <option value="">Semua Status</option>
+                {STATUS_LIST.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Clear Filter Button */}
