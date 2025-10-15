@@ -3,6 +3,9 @@ import { motion } from "framer-motion";
 import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSortUp, FaSortDown, FaHandHoldingHeart, FaCheckCircle, FaHourglassHalf, FaChartLine } from "react-icons/fa";
 import DashboardLayout from "./DashboardLayout";
 
+// Import AddressSelector dan tipenya
+import AddressSelector, { type AddressSelection } from "./AddressSelector";
+
 //Data Type Penyaluran
 interface Disbursement {
   id: number;
@@ -27,7 +30,6 @@ const ALL_DISBURSEMENTS: Disbursement[] = [
 
 const PROGRAM_LIST = Array.from(new Set(ALL_DISBURSEMENTS.map((d) => d.program)));
 const KATEGORI_LIST = Array.from(new Set(ALL_DISBURSEMENTS.map((d) => d.kategori)));
-const KECAMATAN_LIST = Array.from(new Set(ALL_DISBURSEMENTS.map((d) => d.kecamatan)));
 const STATUS_LIST = ["Selesai", "Berjalan", "Tunda"];
 // Data Dummy untuk Penyaluran Dana
 
@@ -76,8 +78,16 @@ const PenyaluranDana: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBulanTahun, setFilterBulanTahun] = useState(""); // Hanya untuk simulasi filter tanggal
   const [filterProgram, setFilterProgram] = useState("");
-  const [filterKecamatan, setFilterKecamatan] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+
+  // State untuk AddressSelector
+  const [addressFilters, setAddressFilters] = useState<AddressSelection>({
+    province: "",
+    city: "",
+    subdistrict: "",
+    village: "",
+  });
+
   const [sortConfig, setSortConfig] = useState<{ key: keyof Disbursement | null; direction: "ascending" | "descending" }>({
     key: "tanggal",
     direction: "descending",
@@ -104,15 +114,21 @@ const PenyaluranDana: React.FC = () => {
     if (filterProgram) {
       filtered = filtered.filter((d) => d.program === filterProgram);
     }
-    if (filterKecamatan) {
-      filtered = filtered.filter((d) => d.kecamatan === filterKecamatan);
+
+    // Filter berdasarkan AddressSelector (Kecamatan dan Desa)
+    if (addressFilters.subdistrict) {
+      filtered = filtered.filter((d) => d.kecamatan === addressFilters.subdistrict);
     }
+    if (addressFilters.village) {
+      filtered = filtered.filter((d) => d.desa === addressFilters.village);
+    }
+
     if (filterStatus) {
       filtered = filtered.filter((d) => d.status === filterStatus);
     }
 
     return filtered;
-  }, [searchTerm, filterBulanTahun, filterProgram, filterKecamatan, filterStatus]);
+  }, [searchTerm, filterBulanTahun, filterProgram, addressFilters, filterStatus]);
 
   // 2. Logika Sorting
   const sortedDisbursements = useMemo(() => {
@@ -145,13 +161,13 @@ const PenyaluranDana: React.FC = () => {
   const totalFilteredDana = filteredDisbursements.reduce((sum, d) => sum + d.jumlahDana, 0);
   const totalPenerimaManfaat = filteredDisbursements.reduce((sum, d) => sum + d.penerima, 0);
 
-  const isFiltered = filterBulanTahun || filterProgram || filterKecamatan || filterStatus || searchTerm;
+  const isFiltered = filterBulanTahun || filterProgram || addressFilters.subdistrict || addressFilters.village || filterStatus || searchTerm;
 
   const clearFilters = () => {
     setSearchTerm("");
     setFilterBulanTahun("");
     setFilterProgram("");
-    setFilterKecamatan("");
+    setAddressFilters({ province: "", city: "", subdistrict: "", village: "" }); // Reset filter alamat
     setFilterStatus("");
   };
 
@@ -209,57 +225,56 @@ const PenyaluranDana: React.FC = () => {
           </div>
 
           {/* Input Filter Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {/* Filter Bulan/Tahun */}
-            <select value={filterBulanTahun} onChange={(e) => setFilterBulanTahun(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
-              <option value="">Semua Periode</option>
-              {uniqueBulanTahun.map((bt) => (
-                <option key={bt} value={bt}>
-                  {bt}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-4">
+            {/* Row 1: Periode, Program, Status, Search */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {/* Filter Bulan/Tahun */}
+              <select value={filterBulanTahun} onChange={(e) => setFilterBulanTahun(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
+                <option value="">Semua Periode</option>
+                {uniqueBulanTahun.map((bt) => (
+                  <option key={bt} value={bt}>
+                    {bt}
+                  </option>
+                ))}
+              </select>
 
-            {/* Filter Program */}
-            <select value={filterProgram} onChange={(e) => setFilterProgram(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
-              <option value="">Semua Program</option>
-              {PROGRAM_LIST.map((prog) => (
-                <option key={prog} value={prog}>
-                  {prog}
-                </option>
-              ))}
-            </select>
+              {/* Filter Program */}
+              <select value={filterProgram} onChange={(e) => setFilterProgram(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
+                <option value="">Semua Program</option>
+                {PROGRAM_LIST.map((prog) => (
+                  <option key={prog} value={prog}>
+                    {prog}
+                  </option>
+                ))}
+              </select>
 
-            {/* Filter Kecamatan */}
-            <select value={filterKecamatan} onChange={(e) => setFilterKecamatan(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
-              <option value="">Semua Kecamatan</option>
-              {KECAMATAN_LIST.map((kec) => (
-                <option key={kec} value={kec}>
-                  {kec}
-                </option>
-              ))}
-            </select>
+              {/* Filter Status */}
+              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
+                <option value="">Semua Status</option>
+                {STATUS_LIST.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
 
-            {/* Filter Status */}
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
-              <option value="">Semua Status</option>
-              {STATUS_LIST.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
+              {/* Search Bar */}
+              <div className="relative md:col-span-2">
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Cari Program atau ID Kegiatan..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 focus:ring-primary focus:border-primary transition-colors"
+                />
+              </div>
+            </div>
 
-            {/* Search Bar */}
-            <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Cari Program atau ID Kegiatan..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 focus:ring-primary focus:border-primary transition-colors"
-              />
+            {/* Row 2: Address Selector */}
+            <div className="grid grid-cols-1 gap-4">
+              {/* Address Selector */}
+              <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["province", "city", "subdistrict", "village"]} kecamatanName="Kecamatan Penyaluran" />
             </div>
           </div>
 
