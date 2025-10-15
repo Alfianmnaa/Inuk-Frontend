@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { FaBars, FaTimes, FaChartBar, FaReceipt, FaUsers, FaPaperPlane, FaEdit, FaChevronDown, FaHome } from "react-icons/fa";
+import { FaBars, FaTimes, FaChartBar, FaReceipt, FaUsers, FaPaperPlane, FaEdit, FaChevronDown, FaHome, FaMapMarkerAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { useAuth } from "../../context/AuthContext"; // Import useAuth (Pastikan path benar)
 
@@ -19,7 +19,8 @@ const DASHBOARD_NAV: NavItem[] = [
   { name: "Pencatatan Donasi (INFAQ/ZIS)", icon: FaReceipt, link: "/dashboard/transaksi" },
   { name: "Penyaluran Dana", icon: FaPaperPlane, link: "/dashboard/penyaluran" },
   { name: "Donatur & Penerima Manfaat", icon: FaUsers, link: "/dashboard/donatur-penerima" },
-  { name: "--- PENGELOLAAN KONTEN ---", icon: FaChevronDown, link: "#", isHeader: true },
+  { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management" }, // <-- BARIS BARU
+  { name: '--- PENGELOLAAN KONTEN ---"', icon: FaChevronDown, link: "#", isHeader: true },
   { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita" },
 ];
 
