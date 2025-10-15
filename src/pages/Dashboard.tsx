@@ -7,6 +7,7 @@ import PenyaluranDana from "../components/dashboard/PenyaluranDana";
 import DonaturPenerima from "../components/dashboard/DonaturPenerima";
 import CMSBerita from "../components/dashboard/CMSBerita";
 import ProtectedRoute from "../components/ProtectedRoute";
+import RegionManagement from "../components/dashboard/RegionManagement";
 
 // Halaman Dummy Dashboard Utama
 const DashboardUtama = () => (
@@ -70,6 +71,15 @@ const DashboardRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <CMSBerita />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/region-management"
+        element={
+          <ProtectedRoute>
+            <RegionManagement /> {/* <-- Rute untuk Manajemen Wilayah */}
           </ProtectedRoute>
         }
       />
