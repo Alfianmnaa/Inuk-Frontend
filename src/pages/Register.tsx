@@ -59,14 +59,11 @@ const Register: React.FC = () => {
         password: formData.password,
       });
 
-      // 3. Jika berhasil (Status 201 Created)
-      const { token } = response.data;
-      // Asumsi: Endpoint '/register' selalu mendaftarkan sebagai 'user'
-      login(token, "user");
+      // const { token } = response.data;
+      // login(token, "user");
       toast.success("Pendaftaran berhasil! Mengarahkan ke Dashboard...");
 
-      // 4. Redirect ke Dashboard (Sesuai permintaan)
-      navigate("/dashboard");
+      navigate("/login");
     } catch (error: any) {
       // 5. Handle Error dari Backend (response 400 Bad Request)
       const errorMsg = error.response?.data?.message || error.response?.data?.error || "Pendaftaran gagal. Coba lagi.";
@@ -130,7 +127,7 @@ const Register: React.FC = () => {
                 onChange={handleChange}
                 required
                 disabled={isLoading}
-                minLength={6}
+                minLength={8}
                 className="w-full border border-gray-300 rounded-xl py-3 pl-12 pr-12 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               />
               <button type="button" onClick={togglePasswordVisibility} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors">

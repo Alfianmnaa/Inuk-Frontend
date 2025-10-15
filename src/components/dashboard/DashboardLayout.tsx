@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { FaBars, FaTimes, FaChartBar, FaReceipt, FaUsers, FaPaperPlane, FaEdit, FaChevronDown, FaHome } from "react-icons/fa";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useAuth } from "../../context/AuthContext"; // Import useAuth (Pastikan path benar)
 
 // Data Type Navigasi Dashboard
 interface NavItem {
@@ -75,7 +77,19 @@ const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void; activeLink
 const DashboardLayout: React.FC<{ children: React.ReactNode; activeLink: string; pageTitle: string }> = ({ children, activeLink, pageTitle }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // --- HOOKS BARU ---
+  const { logout } = useAuth(); // Ambil fungsi logout dari AuthContext
+  const navigate = useNavigate(); // Ambil hook navigasi
+  // --- AKHIR HOOKS BARU ---
+
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+  // --- HANDLER LOGOUT BARU ---
+  const handleLogout = () => {
+    logout(); // Hapus token dari state dan LocalStorage
+    navigate("/"); // Arahkan pengguna ke halaman utama (atau '/login')
+  };
+  // --- AKHIR HANDLER LOGOUT BARU ---
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -98,7 +112,10 @@ const DashboardLayout: React.FC<{ children: React.ReactNode; activeLink: string;
             </button>
             <h2 className="text-2xl font-bold text-gray-800">{pageTitle}</h2>
           </div>
-          <button className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-600 transition-colors">Logout</button>
+          {/* TOMBOL LOGOUT YANG SUDAH TERHUBUNG KE handleLogout */}
+          <button onClick={handleLogout} className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-600 transition-colors">
+            Logout
+          </button>
         </header>
 
         {/* Content Area */}

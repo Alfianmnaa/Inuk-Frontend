@@ -21,7 +21,7 @@ const Login: React.FC = () => {
   const { login } = useAuth();
   const VITE_API_URL = import.meta.env.VITE_API_URL;
 
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // Menggunakan phone karena fokus hanya pada phone
   const [formData, setFormData] = useState({ phone: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -29,13 +29,10 @@ const Login: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  }; // Handler Pembantu untuk mencoba login ke endpoint tertentu
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    // 1. Format nomor telepon ke format E.164
+  const attemptLogin = async (endpoint: string, role: "user" | "admin") => {
+    // 1. Konversi Nomor HP ke format +62 di SISI FRONTEND (wajib karena backend Go perlu +62)
     let phoneInput = formData.phone;
     if (phoneInput.startsWith("0")) {
       phoneInput = `+62${phoneInput.substring(1)}`;
@@ -43,27 +40,55 @@ const Login: React.FC = () => {
       phoneInput = `+62${phoneInput}`;
     }
 
+    const payload = {
+      phone: phoneInput,
+      password: formData.password,
+    }; // Mengirim request
+
+    const response = await axios.post(`${VITE_API_URL}${endpoint}`, payload); // Jika berhasil, simpan token dan role
+    const { token } = response.data;
+    login(token, role);
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    let success = false;
+    let finalError = "Login gagal. Periksa Nomor HP dan Kata Sandi.";
+
     try {
-      // 2. Kirim request ke endpoint Login User (asumsi role 'user')
-      const response = await axios.post(`${VITE_API_URL}/login`, {
-        phone: phoneInput,
-        password: formData.password,
-      });
+      // --- LOGIKA DUAL ENDPOINT ---
 
-      // 3. Jika berhasil (Status 200 OK)
-      const { token } = response.data;
-      // Perhatian: Karena endpoint backend Anda spesifik untuk /login (user), kita asumsikan role 'user'.
-      // Untuk role 'admin', Anda perlu memanggil endpoint /admin/login.
-      login(token, "user");
-      toast.success("Login berhasil! Mengarahkan ke Dashboard...");
+      // 1. /login
+      try {
+        await attemptLogin("/login", "user");
+        success = true;
+      } catch (error: any) {
+        finalError = error.response?.data?.message || error.response?.data?.error || finalError;
 
-      // 4. Redirect ke Dashboard
-      navigate("/dashboard");
+        if (finalError.includes("Invalid password") || finalError.includes("invalid_credentials")) {
+          try {
+            await attemptLogin("/admin/login", "admin");
+            success = true;
+          } catch (adminError: any) {
+            // Simpan error final dari percobaan admin
+            finalError = adminError.response?.data?.message || adminError.response?.data?.error || finalError;
+          }
+        }
+      }
+      if (success) {
+        toast.success("Login berhasil! Mengarahkan ke Dashboard...");
+        navigate("/dashboard");
+      } else {
+        // Lempar error jika kedua percobaan gagal
+        console.log("finalError admin:", finalError);
+        throw new Error(finalError);
+      }
     } catch (error: any) {
-      // 5. Handle Error dari Backend
-      const errorMsg = error.response?.data?.message || error.response?.data?.error || "Login gagal. Cek Nomor HP/Kata Sandi.";
-      toast.error(errorMsg);
-      console.error("Login Error:", error.response?.data || error.message);
+      // Menampilkan error yang paling relevan
+      toast.error(finalError);
+      console.error("Login Error:", error.message);
     } finally {
       setIsLoading(false);
     }
@@ -86,7 +111,10 @@ const Login: React.FC = () => {
               <FaUser className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Nama atau Nomor Handphone"
+                placeholder="Nomor Handphone (cth: 0812xxxx)"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
                 required
                 className="w-full border border-gray-300 rounded-xl py-3 pl-12 pr-4 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
               />

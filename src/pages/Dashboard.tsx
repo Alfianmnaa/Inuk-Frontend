@@ -10,12 +10,14 @@ import ProtectedRoute from "../components/ProtectedRoute";
 
 // Halaman Dummy Dashboard Utama
 const DashboardUtama = () => (
-  <DashboardLayout activeLink="/dashboard" pageTitle="Dashboard Utama">
-    <div className="p-6 bg-white rounded-xl shadow-lg">
-      <h3 className="text-xl font-bold text-gray-800">Selamat Datang di Admin INUK!</h3>
-      <p className="mt-2 text-gray-600">Gunakan menu di samping untuk mengelola data donasi, penyaluran, dan konten website.</p>
-    </div>
-  </DashboardLayout>
+  <ProtectedRoute>
+    <DashboardLayout activeLink="/dashboard" pageTitle="Dashboard Utama">
+      <div className="p-6 bg-white rounded-xl shadow-lg">
+        <h3 className="text-xl font-bold text-gray-800">Selamat Datang di Admin INUK!</h3>
+        <p className="mt-2 text-gray-600">Gunakan menu di samping untuk mengelola data donasi, penyaluran, dan konten website.</p>
+      </div>
+    </DashboardLayout>
+  </ProtectedRoute>
 );
 
 const DashboardRoutes: React.FC = () => {
