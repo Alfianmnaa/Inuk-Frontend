@@ -42,7 +42,7 @@ const formatRupiah = (angka: number) => {
   }).format(angka);
 };
 
-// Component Status Badge
+// Component Status Badge (tetap sama)
 const StatusBadge: React.FC<{ status: Disbursement["status"] }> = ({ status }) => {
   let colorClass = "";
   let icon = FaCheckCircle;
@@ -80,7 +80,7 @@ const PenyaluranDana: React.FC = () => {
   const [filterProgram, setFilterProgram] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
-  // State untuk AddressSelector
+  // State untuk AddressSelector (mengganti filterKecamatan/filterDesa)
   const [addressFilters, setAddressFilters] = useState<AddressSelection>({
     province: "",
     city: "",
@@ -115,7 +115,7 @@ const PenyaluranDana: React.FC = () => {
       filtered = filtered.filter((d) => d.program === filterProgram);
     }
 
-    // Filter berdasarkan AddressSelector (Kecamatan dan Desa)
+    // Filter berdasarkan AddressSelector
     if (addressFilters.subdistrict) {
       filtered = filtered.filter((d) => d.kecamatan === addressFilters.subdistrict);
     }
@@ -130,7 +130,7 @@ const PenyaluranDana: React.FC = () => {
     return filtered;
   }, [searchTerm, filterBulanTahun, filterProgram, addressFilters, filterStatus]);
 
-  // 2. Logika Sorting
+  // 2. Logika Sorting (tetap sama)
   const sortedDisbursements = useMemo(() => {
     let sortableItems = [...filteredDisbursements];
     if (sortConfig.key !== null) {
@@ -171,13 +171,13 @@ const PenyaluranDana: React.FC = () => {
     setFilterStatus("");
   };
 
-  // Varian Framer Motion untuk item
+  // Varian Framer Motion untuk item (tetap sama)
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
   };
 
-  // Simulasikan daftar Bulan/Tahun unik
+  // Simulasikan daftar Bulan/Tahun unik (tetap sama)
   const uniqueBulanTahun = Array.from(
     new Set(
       ALL_DISBURSEMENTS.map((d) => {
@@ -192,7 +192,7 @@ const PenyaluranDana: React.FC = () => {
   return (
     <DashboardLayout activeLink="/dashboard/penyaluran" pageTitle="Pencatatan Penyaluran Dana">
       <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
-        {/* Ringkasan Statistik */}
+        {/* Ringkasan Statistik (tetap sama) */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-primary">
             <p className="text-sm font-medium text-gray-500">Total Dana Disalurkan</p>

@@ -42,7 +42,7 @@ const formatRupiah = (angka: number) => {
   }).format(angka);
 };
 
-// Component Status Badge
+// Component Status Badge (tetap sama)
 const StatusBadge: React.FC<{ status: Transaction["status"] }> = ({ status }) => {
   let colorClass = "";
   let icon = FaCheckCircle;
@@ -80,7 +80,7 @@ const TransaksiDonasi: React.FC = () => {
   const [filterMetode, setFilterMetode] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
-  // State untuk AddressSelector
+  // State untuk AddressSelector (mengganti filterKecamatan/filterDesa)
   const [addressFilters, setAddressFilters] = useState<AddressSelection>({
     province: "",
     city: "",
@@ -105,7 +105,7 @@ const TransaksiDonasi: React.FC = () => {
       filtered = filtered.filter((t) => t.bulanTahun === filterBulanTahun);
     }
 
-    // Filter berdasarkan AddressSelector (Kecamatan dan Desa)
+    // Filter berdasarkan AddressSelector
     if (addressFilters.subdistrict) {
       filtered = filtered.filter((t) => t.kecamatan === addressFilters.subdistrict);
     }
@@ -123,7 +123,7 @@ const TransaksiDonasi: React.FC = () => {
     return filtered;
   }, [searchTerm, filterBulanTahun, addressFilters, filterMetode, filterStatus]);
 
-  // 2. Logika Sorting
+  // 2. Logika Sorting (tetap sama)
   const sortedTransactions = useMemo(() => {
     let sortableItems = [...filteredTransactions];
     if (sortConfig.key !== null) {
@@ -163,7 +163,7 @@ const TransaksiDonasi: React.FC = () => {
     setFilterStatus("");
   };
 
-  // Varian Framer Motion untuk item
+  // Varian Framer Motion untuk item (tetap sama)
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
@@ -172,7 +172,7 @@ const TransaksiDonasi: React.FC = () => {
   return (
     <DashboardLayout activeLink="/dashboard/transaksi" pageTitle="Pencatatan Donasi (INFAQ/ZIS)">
       <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
-        {/* Ringkasan Statistik */}
+        {/* Ringkasan Statistik (tetap sama) */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-primary">
             <p className="text-sm font-medium text-gray-500">Total Transaksi ({filteredTransactions.length})</p>
@@ -336,7 +336,7 @@ const TransaksiDonasi: React.FC = () => {
 
 export default TransaksiDonasi;
 
-// Komponen Pembantu untuk Sorting Header
+// Komponen Pembantu untuk Sorting Header (tetap sama)
 interface SortHeaderProps {
   label: string;
   sortKey: keyof Transaction;
