@@ -1,7 +1,13 @@
+// src/services/RegionService.ts
+
 import axios from "axios";
 import { toast } from "react-hot-toast";
 
+// URL API diambil dari .env (misal: http://localhost:8000)
 const VITE_API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+// Tipe data untuk permintaan dan respons, disesuaikan dengan models.go
+// dan regions.sql.go
 
 export interface RegionFilterBody {
   provinsi?: string;
@@ -11,16 +17,15 @@ export interface RegionFilterBody {
 }
 
 export interface RegionDetail {
-  id: string;
+  id: string; // UUID
   user_id: string;
   user_name: string;
   rw: number;
-  desa_kelurahan: string;
-  kecamatan: string;
-  kabupaten_kota: string;
-  provinsi: string;
-  created_at?: string;
-  updated_at?: string;
+  desa_kelurahan: string; // Village
+  kecamatan: string; // Subdistrict
+  kabupaten_kota: string; // City
+  provinsi: string; // Province
+  // created_at, updated_at dihilangkan dari interface ini untuk penyederhanaan
 }
 
 // --- Helper untuk Header Admin (memerlukan JWT) ---
@@ -28,13 +33,13 @@ const getAdminHeaders = (token: string) => ({
   headers: { Authorization: `Bearer ${token}` },
 });
 
-// --- Public Access API (Cascading Dropdown) ---
-// Note: Backend menggunakan POST dengan body untuk filter
+// --- Public Access API (Cascading Dropdown - Menggunakan POST untuk mengirim body) ---
+
 // Endpoint: GET /region/provinces
 export const getProvinces = async () => {
   try {
     const response = await axios.get<Array<{ provinsi: string }>>(`${VITE_API_URL}/region/provinces`);
-    return response.data.map((item) => item.provinsi).filter((p) => p !== ""); // Filter out empty strings if any
+    return response.data.map((item) => item.provinsi).filter((p) => p !== "");
   } catch (error) {
     console.error("Failed to fetch provinces:", error);
     return [];
@@ -77,10 +82,10 @@ export const getVillages = async (provinsi: string, kabupaten_kota: string, keca
   }
 };
 
-// Endpoint: GET /regions (Untuk Admin List atau mencari ID)
+// Endpoint: GET /regions (Untuk Admin List/Filter)
+// Backend Go menggunakan Query Params untuk GET /regions
 export const getRegions = async (filters: RegionFilterBody): Promise<RegionDetail[]> => {
   try {
-    // Menggunakan GET dengan query params untuk filtering
     const response = await axios.get<RegionDetail[]>(`${VITE_API_URL}/regions`, {
       params: {
         provinsi: filters.provinsi || undefined,
@@ -99,14 +104,14 @@ export const getRegions = async (filters: RegionFilterBody): Promise<RegionDetai
 // --- Admin Access API (CRUD) ---
 
 // Endpoint: POST /region/
-export const createRegion = async (data: RegionFilterBody & { userID: string; rw: number }, token: string) => {
+export const createRegion = async (data: { userID: string; rw: number; province: string; city: string; subdistrict: string; village: string }, token: string) => {
   const payload = {
     user_id: data.userID,
     rw: data.rw,
-    desa_kelurahan: data.desa_kelurahan,
-    kecamatan: data.kecamatan,
-    kabupaten_kota: data.provinsi, // NOTE: Mapping kota/kabupaten dan provinsi mungkin terbalik di backend. Saya sesuaikan: Kota/Kabupaten mengambil data.city
-    provinsi: data.provinsi,
+    desa_kelurahan: data.village,
+    kecamatan: data.subdistrict,
+    kabupaten_kota: data.city,
+    provinsi: data.province,
   };
   const response = await axios.post<RegionDetail>(`${VITE_API_URL}/region/`, payload, getAdminHeaders(token));
   return response.data;
