@@ -3,7 +3,8 @@ import React, { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { FaSpinner } from "react-icons/fa";
-import { getProvinces, getCities, getSubdistricts, getVillages } from "../../services/RegionService"; // Sesuaikan path
+// Sesuaikan path import service
+import { getProvinces, getCities, getSubdistricts, getVillages } from "../../services/RegionService";
 
 // Tipe data untuk prop value yang dikontrol
 export interface AddressSelection {
@@ -55,6 +56,7 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ value, onChange, leve
       return;
     }
     setLoading("city");
+    // Panggil API getCities
     getCities(value.province)
       .then((data) => {
         setCities(data);
@@ -70,6 +72,7 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ value, onChange, leve
       return;
     }
     setLoading("subdistrict");
+    // Panggil API getSubdistricts
     getSubdistricts(value.province, value.city)
       .then((data) => {
         setSubdistricts(data);
@@ -85,6 +88,7 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ value, onChange, leve
       return;
     }
     setLoading("village");
+    // Panggil API getVillages
     getVillages(value.province, value.city, value.subdistrict)
       .then((data) => {
         setVillages(data);
@@ -119,10 +123,14 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ value, onChange, leve
   const renderDropdown = (key: "province" | "city" | "subdistrict" | "village", label: string, options: string[], currentValue: string, onChangeHandler: (e: React.ChangeEvent<HTMLSelectElement>) => void, placeholder: string) => {
     if (!levels.includes(key)) return null;
 
+    // Logika untuk menonaktifkan dropdown jika level sebelumnya belum dipilih
     const isDisabled = disabled || loading === key || (key !== "province" && !value[levels[levels.indexOf(key) - 1] as keyof AddressSelection]);
 
+    // Tentukan jumlah kolom grid yang akan digunakan
+    const colClass = levels.length === 2 ? "md:col-span-2" : levels.length === 3 ? "md:col-span-1" : "md:col-span-1";
+
     return (
-      <motion.div key={key} variants={itemVariants} className="relative">
+      <motion.div key={key} variants={itemVariants} className={`${colClass} relative`}>
         <label className="block text-gray-700 font-semibold mb-1 text-sm">{label}</label>
         <select name={key} value={currentValue} onChange={onChangeHandler} disabled={isDisabled} className={inputClass}>
           <option value="" disabled>
@@ -140,7 +148,8 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ value, onChange, leve
   };
 
   return (
-    <motion.div initial="hidden" animate="visible" transition={{ staggerChildren: 0.1 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    // Menggunakan grid dinamis, maks 4 kolom.
+    <motion.div initial="hidden" animate="visible" transition={{ staggerChildren: 0.1 }} className="grid grid-cols-1 md:grid-cols-4 gap-4">
       {renderDropdown("province", "Provinsi", provinces, value.province, handleProvinceChange, "Pilih Provinsi")}
       {renderDropdown("city", "Kabupaten/Kota", cities, value.city, handleCityChange, "Pilih Kabupaten/Kota")}
       {renderDropdown("subdistrict", kecamatanName, subdistricts, value.subdistrict, handleSubdistrictChange, `Pilih ${kecamatanName}`)}
