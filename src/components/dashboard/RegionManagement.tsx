@@ -1,12 +1,12 @@
-// src/components/dashboard/RegionManagement.tsx
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaPlus, FaTrash, FaMapMarkerAlt, FaEdit, FaTimes, FaSpinner, FaUsers, FaMapPin } from "react-icons/fa";
+import { FaPlus, FaTrash, FaMapMarkerAlt, FaEdit, FaTimes, FaSpinner, FaUsers, FaMapPin, FaFilter } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import DashboardLayout from "./DashboardLayout";
 import { useAuth } from "../../context/AuthContext";
-import { getRegions, createRegion, deleteRegion } from "../../services/RegionService";
-import type { RegionDetail } from "../../services/RegionService";
+// Sesuaikan path service dan component
+import { getRegions, createRegion, deleteRegion, type RegionFilterBody } from "../../services/RegionService";
+import { type RegionDetail } from "../../services/RegionService";
 import AddressSelector, { type AddressSelection } from "./AddressSelector";
 
 // Data model untuk tampilan daftar (Admin)
@@ -24,15 +24,13 @@ interface CreateRegionFormProps {
 }
 
 const CreateRegionForm: React.FC<CreateRegionFormProps> = ({ onCreate, onCancel }) => {
-  const authContext = useAuth(); // Ambil seluruh context
-  const { token, userRole } = authContext || {}; // Destructure aman
+  const authContext = useAuth();
+  const { token, userRole, logout } = authContext || {};
 
-  // Asumsi ID admin diambil dari token jika login sebagai admin,
-  // jika tidak ada, gunakan ID dummy yang ada di seeds untuk simulasi
-  const dummyAdminId = "85234567-8930-4234-5678-932345678943";
-  const currentAdminId = authContext?.userRole === "admin" ? authContext.token?.substring(0, 36) : dummyAdminId;
-
-  console.log(currentAdminId);
+  // Asumsi: ID admin diambil dari token. Karena kita tidak decode JWT, kita gunakan ID dummy/ID dari seed
+  // Pastikan ID ini valid UUID yang sudah ada di tabel users sebagai 'admin'
+  const adminId = "85234567-8930-4234-5678-932345678943"; // Dummy ID (sesuaikan dengan ID Evan atau Charlie di seeds)
+  const currentAdminId = authContext?.token ? "ID DARI TOKEN" : adminId; // Placeholder: Ambil ID dari token jika perlu
 
   const [selection, setSelection] = useState<AddressSelection>({ province: "", city: "", subdistrict: "", village: "" });
   const [rw, setRW] = useState<number | "">("");
@@ -43,11 +41,12 @@ const CreateRegionForm: React.FC<CreateRegionFormProps> = ({ onCreate, onCancel 
 
     if (!token || userRole !== "admin") {
       toast.error("Akses ditolak: Anda harus Login sebagai Admin.");
+      logout(); // Paksa logout jika token tidak valid/hilang
       return;
     }
 
     if (!selection.village || rw === "") {
-      toast.error("Semua field alamat dan RW wajib diisi.");
+      toast.error("Semua field alamat hingga RW wajib diisi.");
       return;
     }
 
@@ -56,13 +55,8 @@ const CreateRegionForm: React.FC<CreateRegionFormProps> = ({ onCreate, onCancel 
       await createRegion(
         {
           ...selection,
-          userID: currentAdminId || dummyAdminId, // Gunakan ID admin yang valid
+          userID: currentAdminId, // Mengirim user_id (Admin)
           rw: rw as number,
-          // Name mapping di Go Service sudah disesuaikan
-          // provinsi: selection.province,
-          // kabupaten_kota: selection.city,
-          // kecamatan: selection.subdistrict,
-          // desa_kelurahan: selection.village,
         },
         token
       );
@@ -84,7 +78,7 @@ const CreateRegionForm: React.FC<CreateRegionFormProps> = ({ onCreate, onCancel 
         <FaMapPin className="mr-2" /> Tambah Detail Wilayah (Desa/RW)
       </h4>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <AddressSelector value={selection} onChange={setSelection} levels={["province", "city", "subdistrict", "village"]} disabled={isSubmitting} />
+        <AddressSelector value={selection} onChange={setSelection} levels={["province", "city", "subdistrict", "village"]} disabled={isSubmitting} kecamatanName="Kecamatan" />
         <div className="flex space-x-4">
           <div className="w-1/4">
             <label className="block text-gray-700 font-semibold mb-1 text-sm">RW</label>
@@ -101,11 +95,11 @@ const CreateRegionForm: React.FC<CreateRegionFormProps> = ({ onCreate, onCancel 
           <div className="w-3/4 flex items-end space-x-2">
             <motion.button
               type="submit"
-              disabled={isSubmitting || rw === ""}
-              whileHover={{ scale: isSubmitting || rw === "" ? 1 : 1.02 }}
-              whileTap={{ scale: isSubmitting || rw === "" ? 1 : 0.98 }}
+              disabled={isSubmitting || rw === "" || !selection.village}
+              whileHover={{ scale: isSubmitting || rw === "" || !selection.village ? 1 : 1.02 }}
+              whileTap={{ scale: isSubmitting || rw === "" || !selection.village ? 1 : 0.98 }}
               className={`flex-1 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center transition-colors 
-                                ${isSubmitting || rw === "" ? "bg-gray-400 cursor-not-allowed" : "bg-primary hover:bg-green-600"}
+                                ${isSubmitting || rw === "" || !selection.village ? "bg-gray-400 cursor-not-allowed" : "bg-primary hover:bg-green-600"}
                             `}
             >
               {isSubmitting ? <FaSpinner className="animate-spin mr-2" /> : <FaPlus className="mr-2" />} Simpan
@@ -133,11 +127,19 @@ const RegionManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
-  const fetchRegions = async () => {
+  // State Filter
+  const [filterSelection, setFilterSelection] = useState<AddressSelection>({ province: "", city: "", subdistrict: "", village: "" });
+
+  const fetchRegions = async (filters: RegionFilterBody = {}) => {
     setLoading(true);
+    if (userRole !== "admin") {
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Menggunakan GET /regions untuk daftar admin
-      const data = await getRegions({});
+      // Menggunakan GET /regions dengan filter sebagai query params
+      const data = await getRegions(filters);
       setRegions(data as RegionData[]);
     } catch (err: any) {
       toast.error("Gagal memuat data region.");
@@ -149,11 +151,17 @@ const RegionManagement: React.FC = () => {
 
   useEffect(() => {
     if (userRole === "admin") {
-      fetchRegions();
+      // Panggil fetchRegions setiap kali filter berubah
+      fetchRegions({
+        provinsi: filterSelection.province,
+        kabupaten_kota: filterSelection.city,
+        kecamatan: filterSelection.subdistrict,
+        desa_kelurahan: filterSelection.village,
+      });
     } else if (userRole === "user") {
       toast.error("Akses ditolak. Hanya Admin yang dapat mengelola Wilayah.");
     }
-  }, [userRole]);
+  }, [userRole, filterSelection]); // Dependency pada filterSelection
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Apakah Anda yakin ingin menghapus wilayah ini?")) return;
@@ -165,7 +173,12 @@ const RegionManagement: React.FC = () => {
     try {
       await deleteRegion(id, token);
       toast.success("Wilayah berhasil dihapus.");
-      fetchRegions();
+      fetchRegions({
+        provinsi: filterSelection.province,
+        kabupaten_kota: filterSelection.city,
+        kecamatan: filterSelection.subdistrict,
+        desa_kelurahan: filterSelection.village,
+      }); // Refresh dengan filter saat ini
     } catch (err: any) {
       toast.error("Gagal menghapus wilayah.");
       console.error(err);
@@ -200,13 +213,21 @@ const RegionManagement: React.FC = () => {
           {showCreateForm && userRole === "admin" && (
             <CreateRegionForm
               onCreate={() => {
-                fetchRegions();
+                fetchRegions({}); // Refresh total
                 setShowCreateForm(false);
               }}
               onCancel={() => setShowCreateForm(false)}
             />
           )}
         </AnimatePresence>
+
+        {/* Filter Region List */}
+        <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg">
+          <h4 className="text-lg font-semibold text-gray-800 flex items-center mb-3">
+            <FaFilter className="mr-2 text-primary" /> Filter List
+          </h4>
+          <AddressSelector value={filterSelection} onChange={setFilterSelection} levels={["province", "city", "subdistrict", "village"]} kecamatanName="Kecamatan" />
+        </motion.div>
 
         {/* Tabel Data Region */}
         <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg overflow-x-auto">
