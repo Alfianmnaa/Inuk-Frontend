@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { FaBars, FaTimes, FaChartBar, FaReceipt, FaUsers, FaPaperPlane, FaEdit, FaChevronDown, FaHome, FaMapMarkerAlt } from "react-icons/fa";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
-import { useAuth } from "../../context/AuthContext"; // Import useAuth (Pastikan path benar)
+import { FaBars, FaTimes, FaChartBar, FaReceipt, FaUsers, FaPaperPlane, FaEdit, FaChevronDown, FaHome, FaMapMarkerAlt } from "react-icons/fa"; // Import FaMapMarkerAlt
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 // Data Type Navigasi Dashboard
 interface NavItem {
@@ -20,11 +20,12 @@ const DASHBOARD_NAV: NavItem[] = [
   { name: "Penyaluran Dana", icon: FaPaperPlane, link: "/dashboard/penyaluran" },
   { name: "Donatur & Penerima Manfaat", icon: FaUsers, link: "/dashboard/donatur-penerima" },
   { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management" }, // <-- BARIS BARU
-  { name: '--- PENGELOLAAN KONTEN ---"', icon: FaChevronDown, link: "#", isHeader: true },
+  { name: "--- PENGELOLAAN KONTEN ---", icon: FaChevronDown, link: "#", isHeader: true },
   { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita" },
 ];
 
 const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void; activeLink: string }> = ({ isOpen, toggleSidebar, activeLink }) => {
+  // ... (isi Sidebar tetap sama)
   return (
     <motion.div
       initial={false}
@@ -74,6 +75,7 @@ const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void; activeLink
     </motion.div>
   );
 };
+// ... (sisa DashboardLayout tetap sama)
 
 const DashboardLayout: React.FC<{ children: React.ReactNode; activeLink: string; pageTitle: string }> = ({ children, activeLink, pageTitle }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
