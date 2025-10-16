@@ -32,6 +32,8 @@ const CreateRegionForm: React.FC<CreateRegionFormProps> = ({ onCreate, onCancel 
   const dummyAdminId = "85234567-8930-4234-5678-932345678943";
   const currentAdminId = authContext?.userRole === "admin" ? authContext.token?.substring(0, 36) : dummyAdminId;
 
+  console.log(currentAdminId);
+
   const [selection, setSelection] = useState<AddressSelection>({ province: "", city: "", subdistrict: "", village: "" });
   const [rw, setRW] = useState<number | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
