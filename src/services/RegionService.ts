@@ -1,17 +1,17 @@
 import axios from "axios";
 import { toast } from "react-hot-toast";
 
-// URL API diambil dari .env (misal: http://localhost:8000)
 const VITE_API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-// Tipe data untuk permintaan dan respons
+// Tipe data untuk filter (menggunakan nama parameter backend)
 export interface RegionFilterBody {
-  province?: string; // Diperbaiki: menggunakan nama parameter backend
+  province?: string;
   city?: string;
   subdistrict?: string;
   village?: string;
 }
 
+// Tipe data Region Detail
 export interface RegionDetail {
   id: string;
   user_id: string;
@@ -34,8 +34,6 @@ const getAdminHeaders = (token: string) => ({
 export const getProvinces = async () => {
   try {
     const response = await axios.get<Array<{ provinsi: string }>>(`${VITE_API_URL}/region/provinces`);
-
-    // Perbaikan Error: Cek apakah data adalah array sebelum map
     if (Array.isArray(response.data)) {
       return response.data.map((item) => item.provinsi).filter((p) => p !== "");
     }
@@ -48,12 +46,10 @@ export const getProvinces = async () => {
 
 // Endpoint: GET /region/cities
 export const getCities = async (province: string) => {
-  // Menggunakan 'province' sebagai parameter
   if (!province) return [];
   try {
-    // PERBAIKAN: Menggunakan key 'province' agar match dengan c.Query("province")
     const response = await axios.get<Array<{ kabupaten_kota: string }>>(`${VITE_API_URL}/region/cities`, {
-      params: { province: province },
+      params: { province: province }, // <--- Menggunakan key 'province'
     });
 
     if (Array.isArray(response.data)) {
@@ -68,12 +64,10 @@ export const getCities = async (province: string) => {
 
 // Endpoint: GET /region/Subdistricts
 export const getSubdistricts = async (province: string, city: string) => {
-  // Menggunakan 'city'
   if (!province || !city) return [];
   try {
-    // PERBAIKAN: Menggunakan key 'province' dan 'city'
-    const response = await axios.get<Array<{ kecamatan: string }>>(`${VITE_API_URL}/region/Subdistricts`, {
-      params: { province: province, city: city },
+    const response = await axios.get<Array<{ kecamatan: string }>>(`${VITE_API_URL}/region/subdistricts`, {
+      params: { province: province, city: city }, // <--- Menggunakan key 'province' dan 'city'
     });
 
     if (Array.isArray(response.data)) {
@@ -88,12 +82,10 @@ export const getSubdistricts = async (province: string, city: string) => {
 
 // Endpoint: GET /region/villages
 export const getVillages = async (province: string, city: string, subdistrict: string) => {
-  // Menggunakan 'subdistrict'
   if (!province || !city || !subdistrict) return [];
   try {
-    // PERBAIKAN: Menggunakan key 'province', 'city', dan 'subdistrict'
     const response = await axios.get<Array<{ desa_kelurahan: string }>>(`${VITE_API_URL}/region/villages`, {
-      params: { province: province, city: city, subdistrict: subdistrict },
+      params: { province: province, city: city, subdistrict: subdistrict }, // <--- Menggunakan key 'subdistrict'
     });
 
     if (Array.isArray(response.data)) {
@@ -109,16 +101,12 @@ export const getVillages = async (province: string, city: string, subdistrict: s
 // Endpoint: GET /regions (Untuk Admin List/Filter)
 export const getRegions = async (filters: RegionFilterBody): Promise<RegionDetail[]> => {
   try {
-    // Axios akan mengirim key: 'province', 'city', dll. sesuai dengan object filters
     const response = await axios.get<RegionDetail[]>(`${VITE_API_URL}/regions`, {
-      params: filters,
+      params: filters, // Axios otomatis mengirim key: 'province', 'city', dll.
     });
 
     if (Array.isArray(response.data)) {
-      return response.data.map((item) => ({
-        ...item,
-        user_name: item.user_name || "N/A", // Handle jika user_name null
-      }));
+      return response.data;
     }
     return [];
   } catch (error) {
@@ -128,10 +116,7 @@ export const getRegions = async (filters: RegionFilterBody): Promise<RegionDetai
 };
 
 // --- Admin Access API (CRUD) ---
-
-// Endpoint: POST /region/
 export const createRegion = async (data: { userID: string; rw: number; province: string; city: string; subdistrict: string; village: string }, token: string) => {
-  // Disesuaikan dengan CreateRegionRequest di backend
   const payload = {
     user_id: data.userID,
     rw: data.rw,
@@ -144,7 +129,6 @@ export const createRegion = async (data: { userID: string; rw: number; province:
   return response.data;
 };
 
-// Endpoint: DELETE /region/:id
 export const deleteRegion = async (id: string, token: string) => {
   await axios.delete(`${VITE_API_URL}/region/${id}`, getAdminHeaders(token));
   return true;

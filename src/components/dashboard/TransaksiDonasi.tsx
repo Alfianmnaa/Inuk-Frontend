@@ -1,37 +1,29 @@
-import React, { useState, useMemo } from "react";
+// src/components/dashboard/TransaksiDonasi.tsx
+
+import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSortUp, FaSortDown, FaWallet, FaCheckCircle, FaMinusCircle } from "react-icons/fa";
+import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSortUp, FaSortDown, FaWallet, FaMapMarkerAlt, FaSpinner, FaSortDown as FaSortDesc, FaSortUp as FaSortAsc } from "react-icons/fa";
+import { Edit, Trash2 } from "lucide-react"; // BARU: Import ikon Edit dan Delete
+import { toast } from "react-hot-toast";
+
 import DashboardLayout from "./DashboardLayout";
-
-// Import AddressSelector dan tipenya
+import Pagination from "./ui/Pagination";
 import AddressSelector, { type AddressSelection } from "./AddressSelector";
+import AddTransactionModal from "./ui/AddTransactionModal";
+// Update import service
+import { getDonations, type TransactionAPI, type DonationsResponse, type DonationsFilter, getDonationMethods, updateDonation, deleteDonation, type UpdateDonationRequest } from "../../services/DonationService";
+import { useAuth } from "../../context/AuthContext"; // Sesuaikan path
 
-// Data Type Transaksi
-interface Transaction {
-  id: number;
-  tanggal: string; // YYYY-MM-DD
-  bulanTahun: string; // MM/YYYY
-  donatur: string;
-  kecamatan: string;
-  desa: string;
-  jumlah: number;
-  metode: "Transfer Bank" | "QRIS" | "Tunai";
-  status: "Lunas" | "Pending" | "Gagal";
+import { exportToExcel } from "../../utils/ExportToExcel";
+// BARU: Import Modal yang akan dibuat
+import EditDonationModal from "./ui/EditDonationModal";
+import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
+
+// Data Type Transaksi LOKAL
+interface Transaction extends TransactionAPI {
+  tanggalFormatted: string;
+  methodDisplay: string;
 }
-
-const ALL_TRANSACTIONS: Transaction[] = [
-  { id: 1001, tanggal: "2025-06-25", bulanTahun: "06/2025", donatur: "Ahmad Fauzi", kecamatan: "JEKULO", desa: "HADIPOLO", jumlah: 500000, metode: "QRIS", status: "Lunas" },
-  { id: 1002, tanggal: "2025-07-01", bulanTahun: "07/2025", donatur: "Siti Aisyah", kecamatan: "KOTA KUDUS", desa: "DEMAAN", jumlah: 1500000, metode: "Transfer Bank", status: "Lunas" },
-  { id: 1003, tanggal: "2025-07-05", bulanTahun: "07/2025", donatur: "Budi Santoso", kecamatan: "DAWE", desa: "CENDONO", jumlah: 250000, metode: "QRIS", status: "Lunas" },
-  { id: 1004, tanggal: "2025-07-10", bulanTahun: "07/2025", donatur: "Pak Rahmat", kecamatan: "JEKULO", desa: "BULUNG CANGKRING", jumlah: 50000, metode: "Tunai", status: "Pending" },
-  { id: 1005, tanggal: "2025-08-01", bulanTahun: "08/2025", donatur: "Fizsa Akbar", kecamatan: "KOTA KUDUS", desa: "BARONGAN", jumlah: 750000, metode: "Transfer Bank", status: "Lunas" },
-  { id: 1006, tanggal: "2025-08-15", bulanTahun: "08/2025", donatur: "Zulkarnain Nawawi", kecamatan: "DAWE", desa: "KIRIG", jumlah: 100000, metode: "QRIS", status: "Lunas" },
-  { id: 1007, tanggal: "2025-08-20", bulanTahun: "08/2025", donatur: "H. Hasan Junaidi", kecamatan: "KOTA KUDUS", desa: "JANGGALAN", jumlah: 2000000, metode: "Transfer Bank", status: "Lunas" },
-  { id: 1008, tanggal: "2025-09-01", bulanTahun: "09/2025", donatur: "Mukhsin", kecamatan: "JEKULO", desa: "KANDANGMAS", jumlah: 150000, metode: "Tunai", status: "Lunas" },
-];
-
-const METODE_LIST = ["Transfer Bank", "QRIS", "Tunai"];
-const STATUS_LIST = ["Lunas", "Pending", "Gagal"];
 
 // Helper function
 const formatRupiah = (angka: number) => {
@@ -42,128 +34,192 @@ const formatRupiah = (angka: number) => {
   }).format(angka);
 };
 
-// Component Status Badge (tetap sama)
-const StatusBadge: React.FC<{ status: Transaction["status"] }> = ({ status }) => {
-  let colorClass = "";
-  let icon = FaCheckCircle;
-  switch (status) {
-    case "Lunas":
-      colorClass = "bg-green-100 text-green-700";
-      icon = FaCheckCircle;
-      break;
-    case "Pending":
-      colorClass = "bg-yellow-100 text-yellow-700";
-      icon = FaMinusCircle;
-      break;
-    case "Gagal":
-      colorClass = "bg-red-100 text-red-700";
-      icon = FaTimes;
-      break;
-    default:
-      colorClass = "bg-gray-100 text-gray-700";
-  }
-
-  const Icon = icon;
-
-  return (
-    <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${colorClass}`}>
-      <Icon className="w-3 h-3 mr-1" />
-      {status}
-    </span>
-  );
-};
-
 // Component Utama Halaman
 const TransaksiDonasi: React.FC = () => {
+  const { token } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterBulanTahun, setFilterBulanTahun] = useState(""); // Format MM/YYYY
-  const [filterMetode, setFilterMetode] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterMethod, setFilterMethod] = useState("");
 
-  // State untuk AddressSelector (mengganti filterKecamatan/filterDesa)
-  const [addressFilters, setAddressFilters] = useState<AddressSelection>({
-    province: "",
-    city: "",
-    subdistrict: "",
-    village: "",
+  // State API
+  const [methodsList, setMethodsList] = useState<string[]>([]);
+  const [transactionsData, setTransactionsData] = useState<DonationsResponse>({ total_page: 1, current_page: 1, has_next_page: false, result: [] });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // State BARU untuk Update/Delete
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+
+  // State Filter & Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [addressFilters, setAddressFilters] = useState<AddressSelection>({ province: "", city: "", subdistrict: "", village: "" });
+
+  const [sortConfig, setSortConfig] = useState<{ key: keyof TransactionAPI | "total" | null; direction: "asc" | "desc" }>({
+    key: "date_time",
+    direction: "desc", // default API: newest
   });
 
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Transaction | null; direction: "ascending" | "descending" }>({
-    key: "tanggal",
-    direction: "descending",
-  });
+  // --- Statistik yang Diperhitungkan ---
+  const totalDonationAmount = useMemo(() => {
+    return transactionsData.result.reduce((sum, t) => sum + t.total, 0);
+  }, [transactionsData.result]);
 
-  // 1. Logika Filtering
-  const filteredTransactions = useMemo(() => {
-    let filtered = ALL_TRANSACTIONS;
+  // --- Data Fetching Effect ---
+  const fetchTransactions = async (page: number) => {
+    if (!token) return;
 
-    if (searchTerm) {
-      const lowerCaseSearch = searchTerm.toLowerCase();
-      filtered = filtered.filter((t) => t.donatur.toLowerCase().includes(lowerCaseSearch) || String(t.id).includes(lowerCaseSearch));
-    }
-    if (filterBulanTahun) {
-      filtered = filtered.filter((t) => t.bulanTahun === filterBulanTahun);
-    }
+    setIsLoading(true);
+    setCurrentPage(page);
 
-    // Filter berdasarkan AddressSelector
-    if (addressFilters.subdistrict) {
-      filtered = filtered.filter((t) => t.kecamatan === addressFilters.subdistrict);
-    }
-    if (addressFilters.village) {
-      filtered = filtered.filter((t) => t.desa === addressFilters.village);
-    }
+    // Mempersiapkan parameter filter untuk API
+    const filters: DonationsFilter = {
+      page: page,
+      method: filterMethod || undefined,
+      province: addressFilters.province || undefined,
+      city: addressFilters.city || undefined,
+      subdistrict: addressFilters.subdistrict || undefined,
+      village: addressFilters.village || undefined,
+      sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
+    };
 
-    if (filterMetode) {
-      filtered = filtered.filter((t) => t.metode === filterMetode);
-    }
-    if (filterStatus) {
-      filtered = filtered.filter((t) => t.status === filterStatus);
-    }
+    try {
+      const data = await getDonations(token, filters);
 
-    return filtered;
-  }, [searchTerm, filterBulanTahun, addressFilters, filterMetode, filterStatus]);
+      // Mapping data dari API ke format tampilan yang memiliki computed fields
+      const formattedResults: Transaction[] = data.result.map((t) => ({
+        ...t,
+        tanggalFormatted: new Date(t.date_time).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
+        methodDisplay: t.method.toUpperCase().replace(/_/g, " "),
+      }));
 
-  // 2. Logika Sorting (tetap sama)
+      setTransactionsData({ ...data, result: formattedResults });
+    } catch (error: any) {
+      toast.error("Gagal memuat data transaksi.");
+      console.error("Fetch Transactions Error:", error.response?.data || error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- Handler Update/Delete BARU ---
+  const handleOpenEditModal = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsEditModalOpen(true);
+  };
+
+  const handleOpenDeleteModal = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleUpdate = async (id: string, data: UpdateDonationRequest) => {
+    if (!token) return;
+    try {
+      await updateDonation(token, id, data);
+      toast.success("Transaksi berhasil diperbarui!");
+      fetchTransactions(currentPage); // Refresh data pada halaman saat ini
+      setIsEditModalOpen(false);
+    } catch (error: any) {
+      toast.error(`Gagal memperbarui transaksi: ${error.response?.data?.message || error.message}`);
+      console.error("Update Error:", error);
+      throw error; // Lempar error agar modal tahu operasi gagal
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!token) return;
+    try {
+      await deleteDonation(token, id);
+      toast.success("Transaksi berhasil dihapus!");
+      fetchTransactions(currentPage); // Refresh data
+      setIsDeleteModalOpen(false);
+    } catch (error: any) {
+      toast.error(`Gagal menghapus transaksi: ${error.response?.data?.message || error.message}`);
+      console.error("Delete Error:", error);
+      throw error; // Lempar error agar modal tahu operasi gagal
+    }
+  };
+  // --- Akhir Handler Update/Delete ---
+
+  // --- Fetch Methods List ---
+  useEffect(() => {
+    if (token) {
+      getDonationMethods(token)
+        .then(setMethodsList)
+        .catch(() => toast.error("Gagal memuat daftar metode pembayaran."));
+    }
+  }, [token]);
+
+  // Trigger fetch saat filter atau sorting berubah
+  useEffect(() => {
+    fetchTransactions(1);
+  }, [filterMethod, addressFilters, sortConfig.key, sortConfig.direction]);
+
+  // Handle Search Bar (Mencari di data yang sudah dimuat)
+  const filteredBySearch = useMemo(() => {
+    const lowerCaseSearch = searchTerm.toLowerCase();
+    if (!lowerCaseSearch) return transactionsData.result as Transaction[];
+
+    return transactionsData.result.filter((t) => t.name.toLowerCase().includes(lowerCaseSearch) || t.phone.includes(lowerCaseSearch) || t.id.includes(lowerCaseSearch)) as Transaction[];
+  }, [searchTerm, transactionsData.result]);
+
+  // --- Logika Sorting Lokal (Hanya untuk Total) ---
   const sortedTransactions = useMemo(() => {
-    let sortableItems = [...filteredTransactions];
-    if (sortConfig.key !== null) {
-      sortableItems.sort((a, b) => {
-        const aValue = a[sortConfig.key!];
-        const bValue = b[sortConfig.key!];
-
-        if (aValue < bValue) {
-          return sortConfig.direction === "ascending" ? -1 : 1;
-        }
-        if (aValue > bValue) {
-          return sortConfig.direction === "ascending" ? 1 : -1;
-        }
-        return 0;
+    let items = [...filteredBySearch];
+    if (sortConfig.key === "total") {
+      items.sort((a, b) => {
+        const comparison = a.total - b.total;
+        return sortConfig.direction === "asc" ? comparison : -comparison;
       });
     }
-    return sortableItems;
-  }, [filteredTransactions, sortConfig]);
+    return items;
+  }, [filteredBySearch, sortConfig.key, sortConfig.direction]);
 
-  const requestSort = (key: keyof Transaction) => {
-    let direction: "ascending" | "descending" = "ascending";
-    if (sortConfig.key === key && sortConfig.direction === "ascending") {
-      direction = "descending";
+  const requestSort = (key: keyof TransactionAPI | "total") => {
+    let direction: "asc" | "desc" = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
     }
     setSortConfig({ key, direction });
   };
 
-  const totalFilteredDonasi = filteredTransactions.reduce((sum, t) => (t.status === "Lunas" ? sum + t.jumlah : sum), 0);
+  // --- Fungsi Export Excel ---
+  const handleExportExcel = () => {
+    if (sortedTransactions.length === 0) {
+      toast("Tidak ada data untuk diexport.", { icon: "⚠️" });
+      return;
+    }
 
-  const isFiltered = filterBulanTahun || addressFilters.subdistrict || addressFilters.village || filterMetode || filterStatus || searchTerm;
+    // Map data ke format yang lebih rapi untuk Excel (menghilangkan ID internal, dll.)
+    const dataToExport = sortedTransactions.map((t) => ({
+      ID_Transaksi: t.id,
+      Tanggal: t.tanggalFormatted,
+      Donatur: t.name,
+      Nomor_HP: t.phone,
+      Provinsi: t.provinsi,
+      Kota: t.kabupaten_kota,
+      Kecamatan: t.kecamatan,
+      Desa: t.desa_kelurahan,
+      RW: t.rw,
+      Total_Donasi: t.total,
+      Metode: t.methodDisplay,
+    }));
+
+    exportToExcel(dataToExport, "Laporan_Donasi_INUK", "Transaksi");
+    toast.success("Data berhasil dieksport!");
+  };
+
+  // --- UI Logic ---
+  const isFiltered = addressFilters.subdistrict || filterMethod || searchTerm;
 
   const clearFilters = () => {
     setSearchTerm("");
-    setFilterBulanTahun("");
-    setAddressFilters({ province: "", city: "", subdistrict: "", village: "" }); // Reset filter alamat
-    setFilterMetode("");
-    setFilterStatus("");
+    setAddressFilters({ province: "", city: "", subdistrict: "", village: "" });
+    setFilterMethod("");
+    fetchTransactions(1);
   };
 
-  // Varian Framer Motion untuk item (tetap sama)
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
@@ -172,19 +228,25 @@ const TransaksiDonasi: React.FC = () => {
   return (
     <DashboardLayout activeLink="/dashboard/transaksi" pageTitle="Pencatatan Donasi (INFAQ/ZIS)">
       <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
-        {/* Ringkasan Statistik (tetap sama) */}
+        {/* Modal Tambah Transaksi */}
+        <AddTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => fetchTransactions(1)} />
+
+        {/* Ringkasan Statistik */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-primary">
-            <p className="text-sm font-medium text-gray-500">Total Transaksi ({filteredTransactions.length})</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{formatRupiah(totalFilteredDonasi)}</p>
-          </div>
-          <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-blue-500">
-            <p className="text-sm font-medium text-gray-500">Donatur Unik</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{new Set(filteredTransactions.map((t) => t.donatur)).size}</p>
-          </div>
+          {/* STAT 1: Total Jumlah Donasi */}
           <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-yellow-500">
-            <p className="text-sm font-medium text-gray-500">Transaksi Pending</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{filteredTransactions.filter((t) => t.status === "Pending").length}</p>
+            <p className="text-sm font-medium text-gray-500">Total Jumlah Donasi (Halaman Ini)</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{formatRupiah(totalDonationAmount)}</p>
+          </div>
+          {/* STAT 2: Jumlah Transaksi Ditemukan */}
+          <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-blue-500">
+            <p className="text-sm font-medium text-gray-500">Jumlah Transaksi (Ditemukan)</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{transactionsData.result.length}</p>
+          </div>
+          {/* STAT 3: Total Halaman */}
+          <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-primary">
+            <p className="text-sm font-medium text-gray-500">Total Halaman</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{transactionsData.total_page}</p>
           </div>
         </motion.div>
 
@@ -195,10 +257,20 @@ const TransaksiDonasi: React.FC = () => {
               <FaFilter className="mr-2 text-primary" /> Filter Data
             </h3>
             <div className="flex space-x-2">
-              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-blue-600 transition-colors">
+              <motion.button
+                onClick={handleExportExcel}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-blue-600 transition-colors"
+              >
                 <FaFileExcel className="mr-2" /> Export Excel
               </motion.button>
-              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors">
+              <motion.button
+                onClick={() => setIsModalOpen(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors"
+              >
                 <FaPlus className="mr-2" /> Tambah Transaksi
               </motion.button>
             </div>
@@ -206,9 +278,9 @@ const TransaksiDonasi: React.FC = () => {
 
           {/* Input Filter Grid */}
           <div className="space-y-4">
-            {/* Row 1: Search, Periode, Metode */}
+            {/* Row 1: Search, Metode */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Search Bar */}
+              {/* Search Bar (Fungsi lokal) */}
               <div className="relative md:col-span-2">
                 <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
@@ -220,46 +292,21 @@ const TransaksiDonasi: React.FC = () => {
                 />
               </div>
 
-              {/* Filter Bulan/Tahun */}
-              <select value={filterBulanTahun} onChange={(e) => setFilterBulanTahun(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
-                <option value="">Semua Periode</option>
-                {/* Ambil list bulan/tahun unik dari data */}
-                {Array.from(new Set(ALL_TRANSACTIONS.map((t) => t.bulanTahun)))
-                  .sort()
-                  .map((bt) => (
-                    <option key={bt} value={bt}>
-                      {bt}
-                    </option>
-                  ))}
-              </select>
-
               {/* Filter Metode */}
-              <select value={filterMetode} onChange={(e) => setFilterMetode(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
+              <select value={filterMethod} onChange={(e) => setFilterMethod(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
                 <option value="">Semua Metode</option>
-                {METODE_LIST.map((metode) => (
-                  <option key={metode} value={metode}>
-                    {metode}
+                {methodsList.map((method) => (
+                  <option key={method} value={method}>
+                    {method.toUpperCase().replace(/_/g, " ")}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Row 2: Address Selector & Status */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Row 2: Address Selector */}
+            <div className="grid grid-cols-1 gap-4">
               {/* Address Selector (Filter Lokasi) */}
-              <div className="md:col-span-3">
-                <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["province", "city", "subdistrict", "village"]} kecamatanName="Kecamatan Donatur" />
-              </div>
-
-              {/* Filter Status */}
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
-                <option value="">Semua Status</option>
-                {STATUS_LIST.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
+              <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["province", "city", "subdistrict", "village"]} kecamatanName="Kecamatan Donatur" />
             </div>
           </div>
 
@@ -274,61 +321,77 @@ const TransaksiDonasi: React.FC = () => {
         {/* Tabel Data Transaksi */}
         <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg overflow-x-auto">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Tabel Detail Transaksi</h3>
-          <table className="min-w-full table-auto border-collapse">
-            <thead>
-              <tr className="bg-gray-50 text-gray-600 text-sm uppercase">
-                <th className="py-3 px-4 text-left">ID</th>
-                <TableSortHeader label="Tanggal" sortKey="tanggal" sortConfig={sortConfig} requestSort={requestSort} />
-                <th className="py-3 px-4 text-left">Donatur</th>
-                <TableSortHeader label="Jumlah" sortKey="jumlah" sortConfig={sortConfig} requestSort={requestSort} align="right" />
-                <th className="py-3 px-4 text-left">Metode</th>
-                <th className="py-3 px-4 text-left">Kecamatan</th>
-                <th className="py-3 px-4 text-left">Status</th>
-                <th className="py-3 px-4 text-center">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedTransactions.length > 0 ? (
-                sortedTransactions.map((t) => (
-                  <tr key={t.id} className="text-sm text-gray-700 border-b hover:bg-green-50/50 transition-colors">
-                    <td className="py-3 px-4 font-medium">{t.id}</td>
-                    <td className="py-3 px-4">{new Date(t.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                    <td className="py-3 px-4">{t.donatur}</td>
-                    <td className="py-3 px-4 text-right font-semibold text-primary">{formatRupiah(t.jumlah)}</td>
-                    <td className="py-3 px-4">{t.metode}</td>
-                    <td className="py-3 px-4">
-                      {t.kecamatan} / {t.desa}
-                    </td>
-                    <td className="py-3 px-4">
-                      <StatusBadge status={t.status} />
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <button className="text-blue-500 hover:text-blue-700 font-semibold text-xs mr-2">Detail</button>
-                      <button className="text-red-500 hover:text-red-700 font-semibold text-xs">Hapus</button>
-                    </td>
+          {isLoading ? (
+            <div className="text-center py-10 text-gray-500 flex items-center justify-center">
+              <FaSpinner className="animate-spin mr-3" /> Memuat data transaksi...
+            </div>
+          ) : (
+            <>
+              <table className="min-w-full table-auto border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-600 text-sm uppercase">
+                    <th className="py-3 px-4 text-left">ID</th>
+                    <TableSortHeader label="Tanggal" sortKey="date_time" sortConfig={sortConfig} requestSort={requestSort} />
+                    <th className="py-3 px-4 text-left">Donatur (Nama/HP)</th>
+                    <th className="py-3 px-4 text-left">Lokasi (Kec/Des)</th>
+                    <th className="py-3 px-4 text-left">RW</th>
+                    <TableSortHeader label="Total" sortKey="total" sortConfig={sortConfig} requestSort={requestSort} align="right" />
+                    <th className="py-3 px-4 text-left">Metode</th>
+                    <th className="py-3 px-4 text-center">Aksi</th> {/* Header Aksi */}
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={8} className="py-8 text-center text-gray-500 italic">
-                    Tidak ada data transaksi yang ditemukan dengan kriteria filter saat ini.
-                  </td>
-                </tr>
-              )}
+                </thead>
+                <tbody>
+                  {sortedTransactions.length > 0 ? (
+                    sortedTransactions.map((t) => (
+                      <tr key={t.id} className="text-sm text-gray-700 border-b hover:bg-green-50/50 transition-colors">
+                        <td className="py-3 px-4 font-medium max-w-[100px] truncate">{t.id.substring(0, 8)}...</td>
+                        <td className="py-3 px-4">{t.tanggalFormatted}</td>
+                        <td className="py-3 px-4">
+                          <p className="font-semibold text-gray-900">{t.name}</p>
+                          <p className="text-xs text-gray-500">{t.phone}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                          {t.kecamatan} / {t.desa_kelurahan}
+                        </td>
+                        <td className="py-3 px-4">{t.rw}</td>
+                        <td className="py-3 px-4 text-right font-semibold text-primary">{formatRupiah(t.total)}</td>
+                        <td className="py-3 px-4">{t.methodDisplay}</td>
+                        {/* KOLOM AKSI BARU */}
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center space-x-2">
+                            {/* Tombol Update */}
+                            <button onClick={() => handleOpenEditModal(t)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors" title="Edit Transaksi">
+                              <Edit size={18} />
+                            </button>
+                            {/* Tombol Delete */}
+                            <button onClick={() => handleOpenDeleteModal(t)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors" title="Hapus Transaksi">
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-gray-500 italic">
+                        Tidak ada data transaksi yang ditemukan.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
 
-              {/* Total Baris di Bawah */}
-              {filteredTransactions.length > 0 && (
-                <tr className="bg-green-50 text-gray-800 font-bold text-base border-t-2 border-primary">
-                  <td colSpan={3} className="py-3 px-4 text-right">
-                    TOTAL LUNAS
-                  </td>
-                  <td className="py-3 px-4 text-right">{formatRupiah(totalFilteredDonasi)}</td>
-                  <td colSpan={4} className="py-3 px-4"></td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              {/* Pagination */}
+              <Pagination currentPage={transactionsData.current_page} totalPages={transactionsData.total_page} hasNextPage={transactionsData.has_next_page} onPageChange={(page) => fetchTransactions(page)} />
+            </>
+          )}
         </motion.div>
+
+        {/* BARU: Modal Edit */}
+        {selectedTransaction && isEditModalOpen && <EditDonationModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} transaction={selectedTransaction} onUpdate={handleUpdate} />}
+
+        {/* BARU: Modal Hapus */}
+        {selectedTransaction && isDeleteModalOpen && <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} transaction={selectedTransaction} onConfirmDelete={handleDelete} />}
       </motion.div>
     </DashboardLayout>
   );
@@ -336,12 +399,12 @@ const TransaksiDonasi: React.FC = () => {
 
 export default TransaksiDonasi;
 
-// Komponen Pembantu untuk Sorting Header (tetap sama)
+// Komponen Pembantu untuk Sorting Header (TIDAK BERUBAH)
 interface SortHeaderProps {
   label: string;
-  sortKey: keyof Transaction;
-  sortConfig: { key: keyof Transaction | null; direction: "ascending" | "descending" };
-  requestSort: (key: keyof Transaction) => void;
+  sortKey: keyof TransactionAPI | "total";
+  sortConfig: { key: keyof TransactionAPI | "total" | null; direction: "asc" | "desc" };
+  requestSort: (key: keyof TransactionAPI | "total") => void;
   align?: "left" | "right" | "center";
 }
 
@@ -349,12 +412,14 @@ const TableSortHeader: React.FC<SortHeaderProps> = ({ label, sortKey, sortConfig
   const isSorted = sortConfig.key === sortKey;
   const direction = sortConfig.direction;
 
+  const isDesc = direction === "desc";
+
   return (
     <th className={`py-3 px-4 text-${align} cursor-pointer select-none hover:text-gray-900 transition-colors`} onClick={() => requestSort(sortKey)}>
       <div className={`flex items-center ${align === "right" ? "justify-end" : "justify-start"}`}>
         {label}
-        {isSorted && <span className="ml-2">{direction === "ascending" ? <FaSortUp className="w-3 h-3 text-primary" /> : <FaSortDown className="w-3 h-3 text-primary" />}</span>}
-        {!isSorted && <FaSortUp className="w-3 h-3 ml-2 text-gray-400 opacity-50" />}
+        {isSorted && <span className="ml-2">{isDesc ? <FaSortDesc className="w-3 h-3 text-primary" /> : <FaSortAsc className="w-3 h-3 text-primary" />}</span>}
+        {!isSorted && <FaSortAsc className="w-3 h-3 ml-2 text-gray-400 opacity-50" />}
       </div>
     </th>
   );

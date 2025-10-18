@@ -1,7 +1,9 @@
+// src/components/AddressSelector.tsx (Kode Lengkap)
+
 import React, { useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import { motion } from "framer-motion";
-import { FaSpinner } from "react-icons/fa";
+import { FaSpinner, FaChevronDown } from "react-icons/fa"; // Import FaChevronDown
 import { toast } from "react-hot-toast";
 import { getProvinces, getCities, getSubdistricts, getVillages } from "../../services/RegionService";
 
@@ -41,7 +43,7 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ value, onChange, leve
       .then((data) => {
         setProvinces(data);
         setLoading(null);
-        if (data.length === 0) toast.error("Gagal memuat Provinsi: Data kosong.");
+        if (data.length === 0) console.warn("Provinsi data is empty.");
       })
       .catch(() => {
         setLoading(null);
@@ -125,17 +127,21 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ value, onChange, leve
     return (
       <motion.div key={key} variants={itemVariants} className={`md:col-span-1 relative`}>
         <label className="block text-gray-700 font-semibold mb-1 text-sm">{label}</label>
-        <select name={key} value={currentValue} onChange={onChangeHandler} disabled={isDisabled} className={inputClass}>
-          <option value="" disabled>
-            {loading === key ? `Memuat ${label}...` : placeholder}
-          </option>
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
+        <div className="relative">
+          <select name={key} value={currentValue} onChange={onChangeHandler} disabled={isDisabled} className={inputClass}>
+            <option value="" disabled>
+              {loading === key ? `Memuat ${label}...` : placeholder}
             </option>
-          ))}
-        </select>
-        {loading === key && <FaSpinner className="animate-spin absolute right-3 top-1/2 mt-3 text-primary" size={16} />}
+            {options.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+          {/* FIX UI: Tambahkan ikon panah */}
+          <FaChevronDown className={`absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 ${isDisabled || loading === key ? "opacity-50" : ""}`} size={14} />
+          {loading === key && <FaSpinner className="animate-spin absolute right-8 top-1/2 mt-3 text-primary" size={16} />}
+        </div>
       </motion.div>
     );
   };
