@@ -21,7 +21,7 @@ const Login: React.FC = () => {
   const { login } = useAuth();
   const VITE_API_URL = import.meta.env.VITE_API_URL;
 
-  const [showPassword, setShowPassword] = useState(false); // Menggunakan phone karena fokus hanya pada phone
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ phone: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -29,10 +29,9 @@ const Login: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  }; // Handler Pembantu untuk mencoba login ke endpoint tertentu
-
+  };
   const attemptLogin = async (endpoint: string, role: "user" | "admin") => {
-    // 1. Konversi Nomor HP ke format +62 di SISI FRONTEND (wajib karena backend Go perlu +62)
+    // 1. Konversi Nomor HP ke format +62
     let phoneInput = formData.phone;
     if (phoneInput.startsWith("0")) {
       phoneInput = `+62${phoneInput.substring(1)}`;
@@ -58,8 +57,6 @@ const Login: React.FC = () => {
     let finalError = "Login gagal. Periksa Nomor HP dan Kata Sandi.";
 
     try {
-      // --- LOGIKA DUAL ENDPOINT ---
-
       // 1. /login
       try {
         await attemptLogin("/login", "user");
@@ -72,7 +69,6 @@ const Login: React.FC = () => {
             await attemptLogin("/admin/login", "admin");
             success = true;
           } catch (adminError: any) {
-            // Simpan error final dari percobaan admin
             finalError = adminError.response?.data?.message || adminError.response?.data?.error || finalError;
           }
         }
@@ -81,12 +77,10 @@ const Login: React.FC = () => {
         toast.success("Login berhasil! Mengarahkan ke Dashboard...");
         navigate("/dashboard");
       } else {
-        // Lempar error jika kedua percobaan gagal
         console.log("finalError admin:", finalError);
         throw new Error(finalError);
       }
     } catch (error: any) {
-      // Menampilkan error yang paling relevan
       toast.error(finalError);
       console.error("Login Error:", error.message);
     } finally {

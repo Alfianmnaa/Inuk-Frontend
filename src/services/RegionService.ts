@@ -102,7 +102,7 @@ export const getVillages = async (province: string, city: string, subdistrict: s
 export const getRegions = async (filters: RegionFilterBody): Promise<RegionDetail[]> => {
   try {
     const response = await axios.get<RegionDetail[]>(`${VITE_API_URL}/regions`, {
-      params: filters, // Axios otomatis mengirim key: 'province', 'city', dll.
+      params: filters,
     });
 
     if (Array.isArray(response.data)) {

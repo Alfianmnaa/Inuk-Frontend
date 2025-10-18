@@ -38,7 +38,7 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({ isOpen, onClose, 
   return (
     // Backdrop
     <div className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-[1050]">
-      <div className="bg-white p-8 rounded-xl w-full max-w-sm shadow-2xl transform transition-all duration-300">
+      <div className="bg-white p-8 m-4 rounded-xl w-full max-w-sm shadow-2xl transform transition-all duration-300">
         <div className="text-center">
           <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100">
             <Trash2 className="h-8 w-8 text-red-600" aria-hidden="true" />
