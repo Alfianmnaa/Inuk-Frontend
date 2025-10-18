@@ -73,7 +73,7 @@ const TableSortHeader = <T extends {}>({ label, sortKey, sortConfig, requestSort
   const direction = sortConfig.direction;
 
   return (
-    <th className={`py-3 px-4 text-${align} cursor-pointer select-none hover:text-gray-900 transition-colors`} onClick={() => requestSort(sortKey as keyof any)}>
+    <th className={`py-3 px-4 text-${align} cursor-pointer select-none hover:text-gray-900 transition-colors`} onClick={() => requestSort(sortKey)}>
       <div className={`flex items-center ${align === "right" ? "justify-end" : "justify-start"}`}>
         {label}
         {isSorted && <span className="ml-2">{direction === "ascending" ? <FaSortUp className="w-3 h-3 text-primary" /> : <FaSortDown className="w-3 h-3 text-primary" />}</span>}
