@@ -23,12 +23,21 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
   const [isLoadingMethods, setIsLoadingMethods] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState({
+  const initialForm = {
     total: 0,
     method: "",
     date_time: new Date().toISOString().substring(0, 16),
-  });
+  };
 
+  const [formData, setFormData] = useState(initialForm);
+
+  const resetForm = () => {
+    setFormData({
+      total: 0,
+      method: methods.length > 0 ? methods[0] : "",
+      date_time: new Date().toISOString().substring(0, 16),
+    });
+  };
   // FIX 1: Fetch metode pembayaran saat modal dibuka
   useEffect(() => {
     if (isOpen && token) {
@@ -44,6 +53,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
         .catch(() => toast.error("Gagal memuat metode pembayaran."))
         .finally(() => setIsLoadingMethods(false));
     }
+    if (!isOpen) resetForm();
   }, [isOpen, token]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -78,6 +88,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
       });
 
       toast.success("Transaksi Donasi berhasil dicatat!");
+      resetForm();
       onSuccess();
       onClose();
     } catch (error: any) {
