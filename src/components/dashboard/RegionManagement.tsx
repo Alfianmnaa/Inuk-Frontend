@@ -1,8 +1,8 @@
 // src/components/dashboard/RegionManagement.tsx
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaPlus, FaFilter, FaSpinner, FaMapMarkedAlt, FaTrash, FaTimes } from "react-icons/fa";
+import { FaPlus, FaFilter, FaSpinner, FaMapMarkedAlt, FaTimes } from "react-icons/fa";
 import { Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 

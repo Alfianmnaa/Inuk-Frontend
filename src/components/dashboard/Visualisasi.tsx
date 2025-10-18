@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { FaChartLine, FaChartBar, FaGlobe, FaWallet, FaHandsHelping, FaFilter, FaCalendarAlt, FaChevronDown } from "react-icons/fa";
+import { FaChartLine, FaChartBar, FaGlobe, FaWallet, FaHandsHelping, FaCalendarAlt } from "react-icons/fa";
 import DashboardLayout from "./DashboardLayout";
 
 // Data Dummy untuk simulasi

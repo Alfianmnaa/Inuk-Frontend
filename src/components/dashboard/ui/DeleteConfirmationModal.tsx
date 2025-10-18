@@ -1,5 +1,3 @@
-// src/components/dashboard/ui/DeleteConfirmationModal.tsx
-
 import React, { useState } from "react";
 import { type TransactionAPI } from "../../../services/DonationService";
 import { Trash2 } from "lucide-react";
@@ -60,7 +58,7 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({ isOpen, onClose, 
             type="button"
             onClick={handleConfirm}
             disabled={isDeleting}
-            className="w-full justify-center py-2 px-4 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center justify-center disabled:opacity-50"
+            className="w-full justify-center py-2 px-4 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center  disabled:opacity-50"
           >
             {isDeleting ? (
               <svg className="animate-spin h-5 w-5 text-white mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

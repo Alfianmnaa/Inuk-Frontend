@@ -1,5 +1,3 @@
-// src/components/dashboard/AddTransactionModal.tsx
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaTimes, FaPlus, FaSpinner, FaCalendarAlt, FaDollarSign } from "react-icons/fa";

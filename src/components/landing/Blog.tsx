@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, useAnimation } from "framer-motion";
-import type { PanInfo, Variants } from "framer-motion";
+import type { Variants } from "framer-motion";
 import { FaChevronLeft, FaChevronRight, FaUser, FaCalendarAlt } from "react-icons/fa";
 
 // Import dummy gambar
@@ -85,7 +85,7 @@ const Blog: React.FC = () => {
   const x = useMotionValue(0);
 
   // Perhitungan untuk drag/swipe
-  const [bounds, setBounds] = useState({ left: 0, right: 0 });
+  // const [bounds, setBounds] = useState({ left: 0, right: 0 });
 
   const getVisibleCards = () => (window.innerWidth >= 768 ? 3 : 1);
   const getCardWidth = () => {
@@ -97,9 +97,9 @@ const Blog: React.FC = () => {
   useEffect(() => {
     const updateBounds = () => {
       if (carouselRef.current) {
-        const cardWidth = getCardWidth();
+        getCardWidth();
         // Batas drag: sejauh total lebar track
-        setBounds({ left: -Infinity, right: Infinity });
+        // setBounds({ left: -Infinity, right: Infinity });
       }
     };
 
@@ -148,7 +148,7 @@ const Blog: React.FC = () => {
   }, [currentIndex]);
 
   // Handle drag end
-  const handleDragEnd = (_: any, info: PanInfo) => {
+  const handleDragEnd = () => {
     const cardWidth = getCardWidth();
     let proposedIndex = Math.round(-x.get() / cardWidth);
     scroll(proposedIndex - currentIndex);
@@ -161,7 +161,7 @@ const Blog: React.FC = () => {
   }, [currentIndex, controls]);
 
   useEffect(() => {
-    x.on("change", (latest) => {});
+    x.on("change", () => {});
   }, [x]);
 
   return (

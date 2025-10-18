@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, useAnimation } from "framer-motion";
-import type { PanInfo, Variants } from "framer-motion";
+import type { Variants } from "framer-motion";
 import { FaChevronLeft, FaChevronRight, FaQuoteLeft, FaQuoteRight, FaStar } from "react-icons/fa";
 
 import user from "../../assets/landing/testimoni/user.png";
@@ -124,7 +124,7 @@ const Testimoni: React.FC = () => {
   }, [currentIndex]);
 
   // Handle drag end
-  const handleDragEnd = (_: any, info: PanInfo) => {
+  const handleDragEnd = () => {
     const cardWidth = getCardWidth();
     let proposedIndex = Math.round(-x.get() / cardWidth);
     scroll(proposedIndex - currentIndex);

@@ -1,8 +1,6 @@
-// src/components/dashboard/TransaksiDonasi.tsx
-
 import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSortUp, FaSortDown, FaWallet, FaMapMarkerAlt, FaSpinner, FaSortDown as FaSortDesc, FaSortUp as FaSortAsc } from "react-icons/fa";
+import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSpinner, FaSortDown as FaSortDesc, FaSortUp as FaSortAsc } from "react-icons/fa";
 import { Edit, Trash2 } from "lucide-react"; // BARU: Import ikon Edit dan Delete
 import { toast } from "react-hot-toast";
 

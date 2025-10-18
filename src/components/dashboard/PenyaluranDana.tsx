@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSortUp, FaSortDown, FaHandHoldingHeart, FaCheckCircle, FaHourglassHalf, FaChartLine } from "react-icons/fa";
+import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSortUp, FaSortDown, FaCheckCircle, FaHourglassHalf, FaChartLine } from "react-icons/fa";
 import DashboardLayout from "./DashboardLayout";
 
 // Import AddressSelector dan tipenya
@@ -29,7 +29,7 @@ const ALL_DISBURSEMENTS: Disbursement[] = [
 ];
 
 const PROGRAM_LIST = Array.from(new Set(ALL_DISBURSEMENTS.map((d) => d.program)));
-const KATEGORI_LIST = Array.from(new Set(ALL_DISBURSEMENTS.map((d) => d.kategori)));
+// const KATEGORI_LIST = Array.from(new Set(ALL_DISBURSEMENTS.map((d) => d.kategori)));
 const STATUS_LIST = ["Selesai", "Berjalan", "Tunda"];
 // Data Dummy untuk Penyaluran Dana
 

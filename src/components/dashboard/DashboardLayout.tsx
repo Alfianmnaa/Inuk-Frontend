@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { FaBars, FaTimes, FaChartBar, FaReceipt, FaUsers, FaPaperPlane, FaEdit, FaChevronDown, FaHome, FaMapMarkerAlt } from "react-icons/fa"; // Import FaMapMarkerAlt
+import { FaBars, FaTimes, FaChartBar, FaReceipt, FaUsers, FaPaperPlane, FaEdit, FaChevronDown, FaHome, FaMapMarkerAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 

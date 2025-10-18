@@ -1,9 +1,6 @@
-// src/components/AddressSelector.tsx (Kode Lengkap)
-
 import React, { useState, useEffect } from "react";
-import type { ReactNode } from "react";
 import { motion } from "framer-motion";
-import { FaSpinner, FaChevronDown } from "react-icons/fa"; // Import FaChevronDown
+import { FaSpinner, FaChevronDown } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { getProvinces, getCities, getSubdistricts, getVillages } from "../../services/RegionService";
 

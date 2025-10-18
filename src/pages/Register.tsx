@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { FaEye, FaEyeSlash, FaUser, FaPhoneAlt, FaLock, FaArrowRight } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
-import { useAuth } from "../context/AuthContext";
+
 import axios from "axios";
 
 // Varian Framer Motion untuk seluruh halaman
@@ -19,8 +19,8 @@ const itemVariants = {
 };
 
 const Register: React.FC = () => {
-  const navigate = useNavigate(); // Hook untuk redirect
-  const { login } = useAuth(); // Hook untuk menyimpan status login
+  const navigate = useNavigate();
+  // const { login } = useAuth();
   const VITE_API_URL = import.meta.env.VITE_API_URL;
 
   const [showPassword, setShowPassword] = useState(false);
@@ -53,7 +53,7 @@ const Register: React.FC = () => {
 
     try {
       // 2. Kirim request ke backend Go
-      const response = await axios.post(`${VITE_API_URL}/register`, {
+      await axios.post(`${VITE_API_URL}/register`, {
         name: formData.username,
         phone: phoneInput,
         password: formData.password,

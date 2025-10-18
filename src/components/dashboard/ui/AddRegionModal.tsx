@@ -1,8 +1,6 @@
-// src/components/dashboard/ui/AddRegionModal.tsx
-
 import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
-import { FaUser, FaSearch, FaCheck, FaTimes, FaSpinner } from "react-icons/fa";
+import { FaUser, FaCheck, FaTimes, FaSpinner } from "react-icons/fa";
 import AddressSelector, { type AddressSelection } from "../AddressSelector";
 import { createRegion } from "../../../services/RegionService";
 import { useAuth } from "../../../context/AuthContext";
