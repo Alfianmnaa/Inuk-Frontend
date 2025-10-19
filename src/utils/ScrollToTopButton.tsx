@@ -12,7 +12,6 @@ const buttonVariants: Variants = {
 const ScrollToTopButton: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
 
-  // Fungsi untuk scroll ke atas
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
@@ -20,10 +19,8 @@ const ScrollToTopButton: React.FC = () => {
     });
   };
 
-  // Logika untuk menampilkan/menyembunyikan tombol
   useEffect(() => {
     const toggleVisibility = () => {
-      // Tombol akan muncul saat posisi scroll melebihi 100vh
       if (window.scrollY > window.innerHeight) {
         setIsVisible(true);
       } else {

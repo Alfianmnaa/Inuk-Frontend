@@ -6,8 +6,6 @@ import { createRegion } from "../../../services/RegionService";
 import { useAuth } from "../../../context/AuthContext";
 import { X } from "lucide-react";
 
-// --- Data Dummy Pengguna ---
-// Ganti dengan endpoint API sebenarnya (getUsersWithoutRegion) jika sudah ada.
 interface DummyUser {
   id: string;
   name: string;
@@ -21,7 +19,6 @@ const dummyUsers: DummyUser[] = [
   { id: "uuid-101-diana", name: "Diana Dewi", phone: "+62815777888" },
   { id: "uuid-202-evan", name: "Evan", phone: "+62878999000" },
 ];
-// -----------------------------
 
 interface AddRegionModalProps {
   isOpen: boolean;
@@ -49,7 +46,7 @@ const AddRegionModal: React.FC<AddRegionModalProps> = ({ isOpen, onClose, onSucc
 
   const handleSelectUser = (user: DummyUser) => {
     setSelectedUser(user);
-    setSearchTerm(`${user.name} (${user.phone})`); // Tampilkan nama dan phone di input
+    setSearchTerm(`${user.name} (${user.phone})`);
   };
 
   const handleClearUser = () => {

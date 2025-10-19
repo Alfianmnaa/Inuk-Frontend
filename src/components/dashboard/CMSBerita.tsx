@@ -24,7 +24,6 @@ const ALL_BLOG_POSTS: BlogPost[] = [
 
 const CATEGORY_LIST = Array.from(new Set(ALL_BLOG_POSTS.map((p) => p.category)));
 const STATUS_LIST = ["Publish", "Draft"];
-// datadummy
 
 // Component Status Badge
 const StatusBadge: React.FC<{ status: BlogPost["status"] }> = ({ status }) => {

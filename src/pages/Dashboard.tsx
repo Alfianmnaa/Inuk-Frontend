@@ -79,7 +79,7 @@ const DashboardRoutes: React.FC = () => {
         path="/region-management"
         element={
           <ProtectedRoute>
-            <RegionManagement /> {/* <-- Rute untuk Manajemen Wilayah */}
+            <RegionManagement />
           </ProtectedRoute>
         }
       />

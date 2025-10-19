@@ -1,19 +1,17 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSpinner, FaSortDown as FaSortDesc, FaSortUp as FaSortAsc } from "react-icons/fa";
-import { Edit, Trash2 } from "lucide-react"; // BARU: Import ikon Edit dan Delete
+import { Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import DashboardLayout from "./DashboardLayout";
 import Pagination from "./ui/Pagination";
 import AddressSelector, { type AddressSelection } from "./AddressSelector";
 import AddTransactionModal from "./ui/AddTransactionModal";
-// Update import service
 import { getDonations, type TransactionAPI, type DonationsResponse, type DonationsFilter, getDonationMethods, updateDonation, deleteDonation, type UpdateDonationRequest } from "../../services/DonationService";
-import { useAuth } from "../../context/AuthContext"; // Sesuaikan path
-
+import { useAuth } from "../../context/AuthContext";
 import { exportToExcel } from "../../utils/ExportToExcel";
-// BARU: Import Modal yang akan dibuat
+
 import EditDonationModal from "./ui/EditDonationModal";
 import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
 
@@ -55,7 +53,7 @@ const TransaksiDonasi: React.FC = () => {
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof TransactionAPI | "total" | null; direction: "asc" | "desc" }>({
     key: "date_time",
-    direction: "desc", // default API: newest
+    direction: "desc",
   });
 
   // --- Statistik yang Diperhitungkan ---
@@ -84,7 +82,6 @@ const TransaksiDonasi: React.FC = () => {
     try {
       const data = await getDonations(token, filters);
 
-      // Mapping data dari API ke format tampilan yang memiliki computed fields
       const formattedResults: Transaction[] = data.result.map((t) => ({
         ...t,
         tanggalFormatted: new Date(t.date_time).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
@@ -116,12 +113,12 @@ const TransaksiDonasi: React.FC = () => {
     try {
       await updateDonation(token, id, data);
       toast.success("Transaksi berhasil diperbarui!");
-      fetchTransactions(currentPage); // Refresh data pada halaman saat ini
+      fetchTransactions(currentPage);
       setIsEditModalOpen(false);
     } catch (error: any) {
       toast.error(`Gagal memperbarui transaksi: ${error.response?.data?.message || error.message}`);
       console.error("Update Error:", error);
-      throw error; // Lempar error agar modal tahu operasi gagal
+      throw error;
     }
   };
 
@@ -130,15 +127,14 @@ const TransaksiDonasi: React.FC = () => {
     try {
       await deleteDonation(token, id);
       toast.success("Transaksi berhasil dihapus!");
-      fetchTransactions(currentPage); // Refresh data
+      fetchTransactions(currentPage);
       setIsDeleteModalOpen(false);
     } catch (error: any) {
       toast.error(`Gagal menghapus transaksi: ${error.response?.data?.message || error.message}`);
       console.error("Delete Error:", error);
-      throw error; // Lempar error agar modal tahu operasi gagal
+      throw error;
     }
   };
-  // --- Akhir Handler Update/Delete ---
 
   // --- Fetch Methods List ---
   useEffect(() => {
@@ -154,7 +150,7 @@ const TransaksiDonasi: React.FC = () => {
     fetchTransactions(1);
   }, [filterMethod, addressFilters, sortConfig.key, sortConfig.direction]);
 
-  // Handle Search Bar (Mencari di data yang sudah dimuat)
+  // Handle Search Bar
   const filteredBySearch = useMemo(() => {
     const lowerCaseSearch = searchTerm.toLowerCase();
     if (!lowerCaseSearch) return transactionsData.result as Transaction[];

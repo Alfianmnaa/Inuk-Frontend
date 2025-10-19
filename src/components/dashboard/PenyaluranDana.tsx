@@ -15,7 +15,7 @@ interface Disbursement {
   kecamatan: string;
   desa: string;
   jumlahDana: number;
-  penerima: number; // Jumlah penerima manfaat
+  penerima: number;
   status: "Selesai" | "Berjalan" | "Tunda";
 }
 

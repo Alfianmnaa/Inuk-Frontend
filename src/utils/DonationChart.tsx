@@ -17,14 +17,13 @@ interface DonationChartProps {
 }
 
 const DonationChart: React.FC<DonationChartProps> = ({ data, kecamatanName }) => {
-  // Persiapan Data untuk Chart.js
   const chartData = {
     labels: data.map((item) => item.desa),
     datasets: [
       {
         label: "Total Donasi (Rupiah)",
         data: data.map((item) => item.totalDonasi),
-        backgroundColor: "rgba(16, 185, 129, 0.6)", // Warna Primary/Hijau
+        backgroundColor: "rgba(16, 185, 129, 0.6)",
         borderColor: "rgba(16, 185, 129, 1)",
         borderWidth: 1,
       },
@@ -70,7 +69,6 @@ const DonationChart: React.FC<DonationChartProps> = ({ data, kecamatanName }) =>
           text: "Total Donasi",
         },
         ticks: {
-          // Format ticks Y-axis sebagai singkatan Rupiah (K, M)
           callback: function (value: any) {
             if (value >= 1000000) {
               return "Rp " + (value / 1000000).toFixed(1) + "M";

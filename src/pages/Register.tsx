@@ -43,7 +43,7 @@ const Register: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // 1. Format nomor telepon ke format E.164 (cth: dari '0812' menjadi '+62812')
+    // 1. Format nomor telepon ke format
     let phoneInput = formData.phone;
     if (phoneInput.startsWith("0")) {
       phoneInput = `+62${phoneInput.substring(1)}`;

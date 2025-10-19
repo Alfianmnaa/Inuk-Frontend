@@ -1,4 +1,3 @@
-// src/context/AuthContext.tsx
 import React, { createContext, useState, useContext } from "react";
 import type { ReactNode } from "react";
 
@@ -14,10 +13,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Ambil token dan role dari LocalStorage saat inisialisasi
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
 
-  // Asumsi role disimpan di localStorage. Jika tidak ada, default ke 'user' atau null
   const storedRole = localStorage.getItem("userRole");
   const initialRole = storedRole === "user" || storedRole === "admin" ? storedRole : null;
   const [userRole, setUserRole] = useState<"user" | "admin" | null>(initialRole);
@@ -45,7 +42,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    // throw new Error('useAuth must be used within an AuthProvider'); // Komentar ini jika Anda ingin lebih toleran
   }
-  return context!; // Penggunaan '!' untuk memastikan tidak null/undefined
+  return context!;
 };

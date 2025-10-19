@@ -1,5 +1,3 @@
-// src/components/dashboard/RegionManagement.tsx
-
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FaPlus, FaFilter, FaSpinner, FaMapMarkedAlt, FaTimes } from "react-icons/fa";

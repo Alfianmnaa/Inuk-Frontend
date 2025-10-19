@@ -1,8 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import React from "react";
-import { Toaster } from "react-hot-toast"; //
-
-// Pgaes
+import { Toaster } from "react-hot-toast";
 import Landing from "./pages/Landing";
 
 // Komponen Layout
