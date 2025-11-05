@@ -1,0 +1,22 @@
+services:
+  client-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    container_name: inuk-client
+    env_file: .env.dev
+    environment:
+      VITE_API_URL: ${VITE_API_URL}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    restart: unless-stopped
+    networks:
+      - inuk-network
+
+networks:
+  inuk-network:
+    external: true
