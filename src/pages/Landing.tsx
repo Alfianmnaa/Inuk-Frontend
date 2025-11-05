@@ -14,16 +14,16 @@ const Landing = () => {
   return (
     <div>
       <Navbar />
-      <HeroSection />
+      {/* <HeroSection /> */}
       <RekapDonasi />
       <Tentang />
       <Program />
       <Layanan />
       <Keunggulan />
-      <Blog />
+      {/* <Blog /> */}
       <FAQ />
       <TimKami />
-      <Testimoni />
+      {/* <Testimoni /> */}
     </div>
   );
 };

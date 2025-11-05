@@ -5,7 +5,7 @@ import { Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import DashboardLayout from "./DashboardLayout";
-import Pagination from "./ui/Pagination";
+
 import AddressSelector, { type AddressSelection } from "./AddressSelector";
 import AddTransactionModal from "./ui/AddTransactionModal";
 import { getDonations, type TransactionAPI, type DonationsResponse, type DonationsFilter, getDonationMethods, updateDonation, deleteDonation, type UpdateDonationRequest } from "../../services/DonationService";
@@ -14,6 +14,7 @@ import { exportToExcel } from "../../utils/ExportToExcel";
 
 import EditDonationModal from "./ui/EditDonationModal";
 import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
+import Pagination from "./ui/Pagination";
 
 // Data Type Transaksi LOKAL
 interface Transaction extends TransactionAPI {
