@@ -3,6 +3,17 @@ import { type RegionFilterBody } from "./RegionService";
 
 const VITE_API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+export interface DonationDataRecap {
+  desa: string;
+  jumlahDonatur: number;
+  totalDonasi: number;
+}
+
+// Interface Rekapitulasi per Kecamatan BARU
+export interface KecamatanDataRecap {
+  nama: string;
+  data: DonationDataRecap[];
+}
 // Interface Transaksi (Sesuai Respon API)
 export interface TransactionAPI {
   id: string;
@@ -92,4 +103,52 @@ export const updateDonation = async (token: string, id: string, data: UpdateDona
 // DELETE /donation/:id (Delete) BARU
 export const deleteDonation = async (token: string, id: string): Promise<void> => {
   await axios.delete<void>(`${VITE_API_URL}/donation/${id}`, getAuthHeaders(token));
+};
+export const getDonationRecap = async (): Promise<KecamatanDataRecap[]> => {
+  // --- SIMULASI API CALL ---
+  // Di lingkungan nyata, ini akan memanggil backend API:
+  // const response = await axios.get<KecamatanDataRecap[]>(`${VITE_API_URL}/donations/recap`);
+  // return response.data;
+
+  // Data simulasi berdasarkan Kecamatan Kaliwungu (15 Desa) dan Gebog (11 Desa)
+  // Data ini harusnya diambil dari backend yang melakukan agregasi
+  await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate network delay
+  return [
+    {
+      nama: "KALIWUNGU",
+      data: [
+        { desa: "Bakalankrapyak", jumlahDonatur: 10, totalDonasi: 5000000 },
+        { desa: "Banget", jumlahDonatur: 5, totalDonasi: 1500000 },
+        { desa: "Blimbing Kidul", jumlahDonatur: 12, totalDonasi: 3500000 },
+        { desa: "Gamong", jumlahDonatur: 8, totalDonasi: 2200000 },
+        { desa: "Garung Kidul", jumlahDonatur: 15, totalDonasi: 4800000 },
+        { desa: "Garung Lor", jumlahDonatur: 9, totalDonasi: 2700000 },
+        { desa: "Kaliwungu", jumlahDonatur: 20, totalDonasi: 7000000 },
+        { desa: "Karangampel", jumlahDonatur: 6, totalDonasi: 1800000 },
+        { desa: "Kedungdowo", jumlahDonatur: 11, totalDonasi: 3100000 },
+        { desa: "Mijen", jumlahDonatur: 7, totalDonasi: 2000000 },
+        { desa: "Papringan", jumlahDonatur: 14, totalDonasi: 4500000 },
+        { desa: "Prambatan Kidul", jumlahDonatur: 16, totalDonasi: 5200000 },
+        { desa: "Prambatan Lor", jumlahDonatur: 13, totalDonasi: 4100000 },
+        { desa: "Setrokalangan", jumlahDonatur: 18, totalDonasi: 6000000 },
+        { desa: "Sidorekso", jumlahDonatur: 10, totalDonasi: 3000000 },
+      ],
+    },
+    {
+      nama: "GEBOG",
+      data: [
+        { desa: "Besito", jumlahDonatur: 25, totalDonasi: 8500000 },
+        { desa: "Getassrabi", jumlahDonatur: 10, totalDonasi: 3000000 },
+        { desa: "Gondosari", jumlahDonatur: 8, totalDonasi: 2400000 },
+        { desa: "Gribig", jumlahDonatur: 18, totalDonasi: 5500000 },
+        { desa: "Jurang", jumlahDonatur: 7, totalDonasi: 2000000 },
+        { desa: "Karangmalang", jumlahDonatur: 15, totalDonasi: 4500000 },
+        { desa: "Kedungsari", jumlahDonatur: 12, totalDonasi: 3600000 },
+        { desa: "Klumpit", jumlahDonatur: 9, totalDonasi: 2800000 },
+        { desa: "Menawan", jumlahDonatur: 11, totalDonasi: 3300000 },
+        { desa: "Pedurenan", jumlahDonatur: 14, totalDonasi: 4000000 },
+        { desa: "Rahtawu", jumlahDonatur: 20, totalDonasi: 6500000 },
+      ],
+    },
+  ];
 };

@@ -1,20 +1,20 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSpinner, FaSortDown as FaSortDesc, FaSortUp as FaSortAsc } from "react-icons/fa";
+import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSpinner, FaSortDown as FaSortDesc, FaSortUp as FaSortAsc, FaWhatsapp } from "react-icons/fa";
 import { Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import DashboardLayout from "./DashboardLayout";
-
+import Pagination from "./ui/Pagination";
 import AddressSelector, { type AddressSelection } from "./AddressSelector";
 import AddTransactionModal from "./ui/AddTransactionModal";
+import BendaharaModal from "./ui/BendaharaModal"; // Import BendaharaModal yang diperbarui
 import { getDonations, type TransactionAPI, type DonationsResponse, type DonationsFilter, getDonationMethods, updateDonation, deleteDonation, type UpdateDonationRequest } from "../../services/DonationService";
 import { useAuth } from "../../context/AuthContext";
 import { exportToExcel } from "../../utils/ExportToExcel";
 
 import EditDonationModal from "./ui/EditDonationModal";
 import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
-import Pagination from "./ui/Pagination";
 
 // Data Type Transaksi LOKAL
 interface Transaction extends TransactionAPI {
@@ -33,6 +33,7 @@ const formatRupiah = (angka: number) => {
 
 // Component Utama Halaman
 const TransaksiDonasi: React.FC = () => {
+  // Hanya ambil token dan userName
   const { token } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMethod, setFilterMethod] = useState("");
@@ -41,9 +42,18 @@ const TransaksiDonasi: React.FC = () => {
   const [methodsList, setMethodsList] = useState<string[]>([]);
   const [transactionsData, setTransactionsData] = useState<DonationsResponse>({ total_page: 1, current_page: 1, has_next_page: false, result: [] });
   const [isLoading, setIsLoading] = useState(false);
+
+  // State Modal Transaksi
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // State BARU untuk Update/Delete
+  // State Modal Bendahara
+  const [isBendaharaModalOpen, setIsBendaharaModalOpen] = useState(false);
+  // Cek keberadaan data bendahara
+  const checkBendaharaData = () => {
+    return localStorage.getItem("bendahara_phone") && localStorage.getItem("bendahara_name");
+  };
+
+  // State Update/Delete
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -57,19 +67,29 @@ const TransaksiDonasi: React.FC = () => {
     direction: "desc",
   });
 
+  // --- Handler Klik Tambah Transaksi ---
+  const handleAddTransactionClick = () => {
+    if (checkBendaharaData()) {
+      setIsModalOpen(true);
+    } else {
+      // Jika data bendahara tidak ada, munculkan modal Bendahara
+      setIsBendaharaModalOpen(true);
+    }
+  };
+
   // --- Statistik yang Diperhitungkan ---
   const totalDonationAmount = useMemo(() => {
     return transactionsData.result.reduce((sum, t) => sum + t.total, 0);
   }, [transactionsData.result]);
 
-  // --- Data Fetching Effect ---
+  // --- Data Fetching Effect (DIKEMBALIKAN KE LOGIKA AWAL) ---
   const fetchTransactions = async (page: number) => {
     if (!token) return;
 
     setIsLoading(true);
     setCurrentPage(page);
 
-    // Mempersiapkan parameter filter untuk API
+    // Mempersiapkan parameter filter untuk API (Menggunakan AddressSelector untuk semua)
     const filters: DonationsFilter = {
       page: page,
       method: filterMethod || undefined,
@@ -98,7 +118,7 @@ const TransaksiDonasi: React.FC = () => {
     }
   };
 
-  // --- Handler Update/Delete BARU ---
+  // --- Handler Update/Delete ---
   const handleOpenEditModal = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
     setIsEditModalOpen(true);
@@ -137,7 +157,7 @@ const TransaksiDonasi: React.FC = () => {
     }
   };
 
-  // --- Fetch Methods List ---
+  // --- Fetch Methods List & Initial Load ---
   useEffect(() => {
     if (token) {
       getDonationMethods(token)
@@ -149,7 +169,7 @@ const TransaksiDonasi: React.FC = () => {
   // Trigger fetch saat filter atau sorting berubah
   useEffect(() => {
     fetchTransactions(1);
-  }, [filterMethod, addressFilters, sortConfig.key, sortConfig.direction]);
+  }, [filterMethod, addressFilters, sortConfig.key, sortConfig.direction]); // Dependensi dikembalikan
 
   // Handle Search Bar
   const filteredBySearch = useMemo(() => {
@@ -179,14 +199,13 @@ const TransaksiDonasi: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  // --- Fungsi Export Excel ---
+  // --- Fungsi Export Excel (Default) ---
   const handleExportExcel = () => {
     if (sortedTransactions.length === 0) {
       toast("Tidak ada data untuk diexport.", { icon: "⚠️" });
       return;
     }
 
-    // Map data ke format yang lebih rapi untuk Excel (menghilangkan ID internal, dll.)
     const dataToExport = sortedTransactions.map((t) => ({
       ID_Transaksi: t.id,
       Tanggal: t.tanggalFormatted,
@@ -201,20 +220,20 @@ const TransaksiDonasi: React.FC = () => {
       Metode: t.methodDisplay,
     }));
 
-    exportToExcel(dataToExport, "Laporan_Donasi_INUK", "Transaksi");
+    const filename = "Laporan_Donasi_INUK";
+
+    exportToExcel(dataToExport, filename, "Transaksi");
     toast.success("Data berhasil dieksport!");
   };
 
   // --- UI Logic ---
   const isFiltered = addressFilters.subdistrict || filterMethod || searchTerm;
-
   const clearFilters = () => {
     setSearchTerm("");
     setAddressFilters({ province: "", city: "", subdistrict: "", village: "" });
     setFilterMethod("");
     fetchTransactions(1);
   };
-
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
@@ -225,6 +244,9 @@ const TransaksiDonasi: React.FC = () => {
       <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
         {/* Modal Tambah Transaksi */}
         <AddTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => fetchTransactions(1)} />
+
+        {/* Modal Bendahara (untuk Edit/View/Delete/WA) */}
+        <BendaharaModal isOpen={isBendaharaModalOpen} onClose={() => setIsBendaharaModalOpen(false)} onSuccess={() => setIsBendaharaModalOpen(false)} onDelete={() => setIsBendaharaModalOpen(false)} />
 
         {/* Ringkasan Statistik */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -247,24 +269,38 @@ const TransaksiDonasi: React.FC = () => {
 
         {/* Filter dan Aksi */}
         <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-start mb-4">
             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
               <FaFilter className="mr-2 text-primary" /> Filter Data
             </h3>
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 flex-wrap justify-end">
+              {/* Tombol Konfirmasi Bendahara (membuka modal) */}
+              <motion.button
+                onClick={() => setIsBendaharaModalOpen(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors mb-2"
+                title="Atur data Bendahara dan Kirim notifikasi"
+              >
+                <FaWhatsapp className="mr-2" /> Konfirmasi Bendahara
+              </motion.button>
+
+              {/* Tombol Export Excel */}
               <motion.button
                 onClick={handleExportExcel}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-blue-600 transition-colors"
+                className="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-blue-600 transition-colors mb-2"
               >
                 <FaFileExcel className="mr-2" /> Export Excel
               </motion.button>
+
+              {/* Tombol Tambah Transaksi */}
               <motion.button
-                onClick={() => setIsModalOpen(true)}
+                onClick={handleAddTransactionClick}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors"
+                className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-700 transition-colors mb-2"
               >
                 <FaPlus className="mr-2" /> Tambah Transaksi
               </motion.button>
@@ -298,10 +334,10 @@ const TransaksiDonasi: React.FC = () => {
               </select>
             </div>
 
-            {/* Row 2: Address Selector */}
+            {/* Row 2: Address Selector (Selalu muncul) */}
             <div className="grid grid-cols-1 gap-4">
               {/* Address Selector (Filter Lokasi) */}
-              <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["province", "city", "subdistrict", "village"]} kecamatanName="Kecamatan Donatur" />
+              <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["subdistrict", "village"]} kecamatanName="Kecamatan Donatur" />
             </div>
           </div>
 
@@ -332,7 +368,7 @@ const TransaksiDonasi: React.FC = () => {
                     <th className="py-3 px-4 text-left">RW</th>
                     <TableSortHeader label="Total" sortKey="total" sortConfig={sortConfig} requestSort={requestSort} align="right" />
                     <th className="py-3 px-4 text-left">Metode</th>
-                    <th className="py-3 px-4 text-center">Aksi</th> {/* Header Aksi */}
+                    <th className="py-3 px-4 text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -351,7 +387,7 @@ const TransaksiDonasi: React.FC = () => {
                         <td className="py-3 px-4">{t.rw}</td>
                         <td className="py-3 px-4 text-right font-semibold text-primary">{formatRupiah(t.total)}</td>
                         <td className="py-3 px-4">{t.methodDisplay}</td>
-                        {/* KOLOM AKSI BARU */}
+                        {/* KOLOM AKSI */}
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center space-x-2">
                             {/* Tombol Update */}
@@ -382,10 +418,10 @@ const TransaksiDonasi: React.FC = () => {
           )}
         </motion.div>
 
-        {/* BARU: Modal Edit */}
+        {/* Modal Edit */}
         {selectedTransaction && isEditModalOpen && <EditDonationModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} transaction={selectedTransaction} onUpdate={handleUpdate} />}
 
-        {/* BARU: Modal Hapus */}
+        {/* Modal Hapus */}
         {selectedTransaction && isDeleteModalOpen && <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} transaction={selectedTransaction} onConfirmDelete={handleDelete} />}
       </motion.div>
     </DashboardLayout>

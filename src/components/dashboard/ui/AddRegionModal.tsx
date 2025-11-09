@@ -6,6 +6,10 @@ import { createRegion } from "../../../services/RegionService";
 import { useAuth } from "../../../context/AuthContext";
 import { X } from "lucide-react";
 
+// Nilai tetap baru
+const FIXED_PROVINCE = "Jawa Tengah";
+const FIXED_CITY = "Kudus";
+
 interface DummyUser {
   id: string;
   name: string;
@@ -30,7 +34,8 @@ const AddRegionModal: React.FC<AddRegionModalProps> = ({ isOpen, onClose, onSucc
   const { token } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rw, setRw] = useState<number | "">("");
-  const [address, setAddress] = useState<AddressSelection>({ province: "", city: "", subdistrict: "", village: "" });
+  // Inisialisasi address dengan nilai tetap
+  const [address, setAddress] = useState<AddressSelection>({ province: FIXED_PROVINCE, city: FIXED_CITY, subdistrict: "", village: "" });
 
   // State untuk pencarian pengguna
   const [searchTerm, setSearchTerm] = useState("");
@@ -80,8 +85,9 @@ const AddRegionModal: React.FC<AddRegionModalProps> = ({ isOpen, onClose, onSucc
       const payload = {
         userID: selectedUser.id,
         rw: rw as number,
-        province: address.province,
-        city: address.city,
+        // Tetapkan nilai tetap untuk province dan city
+        province: FIXED_PROVINCE,
+        city: FIXED_CITY,
         subdistrict: address.subdistrict,
         village: address.village,
       };
@@ -103,7 +109,8 @@ const AddRegionModal: React.FC<AddRegionModalProps> = ({ isOpen, onClose, onSucc
   useEffect(() => {
     if (!isOpen) {
       setRw("");
-      setAddress({ province: "", city: "", subdistrict: "", village: "" });
+      // Reset address dengan nilai tetap
+      setAddress({ province: FIXED_PROVINCE, city: FIXED_CITY, subdistrict: "", village: "" });
       setSearchTerm("");
       setSelectedUser(null);
       setIsSubmitting(false);
@@ -168,7 +175,8 @@ const AddRegionModal: React.FC<AddRegionModalProps> = ({ isOpen, onClose, onSucc
           {/* 2. Pemilihan Alamat */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Region</label>
-            <AddressSelector value={address} onChange={setAddress} levels={["province", "city", "subdistrict", "village"]} kecamatanName="Kecamatan" />
+            {/* Mengubah levels hanya untuk Kecamatan dan Desa/Kelurahan */}
+            <AddressSelector value={address} onChange={setAddress} levels={["subdistrict", "village"]} kecamatanName="Kecamatan" />
           </div>
 
           {/* 3. Input RW */}

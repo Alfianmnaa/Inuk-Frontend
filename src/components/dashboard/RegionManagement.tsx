@@ -17,7 +17,7 @@ const RegionManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // State Filter
+  // State Filter (province dan city akan diabaikan/diatur otomatis oleh AddressSelector)
   const [addressFilters, setAddressFilters] = useState<AddressSelection>({ province: "", city: "", subdistrict: "", village: "" });
 
   // State untuk Delete Confirmation
@@ -31,6 +31,7 @@ const RegionManagement: React.FC = () => {
     setIsLoading(true);
 
     const filters: RegionFilterBody = {
+      // AddressSelector akan memastikan province dan city bernilai "Jawa Tengah" dan "Kudus" jika tidak kosong
       province: addressFilters.province || undefined,
       city: addressFilters.city || undefined,
       subdistrict: addressFilters.subdistrict || undefined,
@@ -83,6 +84,7 @@ const RegionManagement: React.FC = () => {
   const isFiltered = addressFilters.subdistrict;
 
   const clearFilters = () => {
+    // Saat membersihkan filter, atur kembali ke state awal kosong
     setAddressFilters({ province: "", city: "", subdistrict: "", village: "" });
   };
 
@@ -100,7 +102,7 @@ const RegionManagement: React.FC = () => {
         <div className="bg-white p-6 rounded-xl w-full max-w-sm shadow-2xl">
           <h3 className="text-xl font-bold mb-4 text-red-600">Konfirmasi Hapus</h3>
           <p className="mb-4">
-            Apakah Anda yakin ingin menghapus region RW **{region.rw}** di **{region.desa_kelurahan}** yang dikelola oleh **{region.user_name}**?
+            Apakah Anda yakin ingin menghapus region <b>RW {region.rw}</b> di <b>{region.desa_kelurahan}</b> yang dikelola oleh <b>{region.user_name}</b>?
           </p>
           <div className="flex justify-end space-x-3">
             <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
@@ -144,7 +146,8 @@ const RegionManagement: React.FC = () => {
           {/* Row 1: Address Selector */}
           <div className="space-y-4">
             <label className="block text-sm font-medium text-gray-700">Filter Berdasarkan Lokasi</label>
-            <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["province", "city", "subdistrict", "village"]} kecamatanName="Kecamatan" />
+            {/* Mengubah levels hanya untuk Kecamatan dan Desa/Kelurahan */}
+            <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["subdistrict", "village"]} kecamatanName="Kecamatan" />
           </div>
 
           {/* Clear Filter Button */}

@@ -48,7 +48,9 @@ const DeleteConfirmationModal: React.FC<DeleteModalProps> = ({ isOpen, onClose, 
           Anda akan menghapus transaksi dari <span className="font-semibold">{transaction.name} </span>
           senilai <span className="font-bold text-red-600">{formatRupiah(transaction.total)}</span>.
         </p>
-        <p className="text-sm text-center text-gray-500 mt-1">Aksi ini **tidak dapat dibatalkan**.</p>
+        <p className="text-sm text-center text-gray-500 mt-1">
+          Aksi ini <b>tidak dapat dibatalkan</b>.
+        </p>
 
         <div className="mt-8 flex justify-between space-x-3">
           <button type="button" onClick={onClose} disabled={isDeleting} className="w-full justify-center py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50">

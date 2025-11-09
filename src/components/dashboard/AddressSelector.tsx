@@ -2,7 +2,11 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FaSpinner, FaChevronDown } from "react-icons/fa";
 import { toast } from "react-hot-toast";
-import { getProvinces, getCities, getSubdistricts, getVillages } from "../../services/RegionService";
+import { getSubdistricts, getVillages } from "../../services/RegionService";
+
+// Hardcoded Constants for fixed region
+const FIXED_PROVINCE = "Jawa Tengah";
+const FIXED_CITY = "Kudus";
 
 // Tipe data untuk prop value yang dikontrol
 export interface AddressSelection {
@@ -26,100 +30,92 @@ const itemVariants = {
 };
 
 const AddressSelector: React.FC<AddressSelectorProps> = ({ value, onChange, levels, disabled = false, kecamatanName = "Kecamatan" }) => {
-  const [provinces, setProvinces] = useState<string[]>([]);
-  const [cities, setCities] = useState<string[]>([]);
   const [subdistricts, setSubdistricts] = useState<string[]>([]);
   const [villages, setVillages] = useState<string[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
 
-  // Load Provinces
+  // --- Initialization Effect: Set fixed values if not set ---
   useEffect(() => {
-    if (!levels.includes("province")) return;
-    setLoading("province");
-    getProvinces()
-      .then((data) => {
-        setProvinces(data);
-        setLoading(null);
-        if (data.length === 0) console.warn("Provinsi data is empty.");
-      })
-      .catch(() => {
-        setLoading(null);
-        toast.error("Gagal memuat Provinsi dari API.");
+    if (value.province !== FIXED_PROVINCE || value.city !== FIXED_CITY) {
+      // Panggil onChange untuk mengatur nilai provinsi dan kota ke nilai tetap
+      onChange({
+        province: FIXED_PROVINCE,
+        city: FIXED_CITY,
+        subdistrict: value.subdistrict,
+        village: value.village,
       });
-  }, [levels]);
-
-  // Load Cities based on Province
-  useEffect(() => {
-    if (!levels.includes("city") || !value.province) {
-      setCities([]);
-      return;
     }
-    setLoading("city");
-    getCities(value.province)
-      .then((data) => {
-        setCities(data);
-        setLoading(null);
-      })
-      .catch(() => setLoading(null));
-  }, [value.province, levels]);
+  }, [value.province, value.city, value.subdistrict, value.village, onChange]); // Dependensi lengkap untuk konsistensi
 
-  // Load Subdistricts based on City
+  // Load Subdistricts (Kecamatan) based on fixed Province and City
   useEffect(() => {
-    if (!levels.includes("subdistrict") || !value.city) {
+    // Hanya jalankan jika "subdistrict" termasuk dalam levels
+    if (!levels.includes("subdistrict")) {
       setSubdistricts([]);
       return;
     }
+
     setLoading("subdistrict");
-    getSubdistricts(value.province, value.city)
+    // Gunakan nilai tetap untuk fetching
+    // CATATAN: Fungsi RegionService.getSubdistricts harus menerima parameter provinsi dan kota, meskipun nilainya tetap di sini.
+    getSubdistricts(FIXED_PROVINCE, FIXED_CITY)
       .then((data) => {
         setSubdistricts(data);
         setLoading(null);
       })
-      .catch(() => setLoading(null));
-  }, [value.province, value.city, levels]);
+      .catch(() => {
+        setLoading(null);
+        toast.error(`Gagal memuat ${kecamatanName} dari API.`);
+      });
+  }, [levels, kecamatanName]);
 
-  // Load Villages based on Subdistrict
+  // Load Villages (Desa/Kelurahan) based on selected Subdistrict (Kecamatan)
   useEffect(() => {
+    // Hanya jalankan jika "village" termasuk dalam levels dan subdistrict sudah dipilih
     if (!levels.includes("village") || !value.subdistrict) {
       setVillages([]);
       return;
     }
+
     setLoading("village");
-    getVillages(value.province, value.city, value.subdistrict)
+    // Gunakan nilai tetap dan subdistrict yang dipilih untuk fetching
+    getVillages(FIXED_PROVINCE, FIXED_CITY, value.subdistrict)
       .then((data) => {
         setVillages(data);
         setLoading(null);
       })
-      .catch(() => setLoading(null));
-  }, [value.province, value.city, value.subdistrict, levels]);
+      .catch(() => {
+        setLoading(null);
+        toast.error("Gagal memuat Desa/Kelurahan dari API.");
+      });
+  }, [value.subdistrict, levels]);
 
   // --- Handler Perubahan Pilihan ---
-  const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newProvince = e.target.value;
-    onChange({ province: newProvince, city: "", subdistrict: "", village: "" });
-  };
-
-  const handleCityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newCity = e.target.value;
-    onChange({ ...value, city: newCity, subdistrict: "", village: "" });
-  };
-
   const handleSubdistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newSubdistrict = e.target.value;
-    onChange({ ...value, subdistrict: newSubdistrict, village: "" });
+    // Tetap atur province dan city ke nilai tetap saat perubahan subdistrict
+    onChange({ province: FIXED_PROVINCE, city: FIXED_CITY, subdistrict: newSubdistrict, village: "" });
   };
 
   const handleVillageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newVillage = e.target.value;
-    onChange({ ...value, village: newVillage });
+    // Tetap atur province dan city ke nilai tetap saat perubahan village
+    onChange({ ...value, province: FIXED_PROVINCE, city: FIXED_CITY, village: newVillage });
   };
 
   const inputClass = "w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors bg-white appearance-none";
 
   const renderDropdown = (key: "province" | "city" | "subdistrict" | "village", label: string, options: string[], currentValue: string, onChangeHandler: (e: React.ChangeEvent<HTMLSelectElement>) => void, placeholder: string) => {
+    // Hanya render untuk subdistrict dan village
+    if (key !== "subdistrict" && key !== "village") return null;
     if (!levels.includes(key)) return null;
 
-    const isDisabled = disabled || loading === key || (key !== "province" && !value[levels[levels.indexOf(key) - 1] as keyof AddressSelection]);
+    let isDisabled = disabled || loading === key;
+
+    // Logic untuk Village: disable jika subdistrict belum dipilih
+    if (key === "village" && !value.subdistrict) {
+      isDisabled = true;
+    }
 
     return (
       <motion.div key={key} variants={itemVariants} className={`md:col-span-1 relative`}>
@@ -143,10 +139,9 @@ const AddressSelector: React.FC<AddressSelectorProps> = ({ value, onChange, leve
     );
   };
 
+  // Ubah grid menjadi grid-cols-2 karena hanya ada 2 dropdown
   return (
-    <motion.div initial="hidden" animate="visible" transition={{ staggerChildren: 0.1 }} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      {renderDropdown("province", "Provinsi", provinces, value.province, handleProvinceChange, "Pilih Provinsi")}
-      {renderDropdown("city", "Kabupaten/Kota", cities, value.city, handleCityChange, "Pilih Kabupaten/Kota")}
+    <motion.div initial="hidden" animate="visible" transition={{ staggerChildren: 0.1 }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {renderDropdown("subdistrict", kecamatanName, subdistricts, value.subdistrict, handleSubdistrictChange, `Pilih ${kecamatanName}`)}
       {renderDropdown("village", "Desa/Kelurahan", villages, value.village, handleVillageChange, "Pilih Desa/Kelurahan")}
     </motion.div>

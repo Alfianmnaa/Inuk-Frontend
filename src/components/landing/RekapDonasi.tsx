@@ -1,50 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaChartBar, FaTable, FaSearch, FaTimes, FaLeaf, FaCheckCircle } from "react-icons/fa";
+import { FaChartBar, FaTable, FaSearch, FaTimes, FaLeaf, FaCheckCircle, FaSpinner } from "react-icons/fa";
 import { BiChevronDown } from "react-icons/bi";
 import DonationChart from "../../utils/DonationChart";
-
-// Data Type Donation Data
-interface DonationData {
-  desa: string;
-  jumlahDonatur: number;
-  totalDonasi: number;
-}
-
-interface KecamatanData {
-  nama: string;
-  data: DonationData[];
-}
-
-const KECAMATAN_DATA: KecamatanData[] = [
-  {
-    nama: "JEKULO",
-    data: [
-      { desa: "BULUNG CANGKRING", jumlahDonatur: 15, totalDonasi: 4500000 },
-      { desa: "HADIPOLO", jumlahDonatur: 30, totalDonasi: 8000000 },
-      { desa: "SIDOMULYO", jumlahDonatur: 10, totalDonasi: 2500000 },
-      { desa: "GONDOSARI", jumlahDonatur: 5, totalDonasi: 1500000 },
-      { desa: "KANDANGMAS", jumlahDonatur: 25, totalDonasi: 7000000 },
-    ],
-  },
-  {
-    nama: "KOTA KUDUS",
-    data: [
-      { desa: "DEMAAN", jumlahDonatur: 50, totalDonasi: 15000000 },
-      { desa: "BARONGAN", jumlahDonatur: 40, totalDonasi: 12000000 },
-      { desa: "JANGGALAN", jumlahDonatur: 20, totalDonasi: 6500000 },
-      { desa: "KRANDON", jumlahDonatur: 15, totalDonasi: 4000000 },
-    ],
-  },
-  {
-    nama: "DAWE",
-    data: [
-      { desa: "PUDAK", jumlahDonatur: 12, totalDonasi: 3200000 },
-      { desa: "CENDONO", jumlahDonatur: 18, totalDonasi: 5500000 },
-      { desa: "KIRIG", jumlahDonatur: 22, totalDonasi: 6000000 },
-    ],
-  },
-];
+import { getDonationRecap, type KecamatanDataRecap } from "../../services/DonationService";
 
 // Fungsi format Rupiah
 const formatRupiah = (angka: number) => {
@@ -55,6 +14,7 @@ const formatRupiah = (angka: number) => {
   }).format(angka);
 };
 
+// PERBAIKAN: Mengembalikan opacity: 0 pada hidden untuk animasi fade-in yang benar
 const containerVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
@@ -74,16 +34,54 @@ const itemVariants = {
 };
 
 const RekapDonasi: React.FC = () => {
-  const defaultKecamatan = KECAMATAN_DATA[0].nama;
-  const [selectedKecamatan, setSelectedKecamatan] = useState<string>(defaultKecamatan);
+  // State untuk menyimpan data hasil fetch
+  const [allKecamatanData, setAllKecamatanData] = useState<KecamatanDataRecap[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // State Kecamatan yang dipilih
+  const [selectedKecamatan, setSelectedKecamatan] = useState<string>("");
+
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  // Temukan data kecamatan yang dipilih
+  // --- Data Fetching Effect ---
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getDonationRecap();
+        setAllKecamatanData(data);
+
+        // Atur nilai selectedKecamatan ke item pertama segera setelah data berhasil diambil.
+        if (data.length > 0) {
+          setSelectedKecamatan(data[0].nama);
+        } else {
+          setSelectedKecamatan("");
+        }
+      } catch (error) {
+        console.error("Failed to fetch donation recap data:", error);
+        setAllKecamatanData([]);
+        setSelectedKecamatan("");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Temukan data kecamatan yang dipilih (Menggunakan selectedKecamatan)
   const currentKecamatan = useMemo(() => {
-    return KECAMATAN_DATA.find((k) => k.nama === selectedKecamatan) || { nama: "N/A", data: [] };
-  }, [selectedKecamatan]);
+    // Memberikan fallback nama yang lebih aman
+    return allKecamatanData.find((k) => k.nama === selectedKecamatan) || { nama: selectedKecamatan || "Pilih Kecamatan", data: [] };
+  }, [selectedKecamatan, allKecamatanData]);
+
+  // Handler Perubahan Kecamatan
+  const handleKecamatanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedKecamatan(e.target.value);
+    setSearchTerm("");
+  };
 
   // Hitung total keseluruhan
   const totalDonasi = currentKecamatan.data.reduce((sum, item) => sum + item.totalDonasi, 0);
@@ -91,8 +89,8 @@ const RekapDonasi: React.FC = () => {
 
   // Total donatur di semua kecamatan
   const totalGlobalDonatur = useMemo(() => {
-    return KECAMATAN_DATA.reduce((sum, kec) => sum + kec.data.reduce((s, d) => s + d.jumlahDonatur, 0), 0);
-  }, []);
+    return allKecamatanData.reduce((sum, kec) => sum + kec.data.reduce((s, d) => s + d.jumlahDonatur, 0), 0);
+  }, [allKecamatanData]);
 
   // Hitung persentase donatur
   const persentaseDonatur = totalGlobalDonatur > 0 ? ((totalDonatur / totalGlobalDonatur) * 100).toFixed(2) : 0;
@@ -104,10 +102,7 @@ const RekapDonasi: React.FC = () => {
     // Filter desa berdasarkan searchTerm
     const filteredDesa = currentKecamatan.data.filter((item) => item.desa.toLowerCase().includes(lowerSearchTerm));
 
-    if (!searchTerm || filteredDesa.length > 0) {
-      return filteredDesa;
-    }
-    return [];
+    return filteredDesa;
   }, [currentKecamatan, searchTerm]);
 
   // Logic untuk Autocomplete Dropdown
@@ -137,9 +132,29 @@ const RekapDonasi: React.FC = () => {
     };
   }, [searchRef]);
 
+  if (isLoading) {
+    return (
+      <motion.section className="py-24 px-4 flex justify-center items-center h-screen" variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
+        <FaSpinner className="animate-spin text-primary mr-3" size={32} />
+        <span className="text-xl text-gray-700">Memuat data rekap donasi...</span>
+      </motion.section>
+    );
+  }
+
+  // Jika data kosong setelah loading
+  if (allKecamatanData.length === 0) {
+    return (
+      <motion.section className="py-24 px-4 text-center" variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
+        <h2 className="text-3xl font-bold text-red-600">Gagal Memuat Data Rekap Donasi</h2>
+        <p className="text-gray-600 mt-3">Silakan cek koneksi API atau pastikan data rekapitulasi tersedia di backend.</p>
+      </motion.section>
+    );
+  }
+
+  // Render utama
   return (
-    <motion.section className="py-16 md:py-24 px-4 sm:px-6 md:px-12 lg:px-20 xl:px-32 " variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
-      <div className="container mx-auto max-w-7xl">
+    <motion.section className="py-16 md:py-24 px-4 sm:px-6 md:px-12 lg:px-20 xl:px-32 " variants={containerVariants} initial="hidden" animate="visible">
+      <div className="container mx-auto max-w-7xl mt-20">
         {/* Header Section */}
         <motion.div variants={itemVariants} className="text-center mb-12">
           <p className="text-primary font-bold text-lg">Rekap Donasi</p>
@@ -155,12 +170,9 @@ const RekapDonasi: React.FC = () => {
               <select
                 className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 value={selectedKecamatan}
-                onChange={(e) => {
-                  setSelectedKecamatan(e.target.value);
-                  setSearchTerm("");
-                }}
+                onChange={handleKecamatanChange}
               >
-                {KECAMATAN_DATA.map((kec) => (
+                {allKecamatanData.map((kec) => (
                   <option key={kec.nama} value={kec.nama}>
                     {kec.nama}
                   </option>
@@ -286,7 +298,7 @@ const RekapDonasi: React.FC = () => {
               ) : (
                 <tr>
                   <td colSpan={5} className="py-4 text-center text-gray-500">
-                    {searchTerm ? `Tidak ada desa yang cocok dengan "${searchTerm}" di ${currentKecamatan.nama}` : `Pilih desa untuk melihat rekap data.`}
+                    {searchTerm ? `Tidak ada desa yang cocok dengan "${searchTerm}" di ${currentKecamatan.nama}` : `Pilih kecamatan untuk melihat rekap data.`}
                   </td>
                 </tr>
               )}

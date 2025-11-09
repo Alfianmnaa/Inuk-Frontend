@@ -1,14 +1,14 @@
-import HeroSection from "../components/landing/HeroSection";
+// import HeroSection from "../components/landing/HeroSection";
 import Navbar from "../components/layout/Navbar";
 import RekapDonasi from "../components/landing/RekapDonasi";
-import Tentang from "../components/landing/Tentang";
-import Program from "../components/landing/Program";
-import Layanan from "../components/landing/Layanan";
-import Keunggulan from "../components/landing/Keunggulan";
-import Blog from "../components/landing/Blog";
-import FAQ from "../components/landing/FAQ";
+// import Tentang from "../components/landing/Tentang";
+// import Program from "../components/landing/Program";
+// import Layanan from "../components/landing/Layanan";
+// import Keunggulan from "../components/landing/Keunggulan";
+// import Blog from "../components/landing/Blog";
+// import FAQ from "../components/landing/FAQ";
 import TimKami from "../components/landing/TimKami";
-import Testimoni from "../components/landing/Testimoni";
+// import Testimoni from "../components/landing/Testimoni";
 
 const Landing = () => {
   return (
@@ -16,12 +16,12 @@ const Landing = () => {
       <Navbar />
       {/* <HeroSection /> */}
       <RekapDonasi />
-      <Tentang />
+      {/* <Tentang />
       <Program />
       <Layanan />
-      <Keunggulan />
+      <Keunggulan /> */}
       {/* <Blog /> */}
-      <FAQ />
+      {/* <FAQ /> */}
       <TimKami />
       {/* <Testimoni /> */}
     </div>

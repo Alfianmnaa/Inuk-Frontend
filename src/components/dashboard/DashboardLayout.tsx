@@ -18,7 +18,7 @@ const DASHBOARD_NAV: NavItem[] = [
   { name: "--- MANAJEMEN DATA ---", icon: FaChevronDown, link: "#", isHeader: true },
   { name: "Pencatatan Donasi (INFAQ/ZIS)", icon: FaReceipt, link: "/dashboard/transaksi" },
   // { name: "Penyaluran Dana", icon: FaPaperPlane, link: "/dashboard/penyaluran" },
-  { name: "Donatur & Penerima Manfaat", icon: FaUsers, link: "/dashboard/donatur-penerima" },
+  { name: "Manajemen Donatur", icon: FaUsers, link: "/dashboard/donatur-management" },
   { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management" },
   { name: "--- PENGELOLAAN KONTEN ---", icon: FaChevronDown, link: "#", isHeader: true },
   { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita" },
