@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaUser, FaWhatsapp, FaCheck, FaSpinner, FaTrash, FaPen } from "react-icons/fa";
 import { X } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { useAuth } from "../../../context/AuthContext";
+// import { useAuth } from "../../../context/AuthContext";
 
 interface BendaharaData {
   name: string;
@@ -17,7 +17,7 @@ interface BendaharaModalProps {
 }
 
 const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSuccess, onDelete }) => {
-  const { userName } = useAuth();
+  // const { userName } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,10 +95,10 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
       return;
     }
 
-    const encodedUserName = encodeURIComponent(userName || "Inputer");
+    // const encodedUserName = encodeURIComponent(userName || "Inputer");
     // Ganti dengan domain yang sebenarnya jika sudah live.
     const websiteLink = encodeURIComponent("https://lazisnukudus.id");
-    const textMessage = encodeURIComponent(`Data donasi telah diperbarui oleh inputer ${encodedUserName}. Silakan cek di dashboard: ${websiteLink}`);
+    const textMessage = encodeURIComponent(`Data donasi telah diperbarui oleh inputer. Silakan cek di dashboard: ${websiteLink}`);
 
     // Hapus tanda '+' atau 0 di awal jika ada, karena format wa.me menggunakan kode negara tanpa +
     const cleanPhone = phone.startsWith("+") ? phone.substring(1) : phone.startsWith("0") ? "62" + phone.substring(1) : phone;
