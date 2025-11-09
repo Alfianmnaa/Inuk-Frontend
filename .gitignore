@@ -23,3 +23,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables
+.env
+.env.dev
+.env.staging
+.env.prod
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
