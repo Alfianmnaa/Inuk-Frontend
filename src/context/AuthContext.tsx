@@ -6,8 +6,7 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   userRole: "user" | "admin" | null;
-  userName: string | null; // Tetap ada untuk keperluan notifikasi WA
-  login: (token: string, role: "user" | "admin", name: string) => void; // Parameter region dihilangkan
+  login: (token: string, role: "user" | "admin") => void;
   logout: () => void;
 }
 
@@ -20,34 +19,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const initialRole = storedRole === "user" || storedRole === "admin" ? storedRole : null;
   const [userRole, setUserRole] = useState<"user" | "admin" | null>(initialRole);
 
-  // State untuk menyimpan nama pengguna
-  const [userName, setUserName] = useState<string | null>(localStorage.getItem("userName"));
-
   const isAuthenticated = !!token;
 
-  // Fungsi login disederhanakan
-  const login = (newToken: string, role: "user" | "admin", name: string) => {
+  const login = (newToken: string, role: "user" | "admin") => {
     localStorage.setItem("token", newToken);
     localStorage.setItem("userRole", role);
-    localStorage.setItem("userName", name);
-
     setToken(newToken);
     setUserRole(role);
-    setUserName(name);
   };
 
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userRole");
-    localStorage.removeItem("userName");
-
     setToken(null);
     setUserRole(null);
-    setUserName(null);
   };
 
-  // Kirim userName ke context
-  return <AuthContext.Provider value={{ token, isAuthenticated, userRole, userName, login, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ token, isAuthenticated, userRole, login, logout }}>{children}</AuthContext.Provider>;
 };
 
 // Hook kustom untuk mempermudah penggunaan
