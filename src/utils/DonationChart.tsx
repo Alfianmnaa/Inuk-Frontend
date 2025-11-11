@@ -70,12 +70,12 @@ const DonationChart: React.FC<DonationChartProps> = ({ data, kecamatanName }) =>
         },
         ticks: {
           callback: function (value: any) {
-            if (value >= 1000000) {
-              return "Rp " + (value / 1000000).toFixed(1) + "M";
-            }
-            if (value >= 1000) {
-              return "Rp " + (value / 1000).toFixed(0) + "K";
-            }
+            // if (value >= 1000000) {
+            //   return "Rp " + value;
+            // }
+            // if (value >= 1000) {
+            //   return "Rp " + value;
+            // }
             return "Rp " + value;
           },
         },
