@@ -66,7 +66,7 @@ const DeleteRegionModal: React.FC<DeleteRegionModalProps> = ({ isOpen, onClose, 
                 type="button"
                 onClick={handleConfirm}
                 disabled={isDeleting}
-                className="w-full justify-center py-2 px-4 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center justify-center disabled:opacity-50"
+                className="w-full  py-2 px-4 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center justify-center disabled:opacity-50"
               >
                 {isDeleting ? <FaSpinner className="animate-spin h-5 w-5 text-white mr-2" /> : <Trash2 size={16} className="mr-1" />}
                 Ya, Hapus Permanen

@@ -48,7 +48,7 @@ const formatRupiah = (angka: number) => {
 // Component Utama Halaman
 const TransaksiDonasi: React.FC = () => {
   // Hanya ambil token
-  const { token } = useAuth();
+  const { token, userRole } = useAuth();
 
   // State Bendahara untuk tampilan (BARU: Menggunakan helper)
   const [bendaharaDisplay, setBendaharaDisplay] = useState<BendaharaDisplay>(getBendaharaFromStorage());
@@ -205,7 +205,7 @@ const TransaksiDonasi: React.FC = () => {
     const lowerCaseSearch = searchTerm.toLowerCase();
     if (!lowerCaseSearch) return transactionsData.result as Transaction[];
 
-    return transactionsData.result.filter((t) => t.name.toLowerCase().includes(lowerCaseSearch) || t.phone.includes(lowerCaseSearch) || t.id.includes(lowerCaseSearch)) as Transaction[];
+    return transactionsData.result.filter((t) => t.name.toLowerCase().includes(lowerCaseSearch) || t.id.includes(lowerCaseSearch)) as Transaction[];
   }, [searchTerm, transactionsData.result]);
 
   // --- Logika Sorting Lokal (Hanya untuk Total) ---
@@ -239,12 +239,12 @@ const TransaksiDonasi: React.FC = () => {
       ID_Transaksi: t.id,
       Tanggal: t.tanggalFormatted,
       Donatur: t.name,
-      Nomor_HP: t.phone,
+      // Nomor_HP: t.phone,
       Provinsi: t.provinsi,
       Kota: t.kabupaten_kota,
       Kecamatan: t.kecamatan,
       Desa: t.desa_kelurahan,
-      RW: t.rw,
+      // RW: t.rw,
       Total_Donasi: t.total,
       Metode: t.methodDisplay,
     }));
@@ -268,6 +268,7 @@ const TransaksiDonasi: React.FC = () => {
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
   };
 
+  const isUserRole = userRole === "user";
   return (
     <DashboardLayout activeLink="/dashboard/transaksi" pageTitle="Pencatatan Donasi (INFAQ/ZIS)">
       <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
@@ -307,47 +308,49 @@ const TransaksiDonasi: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
               <FaFilter className="mr-2 text-primary" /> Filter Data
             </h3>
-            <div className="flex space-x-2 flex-wrap">
-              {/* Tampilkan Data Bendahara yang Sedang Aktif (BARU) */}
-              <div className="bg-yellow-50 p-2 rounded-lg text-xs self-center border border-yellow-200 mr-4 hidden sm:block">
-                <p className="font-semibold text-yellow-800">Bendahara Aktif:</p>
+            {isUserRole && (
+              <div className="flex space-x-2 flex-wrap">
+                {/* Tampilkan Data Bendahara yang Sedang Aktif (BARU) */}
+                <div className="bg-yellow-50 p-2 rounded-lg text-xs self-center border border-yellow-200 mr-4 hidden sm:block">
+                  <p className="font-semibold text-yellow-800">Bendahara Aktif:</p>
 
-                <p className="text-gray-700">
-                  {bendaharaDisplay.phone} ({bendaharaDisplay.name})
-                </p>
+                  <p className="text-gray-700">
+                    {bendaharaDisplay.phone} ({bendaharaDisplay.name})
+                  </p>
+                </div>
+
+                {/* Tombol Konfirmasi Bendahara (membuka modal) */}
+                <motion.button
+                  onClick={() => setIsBendaharaModalOpen(true)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors mb-2"
+                  title={`Atur data Bendahara saat ini: ${bendaharaDisplay.name}`}
+                >
+                  <FaWhatsapp className="mr-2" /> Konfirmasi Bendahara
+                </motion.button>
+
+                {/* Tombol Export Excel */}
+                <motion.button
+                  onClick={handleExportExcel}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-blue-600 transition-colors mb-2"
+                >
+                  <FaFileExcel className="mr-2" /> Export Excel
+                </motion.button>
+
+                {/* Tombol Tambah Transaksi */}
+                <motion.button
+                  onClick={handleAddTransactionClick}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-700 transition-colors mb-2"
+                >
+                  <FaPlus className="mr-2" /> Tambah Transaksi
+                </motion.button>
               </div>
-
-              {/* Tombol Konfirmasi Bendahara (membuka modal) */}
-              <motion.button
-                onClick={() => setIsBendaharaModalOpen(true)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors mb-2"
-                title={`Atur data Bendahara saat ini: ${bendaharaDisplay.name}`}
-              >
-                <FaWhatsapp className="mr-2" /> Konfirmasi Bendahara
-              </motion.button>
-
-              {/* Tombol Export Excel */}
-              <motion.button
-                onClick={handleExportExcel}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-blue-600 transition-colors mb-2"
-              >
-                <FaFileExcel className="mr-2" /> Export Excel
-              </motion.button>
-
-              {/* Tombol Tambah Transaksi */}
-              <motion.button
-                onClick={handleAddTransactionClick}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-700 transition-colors mb-2"
-              >
-                <FaPlus className="mr-2" /> Tambah Transaksi
-              </motion.button>
-            </div>
+            )}
           </div>
 
           {/* Input Filter Grid */}
@@ -406,9 +409,9 @@ const TransaksiDonasi: React.FC = () => {
                   <tr className="bg-gray-50 text-gray-600 text-sm uppercase">
                     <th className="py-3 px-4 text-left">ID</th>
                     <TableSortHeader label="Tanggal" sortKey="date_time" sortConfig={sortConfig} requestSort={requestSort} />
-                    <th className="py-3 px-4 text-left">Donatur (Nama/HP)</th>
+                    <th className="py-3 px-4 text-left">Donatur (Nama)</th>
                     <th className="py-3 px-4 text-left">Lokasi (Kec/Des)</th>
-                    <th className="py-3 px-4 text-left">RW</th>
+
                     <TableSortHeader label="Total" sortKey="total" sortConfig={sortConfig} requestSort={requestSort} align="right" />
                     <th className="py-3 px-4 text-left">Metode</th>
                     <th className="py-3 px-4 text-center">Aksi</th>
@@ -422,12 +425,12 @@ const TransaksiDonasi: React.FC = () => {
                         <td className="py-3 px-4">{t.tanggalFormatted}</td>
                         <td className="py-3 px-4">
                           <p className="font-semibold text-gray-900">{t.name}</p>
-                          <p className="text-xs text-gray-500">{t.phone}</p>
+                          {/* <p className="text-xs text-gray-500">{t.phone}</p> */}
                         </td>
                         <td className="py-3 px-4">
                           {t.kecamatan} / {t.desa_kelurahan}
                         </td>
-                        <td className="py-3 px-4">{t.rw}</td>
+                        {/* <td className="py-3 px-4">{t.rw}</td> */}
                         <td className="py-3 px-4 text-right font-semibold text-primary">{formatRupiah(t.total)}</td>
                         <td className="py-3 px-4">{t.methodDisplay}</td>
                         {/* KOLOM AKSI */}
