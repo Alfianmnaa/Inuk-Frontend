@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { FaUser, FaCheck, FaTimes, FaSpinner } from "react-icons/fa";
 import AddressSelector, { type AddressSelection } from "../AddressSelector";
-import { createRegion } from "../../../services/RegionService";
+import { createRegion, type CreateRegionPayload } from "../../../services/RegionService"; // Added CreateRegionPayload
 import { useAuth } from "../../../context/AuthContext";
 import { X } from "lucide-react";
 
@@ -33,7 +33,10 @@ interface AddRegionModalProps {
 const AddRegionModal: React.FC<AddRegionModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { token } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [rw, setRw] = useState<number | "">("");
+
+  // Menghapus state RW
+  // const [rw, setRw] = useState<number | \"\">(\"\");
+
   // Inisialisasi address dengan nilai tetap
   const [address, setAddress] = useState<AddressSelection>({ province: FIXED_PROVINCE, city: FIXED_CITY, subdistrict: "", village: "" });
 
@@ -70,10 +73,9 @@ const AddRegionModal: React.FC<AddRegionModalProps> = ({ isOpen, onClose, onSucc
       toast.error("Pilih pengguna yang bertanggung jawab atas region ini.");
       return;
     }
-    if (rw === "" || rw === 0) {
-      toast.error("RW harus diisi.");
-      return;
-    }
+
+    // Validasi RW dihapus
+
     if (!address.village) {
       toast.error("Pilih alamat hingga tingkat Desa/Kelurahan.");
       return;
@@ -82,14 +84,13 @@ const AddRegionModal: React.FC<AddRegionModalProps> = ({ isOpen, onClose, onSucc
     setIsSubmitting(true);
 
     try {
-      const payload = {
-        userID: selectedUser.id,
-        rw: rw as number,
-        // Tetapkan nilai tetap untuk province dan city
-        province: FIXED_PROVINCE,
-        city: FIXED_CITY,
-        subdistrict: address.subdistrict,
-        village: address.village,
+      // Struktur payload diperbaiki sesuai CreateRegionPayload (snake_case)
+      const payload: CreateRegionPayload = {
+        user_id: selectedUser.id, // FIX: Menggunakan user_id
+        provinsi: FIXED_PROVINCE, // FIX: Menggunakan provinsi
+        kabupaten_kota: FIXED_CITY, // FIX: Menggunakan kabupaten_kota
+        kecamatan: address.subdistrict, // FIX: Menggunakan kecamatan
+        desa_kelurahan: address.village, // FIX: Menggunakan desa_kelurahan
       };
 
       await createRegion(payload, token);
@@ -108,7 +109,7 @@ const AddRegionModal: React.FC<AddRegionModalProps> = ({ isOpen, onClose, onSucc
   // Reset state saat modal ditutup
   useEffect(() => {
     if (!isOpen) {
-      setRw("");
+      // setRw(""); // RW state removed
       // Reset address dengan nilai tetap
       setAddress({ province: FIXED_PROVINCE, city: FIXED_CITY, subdistrict: "", village: "" });
       setSearchTerm("");
@@ -179,19 +180,7 @@ const AddRegionModal: React.FC<AddRegionModalProps> = ({ isOpen, onClose, onSucc
             <AddressSelector value={address} onChange={setAddress} levels={["subdistrict", "village"]} kecamatanName="Kecamatan" />
           </div>
 
-          {/* 3. Input RW */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nomor RW</label>
-            <input
-              type="number"
-              value={rw}
-              onChange={(e) => setRw(parseInt(e.target.value) || "")}
-              placeholder="Masukkan Nomor RW (misal: 001)"
-              className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary"
-              required
-              min="1"
-            />
-          </div>
+          {/* 3. Input RW Dihapus */}
 
           {/* Tombol Submit */}
           <div className="flex justify-end space-x-3">
@@ -200,7 +189,8 @@ const AddRegionModal: React.FC<AddRegionModalProps> = ({ isOpen, onClose, onSucc
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !selectedUser || !rw || !address.village}
+              // Validasi RW dihapus dari disabled
+              disabled={isSubmitting || !selectedUser || !address.village}
               className="py-2 px-4 bg-primary text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center disabled:opacity-50"
             >
               {isSubmitting ? <FaSpinner className="animate-spin mr-2" /> : <FaCheck className="mr-2" />}
