@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaBars, FaTimes, FaChartBar, FaReceipt, FaUsers, FaEdit, FaChevronDown, FaHome, FaMapMarkerAlt } from "react-icons/fa";
+import { FaBars, FaTimes, FaReceipt, FaUsers, FaEdit, FaChevronDown, FaHome, FaMapMarkerAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { getRegions } from "../../services/RegionService"; // NEW: Import getRegions
@@ -19,9 +19,9 @@ interface NavItem {
 
 const DASHBOARD_NAV: NavItem[] = [
   { name: "DASHBOARD UTAMA", icon: FaHome, link: "/dashboard" },
-  { name: "TRANSPARANSI & ANALISIS", icon: FaChartBar, link: "/dashboard/visualisasi", roles: ["user", "admin"] },
+  // { name: "TRANSPARANSI & ANALISIS", icon: FaChartBar, link: "/dashboard/visualisasi", roles: ["user", "admin"] },
   { name: "--- MANAJEMEN DATA ---", icon: FaChevronDown, link: "#", isHeader: true },
-  { name: "Pencatatan Donasi (INFAQ/ZIS)", icon: FaReceipt, link: "/dashboard/transaksi", roles: ["user", "admin"] },
+  { name: "Pencatatan Donasi", icon: FaReceipt, link: "/dashboard/transaksi", roles: ["user", "admin"] },
   { name: "Manajemen Donatur", icon: FaUsers, link: "/dashboard/donatur-management", roles: ["user"] }, // HANYA UNTUK USER
   { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management", roles: ["admin"] }, // HANYA UNTUK ADMIN
   { name: "--- PENGELOLAAN KONTEN ---", icon: FaChevronDown, link: "#", isHeader: true },

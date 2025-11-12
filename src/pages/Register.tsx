@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { FaEye, FaEyeSlash, FaUser, FaPhoneAlt, FaLock, FaArrowRight } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaUser, FaPhoneAlt, FaLock, FaArrowRight, FaArrowLeft } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
@@ -78,6 +78,12 @@ const Register: React.FC = () => {
     <motion.div className="flex min-h-screen bg-white" variants={pageVariants} initial="initial" animate="animate">
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-12 lg:p-16">
         <motion.div className="max-w-md w-full" initial="initial" animate="animate" variants={{ animate: { transition: { staggerChildren: 0.1 } } }}>
+          <motion.div variants={itemVariants} className="mb-8">
+            <Link to="/" className="text-gray-600 hover:text-primary transition-colors flex items-center font-medium">
+              <FaArrowLeft className="mr-2" />
+              Kembali ke Beranda
+            </Link>
+          </motion.div>
           <motion.h1 variants={itemVariants} className="text-3xl font-extrabold text-gray-900 mb-2">
             Buat Akun Baru 👋
           </motion.h1>
