@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "react-hot-toast";
-import { FaUser, FaCheck, FaTimes, FaSpinner, FaSearch } from "react-icons/fa";
+import { FaCheck, FaTimes, FaSpinner, FaSearch } from "react-icons/fa";
 import { X } from "lucide-react";
 import AddressSelector, { type AddressSelection } from "../AddressSelector";
 import { createRegion, updateRegion, type RegionDetail, type UpdateRegionPayload, type CreateRegionPayload } from "../../../services/RegionService";
