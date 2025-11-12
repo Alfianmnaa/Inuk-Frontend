@@ -1,79 +1,121 @@
-// Tipe Data Donatur Baru
+// inuk-frontend/src/services/DonaturService.ts
+
+import axios, { type AxiosResponse } from "axios";
+
+const VITE_API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+// --- Interfaces Sesuai Backend (Go) ---
+// Donatur yang diterima/dikirim ke API (snake_case di Go JSON tag)
+export interface DonaturAPI {
+  id: string;
+  user_id: string; // ID Petugas yang mendaftarkan
+  kaleng: string;
+  name: string;
+  rw: number;
+  rt: number;
+}
+
+// Payload untuk membuat Donatur (sesuai CreateDonorRequest di Go)
+export interface CreateDonaturPayload {
+  kaleng: string;
+  name: string;
+  rw: number;
+  rt: number;
+}
+
+// Payload untuk update Donatur (semua optional, sesuai UpdateDonorRequest di Go)
+export interface UpdateDonaturPayload {
+  kaleng?: string;
+  name?: string;
+  rw?: number;
+  rt?: number;
+}
+
+// --- Interface untuk Komponen Frontend (Diolah untuk Display) ---
+// Data yang ditampilkan di Frontend (sudah diolah)
 export interface Donatur {
   id: string;
   noKaleng: string;
   namaDonatur: string;
-  kecamatan: string;
-  desa: string;
   rw: string;
   rt: string;
+  kecamatan: string;
+  desa: string;
 }
 
-// Fixed Region Data (Simulasi dari Auth Context)
-const FIXED_KECAMATAN = "Kaliwungu";
-const FIXED_DESA = "Bakalankrapyak";
-const FIXED_RW = "001";
+// --- Helper ---
+const getAuthHeaders = (token: string) => ({
+  headers: { Authorization: `Bearer ${token}` },
+});
 
-// Dummy Data Awal
-let DUMMY_DONATUR: Donatur[] = [
-  { id: "1", noKaleng: "KLD-001", namaDonatur: "Ahmad Subroto", kecamatan: FIXED_KECAMATAN, desa: FIXED_DESA, rw: FIXED_RW, rt: "001" },
-  { id: "2", noKaleng: "KLD-002", namaDonatur: "Siti Aisyah", kecamatan: FIXED_KECAMATAN, desa: FIXED_DESA, rw: FIXED_RW, rt: "002" },
-  { id: "3", noKaleng: "KLD-003", namaDonatur: "Budi Santoso", kecamatan: FIXED_KECAMATAN, desa: FIXED_DESA, rw: FIXED_RW, rt: "003" },
-];
+// --- API Calls ---
 
-// --- DUMMY API SIMULATION ---
+// GET /donors
+export const getDonaturList = async (token: string, searchTerm: string): Promise<DonaturAPI[]> => {
+  if (!token) throw new Error("Autentikasi diperlukan.");
 
-export const getDonaturList = async (search: string, kecamatan: string, desa: string): Promise<Donatur[]> => {
-  // Simulasikan delay API
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  try {
+    const response: AxiosResponse<DonaturAPI[]> = await axios.get(`${VITE_API_URL}/donors`, getAuthHeaders(token));
 
-  // Filter berdasarkan region (ini hanya akan mengembalikan data jika cocok dengan region yang ditetapkan)
-  let filtered = DUMMY_DONATUR.filter((d) => d.kecamatan === kecamatan && d.desa === desa);
+    let data = response.data;
 
-  // Filter berdasarkan search term (nama atau no kaleng)
-  if (search) {
-    const lowerSearch = search.toLowerCase();
-    filtered = filtered.filter((d) => d.namaDonatur.toLowerCase().includes(lowerSearch) || d.noKaleng.toLowerCase().includes(lowerSearch));
+    // Filter sisi klien berdasarkan searchTerm (nama atau kaleng)
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      data = data.filter((d) => d.name.toLowerCase().includes(lowerSearch) || d.kaleng.toLowerCase().includes(lowerSearch));
+    }
+
+    return data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error(error.response.data?.message || "Gagal memuat daftar Donatur.");
+    }
+    throw new Error("Terjadi kesalahan jaringan saat memuat Donatur.");
   }
-
-  return filtered;
 };
 
-export const createDonatur = async (data: Omit<Donatur, "id" | "kecamatan" | "desa" | "rw">, kecamatan: string, desa: string, rw: string): Promise<Donatur> => {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  const newId = (DUMMY_DONATUR.length + 1).toString();
-  const newDonatur: Donatur = {
-    id: newId,
-    ...data,
-    kecamatan,
-    desa,
-    rw,
-  };
-  DUMMY_DONATUR.push(newDonatur);
-  return newDonatur;
-};
+// POST /donor/
+export const createDonatur = async (token: string, payload: CreateDonaturPayload): Promise<DonaturAPI> => {
+  if (!token) throw new Error("Autentikasi diperlukan.");
 
-export const updateDonatur = async (id: string, data: Omit<Donatur, "kecamatan" | "desa" | "rw">): Promise<Donatur> => {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  const index = DUMMY_DONATUR.findIndex((d) => d.id === id);
-  if (index === -1) {
-    throw new Error("Donatur not found");
+  try {
+    const response: AxiosResponse<DonaturAPI> = await axios.post(`${VITE_API_URL}/donor/`, payload, getAuthHeaders(token));
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const errors = error.response.data?.errors?.map((e: any) => `${e.field}: ${e.message}`).join(", ");
+      throw new Error(errors || error.response.data?.message || "Gagal membuat Donatur.");
+    }
+    throw new Error("Terjadi kesalahan jaringan saat membuat Donatur.");
   }
-
-  const updatedDonatur: Donatur = {
-    ...DUMMY_DONATUR[index],
-    ...data,
-  };
-
-  DUMMY_DONATUR[index] = updatedDonatur;
-  return updatedDonatur;
 };
 
-export const deleteDonatur = async (id: string): Promise<void> => {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  const initialLength = DUMMY_DONATUR.length;
-  DUMMY_DONATUR = DUMMY_DONATUR.filter((d) => d.id !== id);
-  if (DUMMY_DONATUR.length === initialLength) {
-    throw new Error("Donatur not found");
+// PATCH /donor/:id
+export const updateDonatur = async (token: string, id: string, payload: UpdateDonaturPayload): Promise<DonaturAPI> => {
+  if (!token) throw new Error("Autentikasi diperlukan.");
+
+  try {
+    const response: AxiosResponse<DonaturAPI> = await axios.patch(`${VITE_API_URL}/donor/${id}`, payload, getAuthHeaders(token));
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const errors = error.response.data?.errors?.map((e: any) => `${e.field}: ${e.message}`).join(", ");
+      throw new Error(errors || error.response.data?.message || "Gagal mengupdate Donatur.");
+    }
+    throw new Error("Terjadi kesalahan jaringan saat mengupdate Donatur.");
+  }
+};
+
+// DELETE /donor/:id
+export const deleteDonatur = async (token: string, id: string): Promise<void> => {
+  if (!token) throw new Error("Autentikasi diperlukan.");
+
+  try {
+    await axios.delete(`${VITE_API_URL}/donor/${id}`, getAuthHeaders(token));
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error(error.response.data?.message || "Gagal menghapus Donatur.");
+    }
+    throw new Error("Terjadi kesalahan jaringan saat menghapus Donatur.");
   }
 };

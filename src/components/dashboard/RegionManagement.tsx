@@ -1,3 +1,5 @@
+// inuk-frontend/src/components/dashboard/RegionManagement.tsx
+
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FaPlus, FaFilter, FaSpinner, FaMapMarkedAlt, FaTimes } from "react-icons/fa";
@@ -8,26 +10,31 @@ import DashboardLayout from "./DashboardLayout";
 import AddressSelector, { type AddressSelection } from "./AddressSelector";
 import { getRegions, deleteRegion, type RegionDetail, type RegionFilterBody } from "../../services/RegionService";
 import { useAuth } from "../../context/AuthContext";
-import AddRegionModal from "./ui/AddRegionModal";
+// UPDATE: Mengganti AddRegionModal dengan AddEditRegionModal
+import AddEditRegionModal from "./ui/AddEditRegionModal";
+// BARU: Import DeleteRegionModal
+import DeleteRegionModal from "./ui/DeleteRegionModal";
 
 // Component Utama Halaman
 const RegionManagement: React.FC = () => {
   const { token } = useAuth();
   const [regions, setRegions] = useState<RegionDetail[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // State Modal CRUD
+  const [isModalOpen, setIsModalOpen] = useState(false); // Untuk Add/Edit Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState<RegionDetail | null>(null); // Untuk Edit/Delete
 
   // State Filter (province dan city akan diabaikan/diatur otomatis oleh AddressSelector)
   const [addressFilters, setAddressFilters] = useState<AddressSelection>({ province: "", city: "", subdistrict: "", village: "" });
 
-  // State untuk Delete Confirmation
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [selectedRegionToDelete, setSelectedRegionToDelete] = useState<RegionDetail | null>(null);
-
   // --- Data Fetching Function ---
   const fetchRegions = async () => {
-    if (!token) return;
-
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
 
     const filters: RegionFilterBody = {
@@ -50,38 +57,61 @@ const RegionManagement: React.FC = () => {
     }
   };
 
-  // --- Handlers Aksi ---
+  // --- Handlers Aksi CRUD ---
 
-  const handleDeleteClick = (region: RegionDetail) => {
-    setSelectedRegionToDelete(region);
-    setIsDeleteConfirmOpen(true);
+  const handleAddClick = () => {
+    setSelectedRegion(null); // Mode Add
+    setIsModalOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!token || !selectedRegionToDelete) return;
+  const handleEditClick = (region: RegionDetail) => {
+    setSelectedRegion(region); // Mode Edit
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteClick = (region: RegionDetail) => {
+    setSelectedRegion(region);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async (id: string) => {
+    if (!token) {
+      toast.error("Token tidak ditemukan. Silakan login ulang.");
+      return;
+    }
 
     setIsLoading(true);
     try {
-      await deleteRegion(selectedRegionToDelete.id, token);
+      await deleteRegion(id, token);
       toast.success("Region berhasil dihapus.");
       fetchRegions(); // Refresh data
-      setIsDeleteConfirmOpen(false);
+      setIsDeleteModalOpen(false);
+      setSelectedRegion(null);
     } catch (error: any) {
-      toast.error("Gagal menghapus region.");
+      const errorMessage = error.message || "Gagal menghapus region. Region mungkin masih terikat dengan Donasi/Donatur.";
+      toast.error(errorMessage);
       console.error("Delete Region Error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleSuccess = () => {
+    fetchRegions(); // Refresh data setelah Add/Edit
+    setIsModalOpen(false);
+    setSelectedRegion(null);
+  };
+
   // --- Effects ---
   // Trigger fetch saat filter alamat berubah atau saat token tersedia pertama kali
   useEffect(() => {
-    fetchRegions();
-  }, [token, addressFilters]);
+    if (token) {
+      fetchRegions();
+    }
+  }, [token, addressFilters.subdistrict, addressFilters.village]);
 
   // --- UI Logic ---
-  const isFiltered = addressFilters.subdistrict;
+  const isFiltered = addressFilters.subdistrict || addressFilters.village;
 
   const clearFilters = () => {
     // Saat membersihkan filter, atur kembali ke state awal kosong
@@ -93,39 +123,14 @@ const RegionManagement: React.FC = () => {
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
   };
 
-  // Komponen Modal Konfirmasi Hapus (Ditempatkan di sini untuk kemudahan)
-  const DeleteConfirmationModal: React.FC<{ isOpen: boolean; onClose: () => void; region: RegionDetail; onConfirm: () => void }> = ({ isOpen, onClose, region, onConfirm }) => {
-    if (!isOpen) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[1100]">
-        <div className="bg-white p-6 rounded-xl w-full max-w-sm shadow-2xl">
-          <h3 className="text-xl font-bold mb-4 text-red-600">Konfirmasi Hapus</h3>
-          <p className="mb-4">
-            Apakah Anda yakin ingin menghapus region <b>RW {region.rw}</b> di <b>{region.desa_kelurahan}</b> yang dikelola oleh <b>{region.user_name}</b>?
-          </p>
-          <div className="flex justify-end space-x-3">
-            <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100">
-              Batal
-            </button>
-            <button type="button" onClick={onConfirm} className="py-2 px-4 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 flex items-center" disabled={isLoading}>
-              {isLoading ? <FaSpinner className="animate-spin mr-2" /> : <Trash2 size={16} className="mr-1" />}
-              Hapus Permanen
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <DashboardLayout activeLink="/dashboard/region" pageTitle="Manajemen Region">
+    <DashboardLayout activeLink="/dashboard/region-management" pageTitle="Manajemen Region">
       <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
-        {/* Modal Tambah Region */}
-        <AddRegionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={fetchRegions} />
+        {/* Modal Add/Edit Region */}
+        <AddEditRegionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} initialData={selectedRegion} />
 
         {/* Modal Konfirmasi Hapus */}
-        {selectedRegionToDelete && <DeleteConfirmationModal isOpen={isDeleteConfirmOpen} onClose={() => setIsDeleteConfirmOpen(false)} region={selectedRegionToDelete} onConfirm={handleConfirmDelete} />}
+        {selectedRegion && <DeleteRegionModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} region={selectedRegion} onConfirmDelete={handleConfirmDelete} />}
 
         {/* Filter dan Aksi */}
         <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg">
@@ -133,12 +138,7 @@ const RegionManagement: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
               <FaFilter className="mr-2 text-primary" /> Filter Region
             </h3>
-            <motion.button
-              onClick={() => setIsModalOpen(true)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors"
-            >
+            <motion.button onClick={handleAddClick} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors">
               <FaPlus className="mr-2" /> Tambah Region
             </motion.button>
           </div>
@@ -175,7 +175,7 @@ const RegionManagement: React.FC = () => {
                     {/* Urutan Kolom Sesuai Permintaan */}
                     <th className="py-3 px-4 text-left">No</th>
                     <th className="py-3 px-4 text-left">Penanggung Jawab</th>
-                    <th className="py-3 px-4 text-left">RW</th>
+                    {/* Kolom RW Dihapus */}
                     <th className="py-3 px-4 text-left">Desa/Kelurahan</th>
                     <th className="py-3 px-4 text-left">Kecamatan</th>
                     <th className="py-3 px-4 text-left">Kabupaten/Kota</th>
@@ -185,42 +185,31 @@ const RegionManagement: React.FC = () => {
                 </thead>
                 <tbody>
                   {regions.length > 0 ? (
-                    regions.map(
-                      (
-                        r,
-                        index // BARU: Tambahkan index untuk kolom No
-                      ) => (
-                        <tr key={r.id} className="text-sm text-gray-700 border-b hover:bg-green-50/50 transition-colors">
-                          <td className="py-3 px-4">{index + 1}</td> {/* Kolom No urut */}
-                          <td className="py-3 px-4">
-                            <p className="font-semibold text-gray-900">{r.user_name}</p>
-                            <p className="text-xs text-gray-500">ID: {r.user_id.substring(0, 8)}...</p>
-                          </td>
-                          <td className="py-3 px-4 font-semibold">{r.rw}</td>
-                          <td className="py-3 px-4">{r.desa_kelurahan}</td>
-                          <td className="py-3 px-4">{r.kecamatan}</td>
-                          <td className="py-3 px-4">{r.kabupaten_kota}</td>
-                          <td className="py-3 px-4">{r.provinsi}</td>
-                          <td className="py-3 px-4 text-center">
-                            <div className="flex items-center justify-center space-x-2">
-                              {/* Tombol Edit jika endpoint sudah ada */}
-                              <button
-                                // onClick={() => handleEditClick(r)}
-                                className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors"
-                                title="Edit Region"
-                                disabled // Sementara dinonaktifkan
-                              >
-                                <Edit size={18} />
-                              </button>
-                              {/* Tombol Delete */}
-                              <button onClick={() => handleDeleteClick(r)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors" title="Hapus Region">
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    )
+                    regions.map((r, index) => (
+                      <tr key={r.id} className="text-sm text-gray-700 border-b hover:bg-green-50/50 transition-colors">
+                        <td className="py-3 px-4">{index + 1}</td>
+                        <td className="py-3 px-4">
+                          <p className="font-semibold text-gray-900">{r.user_name}</p>
+                          <p className="text-xs text-gray-500">ID: {r.user_id.substring(0, 8)}...</p>
+                        </td>
+                        <td className="py-3 px-4">{r.desa_kelurahan}</td>
+                        <td className="py-3 px-4">{r.kecamatan}</td>
+                        <td className="py-3 px-4">{r.kabupaten_kota}</td>
+                        <td className="py-3 px-4">{r.provinsi}</td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center space-x-2">
+                            {/* Tombol Edit */}
+                            <button onClick={() => handleEditClick(r)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors" title="Edit Penanggung Jawab">
+                              <Edit size={18} />
+                            </button>
+                            {/* Tombol Delete */}
+                            <button onClick={() => handleDeleteClick(r)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors" title="Hapus Region">
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
                   ) : (
                     <tr>
                       <td colSpan={7} className="py-8 text-center text-gray-500 italic">

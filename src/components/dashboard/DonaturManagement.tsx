@@ -1,21 +1,27 @@
-import React, { useState, useEffect } from "react";
+// inuk-frontend/src/components/dashboard/DonaturManagement.tsx
+
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaTimes, FaPlus, FaUsers, FaMapMarkerAlt, FaSpinner, FaHandHoldingHeart } from "react-icons/fa";
+import { FaSearch, FaTimes, FaPlus, FaUsers, FaMapMarkerAlt, FaSpinner, FaHandHoldingHeart, FaInfoCircle } from "react-icons/fa";
 import { Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import DashboardLayout from "./DashboardLayout";
 import AddEditDonaturModal from "./ui/AddEditDonaturModal";
 import DeleteDonaturConfirmationModal from "./ui/DeleteDonaturConfirmationModal";
-import { type Donatur, getDonaturList } from "../../services/DonaturService";
+import { type Donatur, getDonaturList, deleteDonatur, type DonaturAPI } from "../../services/DonaturService";
+import { useAuth } from "../../context/AuthContext";
+import { getRegions } from "../../services/RegionService";
 
-// --- DUMMY CONFIG ---
-// Fixed Region Data (Simulasi dari data user yang login)
-const USER_REGION = {
-  kecamatan: "Kaliwungu",
-  desa: "Bakalankrapyak",
-  rw: "001",
+// --- Data Region Pengguna (Placeholder) ---
+// RW DIHAPUS dari placeholder, karena diambil dari input Donatur
+const INITIAL_USER_REGION = {
+  kecamatan: "Memuat...",
+  desa: "Memuat...",
 };
+
+// Key untuk cache LocalStorage
+const REGION_CACHE_KEY = "user_region_context_cache"; // Key diubah untuk menghindari konflik
 
 // Varian Framer Motion untuk item
 const itemVariants = {
@@ -25,25 +31,106 @@ const itemVariants = {
 
 // Component Utama Halaman
 const DonaturManagement: React.FC = () => {
-  // State Donatur
-  const [donaturList, setDonaturList] = useState<Donatur[]>([]);
+  const { token } = useAuth();
+
+  // State Donatur (dari API)
+  const [donaturListAPI, setDonaturListAPI] = useState<DonaturAPI[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // State Region Petugas (Hanya KEC/DES untuk konteks)
+  const [userRegionDisplay, setUserRegionDisplay] = useState(INITIAL_USER_REGION);
 
   // State Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedDonatur, setSelectedDonatur] = useState<Donatur | null>(null);
 
-  // --- Data Fetching Function (Simulasi) ---
+  // State untuk melacak loading region secara terpisah
+  const [isRegionLoading, setIsRegionLoading] = useState(true);
+
+  // --- Pemetaan Data API ke Tipe Frontend (Donatur) ---
+  const mappedDonaturList: Donatur[] = donaturListAPI.map((d) => ({
+    id: d.id,
+    noKaleng: d.kaleng,
+    namaDonatur: d.name,
+    rw: d.rw.toString().padStart(3, "0"), // RW tetap diambil dari data Donatur (d.rw)
+    rt: d.rt.toString().padStart(3, "0"),
+    kecamatan: userRegionDisplay.kecamatan,
+    desa: userRegionDisplay.desa,
+  }));
+
+  // 1. Fetch Region User (tanpa mengambil RW)
+  const fetchUserRegion = useCallback(async () => {
+    if (!token) return;
+
+    let useCache = false;
+    const cachedRegion = localStorage.getItem(REGION_CACHE_KEY);
+
+    // 1. Cek cache lokal
+    if (cachedRegion) {
+      useCache = true;
+      try {
+        const region = JSON.parse(cachedRegion);
+        setUserRegionDisplay({
+          kecamatan: region.kecamatan,
+          desa: region.desa_kelurahan,
+        });
+        setIsRegionLoading(false);
+        // fetchDonatur() akan dipanggil oleh useEffect setelah isRegionLoading=false
+      } catch (e) {
+        localStorage.removeItem(REGION_CACHE_KEY);
+      }
+    }
+
+    if (!useCache) {
+      setIsRegionLoading(true);
+    }
+
+    // 2. Fetch dari API
+    try {
+      const regions = await getRegions({});
+
+      const kudusRegion = regions.find((r) => r.kabupaten_kota === "Kudus");
+
+      if (kudusRegion) {
+        const newRegionDisplay = {
+          kecamatan: kudusRegion.kecamatan,
+          desa: kudusRegion.desa_kelurahan,
+        };
+        setUserRegionDisplay(newRegionDisplay);
+        // Simpan ke cache lokal (hanya kec/desa)
+        localStorage.setItem(
+          REGION_CACHE_KEY,
+          JSON.stringify({
+            kecamatan: kudusRegion.kecamatan,
+            desa_kelurahan: kudusRegion.desa_kelurahan,
+          })
+        );
+      } else if (!useCache) {
+        toast.error("Profil Region Petugas tidak ditemukan di Kudus.");
+        setUserRegionDisplay({ kecamatan: "N/A", desa: "N/A" });
+      }
+    } catch (error) {
+      if (!useCache) {
+        toast.error("Gagal memuat data region petugas. Coba login ulang.");
+        setUserRegionDisplay({ kecamatan: "Gagal", desa: "Gagal" });
+      }
+    } finally {
+      setIsRegionLoading(false);
+    }
+  }, [token]);
+
+  // 2. Fetch Donatur List (Hanya berjalan setelah region dimuat)
   const fetchDonatur = async () => {
+    if (!token) return;
+
     setIsLoading(true);
     try {
-      // Panggil dummy service dengan fixed region user
-      const data = await getDonaturList(searchTerm, USER_REGION.kecamatan, USER_REGION.desa);
-      setDonaturList(data);
+      const data = await getDonaturList(token, searchTerm);
+      setDonaturListAPI(data);
     } catch (error: any) {
-      toast.error("Gagal memuat data donatur.");
+      toast.error(error.message || "Gagal memuat data donatur.");
       console.error("Fetch Donatur Error:", error);
     } finally {
       setIsLoading(false);
@@ -53,6 +140,11 @@ const DonaturManagement: React.FC = () => {
   // --- Handlers Aksi ---
 
   const handleAddClick = () => {
+    // Memastikan region sudah dimuat dan valid sebelum membuka modal
+    if (isRegionLoading || userRegionDisplay.desa === INITIAL_USER_REGION.desa || userRegionDisplay.desa === "N/A") {
+      toast.error("Data Region Petugas (Konteks) belum dimuat. Mohon tunggu atau refresh halaman.");
+      return;
+    }
     setSelectedDonatur(null);
     setIsModalOpen(true);
   };
@@ -68,33 +160,80 @@ const DonaturManagement: React.FC = () => {
   };
 
   const handleSuccess = () => {
-    fetchDonatur(); // Refresh data setelah Add/Edit/Delete
+    fetchDonatur();
     setIsDeleteModalOpen(false);
     setIsModalOpen(false);
   };
 
-  // --- Effect ---
-  // Trigger fetch saat search term berubah
+  // Menghapus Donatur (Real API Call)
+  const handleConfirmDelete = async (id: string) => {
+    if (!token) return;
+    setIsLoading(true);
+    try {
+      await deleteDonatur(token, id);
+      toast.success("Data Donatur berhasil dihapus!");
+      handleSuccess();
+    } catch (error: any) {
+      toast.error(error.message || "Gagal menghapus Donatur.");
+      console.error("Delete Error:", error.message || error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- Effects ---
+  // 1. Fetch region saat mount
   useEffect(() => {
-    fetchDonatur();
-  }, [searchTerm]);
+    if (token) {
+      fetchUserRegion();
+    }
+  }, [token, fetchUserRegion]);
+
+  // 2. Trigger fetch donatur saat search term berubah atau region selesai dimuat
+  useEffect(() => {
+    // Hanya fetch donatur jika region sudah selesai dimuat (atau ada di cache)
+    if (token && !isRegionLoading) {
+      fetchDonatur();
+    }
+  }, [searchTerm, token, isRegionLoading]);
 
   // --- UI Component (Daftar Donatur) ---
   const DonaturContent = (
     <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }}>
       {/* Modal Add/Edit */}
-      <AddEditDonaturModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} initialData={selectedDonatur} region={USER_REGION} />
+      <AddEditDonaturModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handleSuccess}
+        initialData={selectedDonatur}
+        // Mengirim hanya KEC dan DES
+        region={userRegionDisplay}
+      />
 
       {/* Modal Delete */}
-      {selectedDonatur && <DeleteDonaturConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} donatur={selectedDonatur} onSuccess={handleSuccess} />}
-
+      {selectedDonatur && (
+        <DeleteDonaturConfirmationModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          donatur={selectedDonatur}
+          // onSuccess sekarang hanya menerima callback tanpa argumen.
+          // Kita memanggil handleConfirmDelete(id) di sini.
+          onSuccess={() => handleConfirmDelete(selectedDonatur.id)}
+        />
+      )}
       {/* Filter & Aksi */}
       <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg mb-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-            <FaHandHoldingHeart className="mr-2 text-primary" /> Daftar Donatur Kaleng (Region: {USER_REGION.desa} / RW {USER_REGION.rw})
+            <FaHandHoldingHeart className="mr-2 text-primary" /> Daftar Donatur Kaleng (Region Konteks: {userRegionDisplay.desa})
           </h3>
-          <motion.button onClick={handleAddClick} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors">
+          <motion.button
+            onClick={handleAddClick}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors"
+            disabled={isRegionLoading || userRegionDisplay.desa === "N/A" || isLoading}
+          >
             <FaPlus className="mr-2" /> Tambah Donatur
           </motion.button>
         </div>
@@ -112,7 +251,7 @@ const DonaturManagement: React.FC = () => {
           </div>
           {/* Info Region Statis */}
           <div className="md:col-span-2 text-sm text-gray-600 flex items-center">
-            Data ditampilkan untuk {USER_REGION.kecamatan} / {USER_REGION.desa} / RW {USER_REGION.rw}
+            <FaInfoCircle className="mr-2 text-blue-500" /> Konteks Petugas: {userRegionDisplay.kecamatan} / {userRegionDisplay.desa}
           </div>
         </div>
         {searchTerm && (
@@ -125,9 +264,9 @@ const DonaturManagement: React.FC = () => {
       {/* Tabel Donatur */}
       <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg overflow-x-auto">
         <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-          <FaUsers className="mr-2 text-primary" /> Daftar Donatur Kaleng ({donaturList.length} Donatur)
+          <FaUsers className="mr-2 text-primary" /> Daftar Donatur Kaleng ({mappedDonaturList.length} Donatur)
         </h3>
-        {isLoading ? (
+        {isLoading || isRegionLoading ? (
           <div className="text-center py-10 text-gray-500 flex items-center justify-center">
             <FaSpinner className="animate-spin mr-3" /> Memuat data donatur...
           </div>
@@ -145,8 +284,8 @@ const DonaturManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {donaturList.length > 0 ? (
-                donaturList.map((d) => (
+              {mappedDonaturList.length > 0 ? (
+                mappedDonaturList.map((d) => (
                   <tr key={d.id} className="text-sm text-gray-700 border-b hover:bg-green-50/50 transition-colors">
                     <td className="py-3 px-4 font-bold text-gray-900">{d.noKaleng}</td>
                     <td className="py-3 px-4">{d.namaDonatur}</td>
@@ -182,7 +321,6 @@ const DonaturManagement: React.FC = () => {
   );
 
   return (
-    // Mengubah judul halaman
     <DashboardLayout activeLink="/dashboard/donatur-management" pageTitle="Manajemen Donatur Kaleng">
       {DonaturContent}
     </DashboardLayout>

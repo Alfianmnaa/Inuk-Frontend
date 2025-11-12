@@ -48,6 +48,7 @@ export interface DonationsFilter extends RegionFilterBody {
 
 // Interface Request Tambah Donasi
 export interface CreateDonationRequest {
+  donor_id: string;
   total: number;
   date_time: string; // RFC3339 (misal: 2025-10-15T12:00:00Z)
   method: string;

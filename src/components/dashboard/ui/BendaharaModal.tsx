@@ -1,23 +1,23 @@
+// inuk-frontend/src/components/dashboard/ui/BendaharaModal.tsx
+
 import React, { useState, useEffect } from "react";
 import { FaUser, FaWhatsapp, FaCheck, FaSpinner, FaTrash, FaPen } from "react-icons/fa";
 import { X } from "lucide-react";
 import { toast } from "react-hot-toast";
-// import { useAuth } from "../../../context/AuthContext";
+import { useAuth } from "../../../context/AuthContext";
+import { updateTreasurer } from "../../../services/UserService";
 
-interface BendaharaData {
-  name: string;
-  phone: string;
-}
+// Menghapus interface BendaharaData karena sudah tidak dipakai (Fix error 6196)
 
 interface BendaharaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: (data?: BendaharaData) => void;
+  onSuccess: () => void;
   onDelete: () => void;
 }
 
 const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSuccess, onDelete }) => {
-  // const { userName } = useAuth();
+  const { token } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,6 +26,7 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
 
   useEffect(() => {
     if (isOpen) {
+      // Mengambil data dari local storage (sebagai cache lokal)
       const storedName = localStorage.getItem("bendahara_name") || "";
       const storedPhone = localStorage.getItem("bendahara_phone") || "";
       setName(storedName);
@@ -40,8 +41,13 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
 
   if (!isOpen) return null;
 
-  const handleSave = (e: React.FormEvent) => {
+  // Fungsi handleSave sekarang adalah async dan menerima event (Fix error 2554)
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!token) {
+      toast.error("Anda tidak terautentikasi. Login sebagai User diperlukan.");
+      return;
+    }
     setIsSubmitting(true);
 
     if (!name || !phone) {
@@ -51,7 +57,19 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
     }
 
     const cleanedPhone = phone.trim().replace(/ /g, "").replace(/-/g, "");
-    const finalPhone = cleanedPhone.startsWith("+") ? cleanedPhone.substring(1) : cleanedPhone.startsWith("0") ? "62" + cleanedPhone.substring(1) : cleanedPhone;
+
+    // Memformat nomor telepon ke format E.164 (+62xxxxxxxx) untuk backend
+    let finalPhone = cleanedPhone;
+
+    // Jika dimulai dengan 0, ganti dengan +62
+    if (cleanedPhone.startsWith("0")) {
+      finalPhone = "+62" + cleanedPhone.substring(1);
+    }
+    // Jika dimulai dengan 62 (tanpa +), tambahkan +
+    else if (cleanedPhone.startsWith("62")) {
+      finalPhone = "+" + cleanedPhone;
+    }
+    // Jika sudah +62 atau +8, biarkan (asumsi sudah benar)
 
     if (finalPhone.length < 9) {
       toast.error("Nomor WhatsApp terlalu pendek.");
@@ -60,15 +78,23 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
     }
 
     try {
+      // 1. Panggil API untuk menyimpan ke Backend
+      await updateTreasurer(token, {
+        treasurer_name: name,
+        treasurer_phone: finalPhone,
+      });
+
+      // 2. Jika API sukses, simpan data yang sudah divalidasi dan diformat ke Local Storage (sebagai cache lokal)
       localStorage.setItem("bendahara_name", name);
       localStorage.setItem("bendahara_phone", finalPhone);
 
-      toast.success("Data Bendahara berhasil disimpan!");
+      toast.success("Data Bendahara berhasil disimpan & disinkronkan ke server!");
       setIsDataExist(true);
       setIsEditing(false);
-      onSuccess({ name, phone: finalPhone });
-    } catch (error) {
-      toast.error("Gagal menyimpan data Bendahara.");
+      onSuccess(); // Memicu refresh di TransaksiDonasi.tsx
+    } catch (error: any) {
+      const errMsg = error.message || "Gagal menyimpan data Bendahara dari API.";
+      toast.error(errMsg);
       console.error("Save Bendahara Error:", error);
     } finally {
       setIsSubmitting(false);
@@ -76,32 +102,37 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
   };
 
   const handleDelete = () => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus data Bendahara?")) {
+    if (window.confirm("Apakah Anda yakin ingin menghapus data Bendahara? Catatan: Aksi ini hanya menghapus data di perangkat ini.")) {
+      // NOTE: Tidak ada endpoint DELETE untuk treasurer, jadi hanya hapus lokal.
+
       localStorage.removeItem("bendahara_name");
       localStorage.removeItem("bendahara_phone");
 
-      toast.success("Data Bendahara berhasil dihapus!");
+      toast.success("Data Bendahara berhasil dihapus dari cache lokal!");
       setIsDataExist(false);
       setIsEditing(true);
       setName("");
       setPhone("");
-      onDelete();
+      onDelete(); // Memicu refresh di TransaksiDonasi.tsx
     }
   };
 
   const handleSendWA = () => {
-    if (!name || !phone) {
+    const storedName = localStorage.getItem("bendahara_name") || "";
+    const storedPhone = localStorage.getItem("bendahara_phone") || "";
+
+    if (!storedName || !storedPhone) {
       toast.error("Data Bendahara tidak lengkap.");
       return;
     }
 
-    // const encodedUserName = encodeURIComponent(userName || "Inputer");
+    // Hapus tanda '+' di awal jika ada, karena format wa.me menggunakan kode negara tanpa + (ex: 628xxx)
+    const cleanPhone = storedPhone.replace("+", "");
+
     // Ganti dengan domain yang sebenarnya jika sudah live.
     const websiteLink = encodeURIComponent("https://lazisnukudus.id");
     const textMessage = encodeURIComponent(`Data donasi telah diperbarui oleh inputer. Silakan cek di dashboard: ${websiteLink}`);
 
-    // Hapus tanda '+' atau 0 di awal jika ada, karena format wa.me menggunakan kode negara tanpa +
-    const cleanPhone = phone.startsWith("+") ? phone.substring(1) : phone.startsWith("0") ? "62" + phone.substring(1) : phone;
     const waLink = `https://wa.me/${cleanPhone}?text=${textMessage}`;
 
     window.open(waLink, "_blank");
@@ -137,13 +168,13 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
 
           {/* Input Nomor WA */}
           <div className="mb-6 relative">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nomor WhatsApp (628xxx)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nomor WhatsApp (+628xxx atau 08xxx)</label>
             <FaWhatsapp className="absolute left-3 top-1/2 transform -translate-y-1/2 mt-3 text-gray-400" />
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="Contoh: 628123456789"
+              placeholder="Contoh: +628123456789"
               className="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 focus:ring-primary focus:border-primary"
               required
               disabled={isSubmitting || !isEditing}
@@ -159,7 +190,7 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
                 className="py-2 px-4 bg-primary text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center disabled:opacity-50"
               >
                 {isSubmitting ? <FaSpinner className="animate-spin mr-2" /> : <FaCheck className="mr-2" />}
-                {isDataExist ? "Update Data" : "Simpan Data"}
+                {isDataExist ? "Update Data (ke Server)" : "Simpan Data (ke Server)"}
               </button>
             )}
 

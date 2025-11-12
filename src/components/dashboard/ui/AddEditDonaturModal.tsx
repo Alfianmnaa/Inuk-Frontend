@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { FaSave, FaSpinner } from "react-icons/fa";
 import { X } from "lucide-react";
-import { createDonatur, updateDonatur, type Donatur } from "../../../services/DonaturService";
+import { createDonatur, updateDonatur, type Donatur, type CreateDonaturPayload, type UpdateDonaturPayload } from "../../../services/DonaturService";
+import { useAuth } from "../../../context/AuthContext";
 
 interface AddEditDonaturModalProps {
   isOpen: boolean;
@@ -12,15 +13,17 @@ interface AddEditDonaturModalProps {
   onSuccess: () => void;
   // Jika ada donatur, berarti mode EDIT
   initialData?: Donatur | null;
-  // Data Region yang disuntikkan dari halaman utama
-  region: { kecamatan: string; desa: string; rw: string };
+  // Data Region yang disuntikkan dari halaman utama (Hanya untuk display KEC/DES)
+  region: { kecamatan: string; desa: string };
 }
 
 const AddEditDonaturModal: React.FC<AddEditDonaturModalProps> = ({ isOpen, onClose, onSuccess, initialData, region }) => {
+  const { token } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [noKaleng, setNoKaleng] = useState("");
   const [namaDonatur, setNamaDonatur] = useState("");
-  const [rt, setRt] = useState("");
+  const [rw, setRw] = useState<number | "">(""); // BARU: State untuk input RW
+  const [rt, setRt] = useState<number | "">("");
 
   const isEditMode = !!initialData;
 
@@ -29,11 +32,15 @@ const AddEditDonaturModal: React.FC<AddEditDonaturModalProps> = ({ isOpen, onClo
       if (initialData) {
         setNoKaleng(initialData.noKaleng);
         setNamaDonatur(initialData.namaDonatur);
-        setRt(initialData.rt);
+        // Inisialisasi RW dari data donatur
+        setRw(parseInt(initialData.rw) || "");
+        // Inisialisasi RT dari data donatur
+        setRt(parseInt(initialData.rt) || "");
       } else {
         // Reset state untuk mode tambah
         setNoKaleng("");
         setNamaDonatur("");
+        setRw(""); // Reset RW
         setRt("");
       }
     }
@@ -44,30 +51,50 @@ const AddEditDonaturModal: React.FC<AddEditDonaturModalProps> = ({ isOpen, onClo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!noKaleng || !namaDonatur || !rt) {
-      toast.error("Semua field (No Kaleng, Donatur, RT) wajib diisi.");
+    if (!token) {
+      toast.error("Autentikasi diperlukan. Silakan login kembali.");
+      return;
+    }
+
+    const rwNum = parseInt(String(rw)) || 0; // Ambil nilai RW dari input
+    const rtNum = parseInt(String(rt)) || 0;
+
+    // VALIDASI DIPERBARUI: Cek semua input dan pastikan region konteks dimuat.
+    if (
+      !noKaleng ||
+      !namaDonatur ||
+      rwNum <= 0 || // RW harus > 0
+      rtNum <= 0 || // RT harus > 0
+      region.desa === "Memuat..." // Cek string placeholder region konteks
+    ) {
+      // Ubah pesan error agar mencakup RW
+      toast.error("Semua field (No Kaleng, Nama Donatur, RW, RT) dan data Region Petugas wajib diisi dengan benar.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const basePayload = {
-        noKaleng,
-        namaDonatur,
-        rt,
+      const payload: CreateDonaturPayload = {
+        kaleng: noKaleng,
+        name: namaDonatur,
+        rw: rwNum, // Kirim RW dari input
+        rt: rtNum, // Kirim RT dari input
       };
 
       if (isEditMode && initialData) {
-        // FIX: Menambahkan 'id' ke payload untuk memenuhi persyaratan tipe Omit<Donatur, ...>
-        await updateDonatur(initialData.id, {
-          id: initialData.id,
-          ...basePayload,
-        });
+        // Mode Edit
+        const updatePayload: UpdateDonaturPayload = {
+          kaleng: payload.kaleng,
+          name: payload.name,
+          rw: payload.rw,
+          rt: payload.rt,
+        };
+        await updateDonatur(token, initialData.id, updatePayload);
         toast.success("Data Donatur berhasil diperbarui!");
       } else {
-        // Create
-        await createDonatur(basePayload, region.kecamatan, region.desa, region.rw);
+        // Mode Create
+        await createDonatur(token, payload);
         toast.success("Donatur baru berhasil ditambahkan!");
       }
 
@@ -93,13 +120,13 @@ const AddEditDonaturModal: React.FC<AddEditDonaturModalProps> = ({ isOpen, onClo
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Info Region (Read-only) */}
+          {/* Info Region (Konteks Petugas) */}
           <div className="mb-4 bg-gray-50 p-3 rounded text-sm border border-gray-200">
-            <p className="font-semibold text-gray-700">Region Donatur</p>
-            <p>
-              Kecamatan/Desa: {region.kecamatan} / {region.desa}
+            <p className="font-semibold text-gray-700">Region Petugas (Konteks)</p>
+            <p className="font-bold">
+              Kec/Desa: {region.kecamatan} / {region.desa}
             </p>
-            <p>RW: {region.rw}</p>
+            <p className="text-xs text-gray-500">*RW dan RT diinput terpisah, sesuai lokasi donatur.</p>
           </div>
 
           {/* Input No Kaleng */}
@@ -130,18 +157,37 @@ const AddEditDonaturModal: React.FC<AddEditDonaturModalProps> = ({ isOpen, onClo
             />
           </div>
 
-          {/* Input RT */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">RT</label>
-            <input
-              type="text"
-              value={rt}
-              onChange={(e) => setRt(e.target.value)}
-              placeholder="Contoh: 005"
-              className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary"
-              required
-              disabled={isSubmitting}
-            />
+          {/* Input RW dan RT (Grid) */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Input RW Donatur (BARU) */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1">RW Donatur</label>
+              <input
+                type="number"
+                value={rw}
+                onChange={(e) => setRw(parseInt(e.target.value) || "")}
+                placeholder="Contoh: 004"
+                className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary"
+                required
+                min="1"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            {/* Input RT Donatur (Lama) */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1">RT Donatur</label>
+              <input
+                type="number"
+                value={rt}
+                onChange={(e) => setRt(parseInt(e.target.value) || "")}
+                placeholder="Contoh: 005"
+                className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary"
+                required
+                min="1"
+                disabled={isSubmitting}
+              />
+            </div>
           </div>
 
           {/* Tombol Submit */}
@@ -151,7 +197,7 @@ const AddEditDonaturModal: React.FC<AddEditDonaturModalProps> = ({ isOpen, onClo
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !noKaleng || !namaDonatur || !rt}
+              disabled={isSubmitting || !noKaleng || !namaDonatur || !rw || !rt}
               className="py-2 px-4 bg-primary text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center disabled:opacity-50"
             >
               {isSubmitting ? <FaSpinner className="animate-spin mr-2" /> : <FaSave className="mr-2" />}

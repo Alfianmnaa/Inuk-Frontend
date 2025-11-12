@@ -8,7 +8,7 @@ import DashboardLayout from "./DashboardLayout";
 import Pagination from "./ui/Pagination";
 import AddressSelector, { type AddressSelection } from "./AddressSelector";
 import AddTransactionModal from "./ui/AddTransactionModal";
-import BendaharaModal from "./ui/BendaharaModal"; // Import BendaharaModal yang diperbarui
+import BendaharaModal from "./ui/BendaharaModal";
 import { getDonations, type TransactionAPI, type DonationsResponse, type DonationsFilter, getDonationMethods, updateDonation, deleteDonation, type UpdateDonationRequest } from "../../services/DonationService";
 import { useAuth } from "../../context/AuthContext";
 import { exportToExcel } from "../../utils/ExportToExcel";
@@ -22,6 +22,20 @@ interface Transaction extends TransactionAPI {
   methodDisplay: string;
 }
 
+// Interface untuk data Bendahara (untuk ditampilkan di component)
+interface BendaharaDisplay {
+  name: string;
+  phone: string;
+}
+
+// Helper function untuk membaca data Bendahara dari Local Storage
+const getBendaharaFromStorage = (): BendaharaDisplay => {
+  // Ambil data yang tersimpan dari modal
+  const name = localStorage.getItem("bendahara_name") || "Belum Ditetapkan";
+  const phone = localStorage.getItem("bendahara_phone") || "N/A";
+  return { name, phone };
+};
+
 // Helper function
 const formatRupiah = (angka: number) => {
   return new Intl.NumberFormat("id-ID", {
@@ -33,8 +47,12 @@ const formatRupiah = (angka: number) => {
 
 // Component Utama Halaman
 const TransaksiDonasi: React.FC = () => {
-  // Hanya ambil token dan userName
+  // Hanya ambil token
   const { token } = useAuth();
+
+  // State Bendahara untuk tampilan (BARU: Menggunakan helper)
+  const [bendaharaDisplay, setBendaharaDisplay] = useState<BendaharaDisplay>(getBendaharaFromStorage());
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMethod, setFilterMethod] = useState("");
 
@@ -48,10 +66,6 @@ const TransaksiDonasi: React.FC = () => {
 
   // State Modal Bendahara
   const [isBendaharaModalOpen, setIsBendaharaModalOpen] = useState(false);
-  // Cek keberadaan data bendahara
-  const checkBendaharaData = () => {
-    return localStorage.getItem("bendahara_phone") && localStorage.getItem("bendahara_name");
-  };
 
   // State Update/Delete
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -67,12 +81,25 @@ const TransaksiDonasi: React.FC = () => {
     direction: "desc",
   });
 
+  // Fungsi untuk me-refresh tampilan data Bendahara (BARU)
+  const refreshBendaharaDisplay = () => {
+    setBendaharaDisplay(getBendaharaFromStorage());
+  };
+
+  // Cek keberadaan data bendahara (Menggunakan nilai dari storage)
+  const checkBendaharaData = () => {
+    const { phone } = getBendaharaFromStorage();
+    // Jika nomor telepon adalah 'N/A' atau terlalu pendek, anggap tidak lengkap
+    return phone !== "N/A" && phone.replace(/[^\d+]/g, "").length > 5;
+  };
+
   // --- Handler Klik Tambah Transaksi ---
   const handleAddTransactionClick = () => {
     if (checkBendaharaData()) {
       setIsModalOpen(true);
     } else {
       // Jika data bendahara tidak ada, munculkan modal Bendahara
+      toast.error("Data Bendahara belum lengkap. Mohon atur data Bendahara terlebih dahulu.");
       setIsBendaharaModalOpen(true);
     }
   };
@@ -82,7 +109,7 @@ const TransaksiDonasi: React.FC = () => {
     return transactionsData.result.reduce((sum, t) => sum + t.total, 0);
   }, [transactionsData.result]);
 
-  // --- Data Fetching Effect (DIKEMBALIKAN KE LOGIKA AWAL) ---
+  // --- Data Fetching Effect (DIKEMBALIKAN KE LOGIKA ASLI) ---
   const fetchTransactions = async (page: number) => {
     if (!token) return;
 
@@ -164,12 +191,14 @@ const TransaksiDonasi: React.FC = () => {
         .then(setMethodsList)
         .catch(() => toast.error("Gagal memuat daftar metode pembayaran."));
     }
+    // Set initial display for Bendahara on mount (BARU)
+    refreshBendaharaDisplay();
   }, [token]);
 
   // Trigger fetch saat filter atau sorting berubah
   useEffect(() => {
     fetchTransactions(1);
-  }, [filterMethod, addressFilters, sortConfig.key, sortConfig.direction]); // Dependensi dikembalikan
+  }, [filterMethod, addressFilters, sortConfig.key, sortConfig.direction, token]);
 
   // Handle Search Bar
   const filteredBySearch = useMemo(() => {
@@ -246,7 +275,12 @@ const TransaksiDonasi: React.FC = () => {
         <AddTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => fetchTransactions(1)} />
 
         {/* Modal Bendahara (untuk Edit/View/Delete/WA) */}
-        <BendaharaModal isOpen={isBendaharaModalOpen} onClose={() => setIsBendaharaModalOpen(false)} onSuccess={() => setIsBendaharaModalOpen(false)} onDelete={() => setIsBendaharaModalOpen(false)} />
+        <BendaharaModal
+          isOpen={isBendaharaModalOpen}
+          onClose={() => setIsBendaharaModalOpen(false)}
+          onSuccess={refreshBendaharaDisplay} // Panggil refresh display setelah sukses
+          onDelete={refreshBendaharaDisplay} // Panggil refresh display setelah delete
+        />
 
         {/* Ringkasan Statistik */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -273,14 +307,23 @@ const TransaksiDonasi: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
               <FaFilter className="mr-2 text-primary" /> Filter Data
             </h3>
-            <div className="flex space-x-2 flex-wrap justify-end">
+            <div className="flex space-x-2 flex-wrap">
+              {/* Tampilkan Data Bendahara yang Sedang Aktif (BARU) */}
+              <div className="bg-yellow-50 p-2 rounded-lg text-xs self-center border border-yellow-200 mr-4 hidden sm:block">
+                <p className="font-semibold text-yellow-800">Bendahara Aktif:</p>
+
+                <p className="text-gray-700">
+                  {bendaharaDisplay.phone} ({bendaharaDisplay.name})
+                </p>
+              </div>
+
               {/* Tombol Konfirmasi Bendahara (membuka modal) */}
               <motion.button
                 onClick={() => setIsBendaharaModalOpen(true)}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors mb-2"
-                title="Atur data Bendahara dan Kirim notifikasi"
+                title={`Atur data Bendahara saat ini: ${bendaharaDisplay.name}`}
               >
                 <FaWhatsapp className="mr-2" /> Konfirmasi Bendahara
               </motion.button>

@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+// inuk-frontend/src/components/dashboard/DashboardLayout.tsx
+
+import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FaBars, FaTimes, FaChartBar, FaReceipt, FaUsers, FaEdit, FaChevronDown, FaHome, FaMapMarkerAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { getRegions } from "../../services/RegionService"; // NEW: Import getRegions
 
 // Data Type Navigasi Dashboard
 interface NavItem {
@@ -10,22 +13,23 @@ interface NavItem {
   icon: React.ElementType;
   link: string;
   isHeader?: boolean;
+  // NEW: Tentukan peran yang diizinkan
+  roles?: ("user" | "admin")[];
 }
 
 const DASHBOARD_NAV: NavItem[] = [
   { name: "DASHBOARD UTAMA", icon: FaHome, link: "/dashboard" },
-  { name: "TRANSPARANSI & ANALISIS", icon: FaChartBar, link: "/dashboard/visualisasi" },
+  { name: "TRANSPARANSI & ANALISIS", icon: FaChartBar, link: "/dashboard/visualisasi", roles: ["user", "admin"] },
   { name: "--- MANAJEMEN DATA ---", icon: FaChevronDown, link: "#", isHeader: true },
-  { name: "Pencatatan Donasi (INFAQ/ZIS)", icon: FaReceipt, link: "/dashboard/transaksi" },
-  // { name: "Penyaluran Dana", icon: FaPaperPlane, link: "/dashboard/penyaluran" },
-  { name: "Manajemen Donatur", icon: FaUsers, link: "/dashboard/donatur-management" },
-  { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management" },
+  { name: "Pencatatan Donasi (INFAQ/ZIS)", icon: FaReceipt, link: "/dashboard/transaksi", roles: ["user", "admin"] },
+  { name: "Manajemen Donatur", icon: FaUsers, link: "/dashboard/donatur-management", roles: ["user"] }, // HANYA UNTUK USER
+  { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management", roles: ["admin"] }, // HANYA UNTUK ADMIN
   { name: "--- PENGELOLAAN KONTEN ---", icon: FaChevronDown, link: "#", isHeader: true },
-  { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita" },
+  { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita" }, // Dibatasi untuk Admin (asumsi)
 ];
 
-const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void; activeLink: string }> = ({ isOpen, toggleSidebar, activeLink }) => {
-  // ... (isi Sidebar tetap sama)
+// Sidebar menerima userRole baru
+const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void; activeLink: string; userRole: "user" | "admin" | null }> = ({ isOpen, toggleSidebar, activeLink, userRole }) => {
   return (
     <motion.div
       initial={false}
@@ -44,28 +48,29 @@ const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void; activeLink
         </button>
       </div>
 
-      {/* Navigasi */}
+      {/* Navigasi - Filter berdasarkan peran */}
       <nav className="flex-grow p-4 overflow-y-auto">
-        {DASHBOARD_NAV.map((item, index) =>
-          item.isHeader ? (
-            <p key={index} className="text-xs font-bold text-gray-500 uppercase mt-4 mb-2 tracking-wider">
-              {item.name.replace("--- ", "").replace(" ---", "")}
-            </p>
-          ) : (
-            <motion.a
-              key={index}
-              href={item.link}
-              className={`flex items-center p-3 rounded-lg text-sm font-medium transition-colors mb-1
+        {DASHBOARD_NAV.filter((item) => !item.roles || (userRole && item.roles.includes(userRole))) // Logika Filter
+          .map((item, index) =>
+            item.isHeader ? (
+              <p key={index} className="text-xs font-bold text-gray-500 uppercase mt-4 mb-2 tracking-wider">
+                {item.name.replace("--- ", "").replace(" ---", "")}
+              </p>
+            ) : (
+              <motion.a
+                key={item.link}
+                href={item.link}
+                className={`flex items-center p-3 rounded-lg text-sm font-medium transition-colors mb-1
                                 ${activeLink === item.link ? "bg-primary text-white shadow-md" : "text-gray-300 hover:bg-gray-800 hover:text-white"}
                             `}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <item.icon className="w-5 h-5 mr-3" />
-              {item.name}
-            </motion.a>
-          )
-        )}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <item.icon className="w-5 h-5 mr-3" />
+                {item.name}
+              </motion.a>
+            )
+          )}
       </nav>
 
       {/* Footer Sidebar */}
@@ -79,41 +84,73 @@ const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void; activeLink
 
 const DashboardLayout: React.FC<{ children: React.ReactNode; activeLink: string; pageTitle: string }> = ({ children, activeLink, pageTitle }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [userRegionVillage, setUserRegionVillage] = useState("Memuat..."); // NEW STATE untuk menyimpan nama desa
 
-  // --- HOOKS BARU ---
-  const { logout } = useAuth(); // Ambil fungsi logout dari AuthContext
+  const { logout, userRole, token } = useAuth(); // Ambil userRole dan token
   const navigate = useNavigate(); // Ambil hook navigasi
-  // --- AKHIR HOOKS BARU ---
+
+  // NEW: Efek untuk mengambil data Region (Desa/Kelurahan)
+  useEffect(() => {
+    if (userRole === "user" && token) {
+      getRegions({})
+        .then((regions) => {
+          // Asumsi user hanya punya 1 region. Ambil yang pertama.
+          const userRegion = regions.find((r) => r.kabupaten_kota === "Kudus");
+          if (userRegion) {
+            setUserRegionVillage(userRegion.desa_kelurahan);
+          } else {
+            setUserRegionVillage("N/A");
+          }
+        })
+        .catch(() => {
+          setUserRegionVillage("Gagal Memuat Region");
+        });
+    } else {
+      setUserRegionVillage(""); // Kosongkan untuk Admin
+    }
+  }, [userRole, token]);
+
+  // NEW: Logic untuk teks status di header
+  const statusText = useMemo(() => {
+    if (!userRole) return "Guest";
+
+    const roleText = userRole.toUpperCase();
+
+    if (userRole === "user") {
+      return `login sebagai ${roleText} | Region: ${userRegionVillage}`;
+    }
+
+    return `login sebagai ${roleText}`;
+  }, [userRole, userRegionVillage]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // --- HANDLER LOGOUT BARU ---
   const handleLogout = () => {
-    logout(); // Hapus token dari state dan LocalStorage
-    navigate("/"); // Arahkan pengguna ke halaman utama (atau '/login')
+    logout();
+    navigate("/");
   };
-  // --- AKHIR HANDLER LOGOUT BARU ---
 
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Overlay untuk Mobile - z-30  */}
       {isSidebarOpen && <div onClick={toggleSidebar} className="fixed inset-0 bg-black/50 z-30 lg:hidden"></div>}
 
-      {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} activeLink={activeLink} />
+      {/* Sidebar - Meneruskan userRole ke Sidebar */}
+      <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} activeLink={activeLink} userRole={userRole} />
 
       {/* Main Content Area - z-10 ( */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">
         {/* Navbar Top */}
         <header className="flex items-center justify-between p-4 bg-white shadow-md z-20">
-          {" "}
-          {/* z-20 untuk header */}
           <div className="flex items-center">
             {/* THamburger button utk mobile */}
             <button onClick={toggleSidebar} className="text-gray-800 mr-4 lg:hidden">
               <FaBars size={24} />
             </button>
             <h2 className="text-2xl font-bold text-gray-800">{pageTitle}</h2>
+
+            {/* NEW: Status Tag */}
+            {userRole && <span className="ml-4 px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 hidden sm:inline-block">{statusText}</span>}
           </div>
           {/* TOMBOL LOGOUT YANG SUDAH TERHUBUNG KE handleLogout */}
           <button onClick={handleLogout} className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-600 transition-colors">
