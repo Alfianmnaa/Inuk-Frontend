@@ -1,22 +1,24 @@
 // inuk-frontend/src/components/dashboard/ui/BendaharaModal.tsx
 
 import React, { useState, useEffect } from "react";
-import { FaUser, FaWhatsapp, FaCheck, FaSpinner, FaTrash, FaPen } from "react-icons/fa";
+// Tambahkan FaFileExcel
+import { FaUser, FaWhatsapp, FaCheck, FaSpinner, FaTrash, FaPen, FaFileExcel } from "react-icons/fa";
 import { X } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
 import { updateTreasurer } from "../../../services/UserService";
-
-// Menghapus interface BendaharaData karena sudah tidak dipakai (Fix error 6196)
 
 interface BendaharaModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   onDelete: () => void;
+  // BARU: Props untuk link download Excel
+  excelLink: string | null;
+  linkExpiry: Date | null;
 }
 
-const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSuccess, onDelete }) => {
+const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSuccess, onDelete, excelLink, linkExpiry }) => {
   const { token } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -117,6 +119,7 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
     }
   };
 
+  // FUNGSI INI DIMODIFIKASI UNTUK MEMASUKKAN LINK EXCEL
   const handleSendWA = () => {
     const storedName = localStorage.getItem("bendahara_name") || "";
     const storedPhone = localStorage.getItem("bendahara_phone") || "";
@@ -129,15 +132,44 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
     // Hapus tanda '+' di awal jika ada, karena format wa.me menggunakan kode negara tanpa + (ex: 628xxx)
     const cleanPhone = storedPhone.replace("+", "");
 
-    // Ganti dengan domain yang sebenarnya jika sudah live.
-    const websiteLink = encodeURIComponent("https://lazisnukudus.id");
-    const textMessage = encodeURIComponent(`Data donasi telah diperbarui oleh inputer. Silakan cek di dashboard: ${websiteLink}`);
+    let textMessage = "";
+
+    if (excelLink && linkExpiry) {
+      const expiryTime = linkExpiry.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+
+      // Pesan dengan link Excel yang tersedia
+      textMessage = encodeURIComponent(
+        `Halo Bpk/Ibu ${storedName},\n\nSaya sudah selesai mencatat donasi. Laporan Excel sementara telah dibuat. Harap segera diunduh sebelum *${expiryTime}* karena link ini hanya berlaku sebentar.\n\n*Link Download Excel:*\n${excelLink}`
+      );
+    } else {
+      // Pesan tanpa link Excel
+      const dashboardLink = encodeURIComponent("https://lazisnukudus.id/dashboard/transaksi"); // Ganti dengan domain yang sesuai jika sudah live.
+      textMessage = encodeURIComponent(`Halo Bpk/Ibu ${storedName},\n\nData donasi telah diperbarui oleh inputer. Silakan login ke dashboard untuk membuat link download Excel atau lihat laporan terbaru: ${dashboardLink}`);
+    }
 
     const waLink = `https://wa.me/${cleanPhone}?text=${textMessage}`;
 
     window.open(waLink, "_blank");
     toast.success("Notifikasi WhatsApp berhasil dibuka!");
     onClose();
+  };
+
+  // LOGIKA BARU: Tampilkan info link di modal
+  const LinkInfo = () => {
+    if (!excelLink || !linkExpiry) return null;
+
+    const expiryTime = linkExpiry.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+
+    return (
+      <div className="mb-4 bg-blue-50 p-3 rounded-lg text-sm border border-blue-200">
+        <p className="font-semibold text-blue-800 flex items-center">
+          <FaFileExcel className="w-4 h-4 mr-2" /> Link Excel Siap Dibagikan
+        </p>
+        <p className="text-gray-700 mt-1">
+          Link ini kadaluarsa pada pukul <b>{expiryTime}</b>. Pesan WhatsApp akan menyertakan link ini.
+        </p>
+      </div>
+    );
   };
 
   return (
@@ -181,6 +213,9 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
             />
           </div>
 
+          {/* Tampilkan Info Link Excel di mode View */}
+          {!isEditing && isDataExist && <LinkInfo />}
+
           <div className="flex flex-col space-y-3">
             {/* Tombol Simpan/Update */}
             {isEditing && (
@@ -197,7 +232,13 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
             {/* Tombol Aksi saat mode View */}
             {!isEditing && isDataExist && (
               <>
-                <button type="button" onClick={handleSendWA} className="py-2 px-4 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors flex items-center justify-center">
+                {/* Tombol Kirim WA akan menggunakan link jika ada */}
+                <button
+                  type="button"
+                  onClick={handleSendWA}
+                  className="py-2 px-4 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors flex items-center justify-center"
+                  title={excelLink ? "Kirim notifikasi beserta link Excel sementara" : "Kirim notifikasi tanpa link Excel"}
+                >
                   <FaWhatsapp className="mr-2" /> Kirim Notifikasi WhatsApp
                 </button>
                 <div className="flex space-x-2">

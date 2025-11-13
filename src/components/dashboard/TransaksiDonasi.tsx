@@ -1,7 +1,9 @@
-import React, { useState, useMemo, useEffect } from "react";
+// inuk-frontend/src/components/dashboard/TransaksiDonasi.tsx
+
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSpinner, FaSortDown as FaSortDesc, FaSortUp as FaSortAsc, FaWhatsapp } from "react-icons/fa";
-import { Edit, Trash2 } from "lucide-react";
+import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSpinner, FaSortDown as FaSortDesc, FaSortUp as FaSortAsc, FaWhatsapp, FaInfoCircle } from "react-icons/fa";
+import { Edit, Trash2, Copy } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import DashboardLayout from "./DashboardLayout";
@@ -11,7 +13,9 @@ import AddTransactionModal from "./ui/AddTransactionModal";
 import BendaharaModal from "./ui/BendaharaModal";
 import { getDonations, type TransactionAPI, type DonationsResponse, type DonationsFilter, getDonationMethods, updateDonation, deleteDonation, type UpdateDonationRequest } from "../../services/DonationService";
 import { useAuth } from "../../context/AuthContext";
-import { exportToExcel } from "../../utils/ExportToExcel";
+import { generateExcelBlob, downloadExcelFromBlob } from "../../utils/ExportToExcel";
+
+import { getRegions, type RegionDetail } from "../../services/RegionService";
 
 import EditDonationModal from "./ui/EditDonationModal";
 import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
@@ -47,88 +51,136 @@ const formatRupiah = (angka: number) => {
 
 // Component Utama Halaman
 const TransaksiDonasi: React.FC = () => {
-  // Hanya ambil token
   const { token, userRole } = useAuth();
+  const isUserRole = userRole === "user";
 
-  // State Bendahara untuk tampilan (BARU: Menggunakan helper)
+  // --- State Link Download ---
+  const [generatedDownloadLink, setGeneratedDownloadLink] = useState<string | null>(null);
+  const [linkExpiryTime, setLinkExpiryTime] = useState<Date | null>(null);
+
+  // --- State untuk Enforced Filtering (Frontend-Only Restriction) ---
+  const [userRegionFilter, setUserRegionFilter] = useState<DonationsFilter>({});
+  const [isRegionEnforcementLoading, setIsRegionEnforcementLoading] = useState(true);
+
   const [bendaharaDisplay, setBendaharaDisplay] = useState<BendaharaDisplay>(getBendaharaFromStorage());
-
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMethod, setFilterMethod] = useState("");
-
-  // State API
   const [methodsList, setMethodsList] = useState<string[]>([]);
   const [transactionsData, setTransactionsData] = useState<DonationsResponse>({ total_page: 1, current_page: 1, has_next_page: false, result: [] });
   const [isLoading, setIsLoading] = useState(false);
-
-  // State Modal Transaksi
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // State Modal Bendahara
   const [isBendaharaModalOpen, setIsBendaharaModalOpen] = useState(false);
-
-  // State Update/Delete
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-
-  // State Filter & Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [addressFilters, setAddressFilters] = useState<AddressSelection>({ province: "", city: "", subdistrict: "", village: "" });
-
   const [sortConfig, setSortConfig] = useState<{ key: keyof TransactionAPI | "total" | null; direction: "asc" | "desc" }>({
     key: "date_time",
     direction: "desc",
   });
 
-  // Fungsi untuk me-refresh tampilan data Bendahara (BARU)
+  // --- Cleanup Effect untuk Object URL ---
+  useEffect(() => {
+    return () => {
+      if (generatedDownloadLink) {
+        URL.revokeObjectURL(generatedDownloadLink);
+      }
+    };
+  }, [generatedDownloadLink, token]);
+
   const refreshBendaharaDisplay = () => {
     setBendaharaDisplay(getBendaharaFromStorage());
   };
 
-  // Cek keberadaan data bendahara (Menggunakan nilai dari storage)
   const checkBendaharaData = () => {
     const { phone } = getBendaharaFromStorage();
-    // Jika nomor telepon adalah 'N/A' atau terlalu pendek, anggap tidak lengkap
     return phone !== "N/A" && phone.replace(/[^\d+]/g, "").length > 5;
   };
 
-  // --- Handler Klik Tambah Transaksi ---
   const handleAddTransactionClick = () => {
     if (checkBendaharaData()) {
       setIsModalOpen(true);
     } else {
-      // Jika data bendahara tidak ada, munculkan modal Bendahara
       toast.error("Data Bendahara belum lengkap. Mohon atur data Bendahara terlebih dahulu.");
       setIsBendaharaModalOpen(true);
     }
   };
 
-  // --- Statistik yang Diperhitungkan ---
   const totalDonationAmount = useMemo(() => {
     return transactionsData.result.reduce((sum, t) => sum + t.total, 0);
   }, [transactionsData.result]);
 
-  // --- Data Fetching Effect (DIKEMBALIKAN KE LOGIKA ASLI) ---
+  // --- FUNGSI: Fetch Region User untuk Enforcement ---
+  const fetchUserRegionForEnforcement = useCallback(async () => {
+    if (userRole !== "user" || !token) {
+      setUserRegionFilter({});
+      setIsRegionEnforcementLoading(false);
+      return;
+    }
+
+    setIsRegionEnforcementLoading(true);
+    try {
+      const allRegions = await getRegions({});
+      const userRegion = allRegions.find((r: RegionDetail) => r.kabupaten_kota === "Kudus");
+
+      if (userRegion) {
+        setUserRegionFilter({
+          province: userRegion.provinsi,
+          city: userRegion.kabupaten_kota,
+          subdistrict: userRegion.kecamatan,
+          village: userRegion.desa_kelurahan,
+        });
+      } else {
+        toast.error("Tidak ada Region yang terikat ke akun Anda. Akses dibatasi.");
+        setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
+      }
+    } catch (error) {
+      toast.error("Gagal memuat konteks Region. Akses dibatasi.");
+      setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
+    } finally {
+      setIsRegionEnforcementLoading(false);
+    }
+  }, [token, userRole]);
+
+  // --- Data Fetching Utama ---
   const fetchTransactions = async (page: number) => {
     if (!token) return;
+
+    if (userRole === "user" && isRegionEnforcementLoading) return;
+    if (userRole === "user" && userRegionFilter.province === "NONE") {
+      setTransactionsData({ total_page: 0, current_page: 1, has_next_page: false, result: [] });
+      return;
+    }
 
     setIsLoading(true);
     setCurrentPage(page);
 
-    // Mempersiapkan parameter filter untuk API (Menggunakan AddressSelector untuk semua)
-    const filters: DonationsFilter = {
-      page: page,
-      method: filterMethod || undefined,
-      province: addressFilters.province || undefined,
-      city: addressFilters.city || undefined,
-      subdistrict: addressFilters.subdistrict || undefined,
-      village: addressFilters.village || undefined,
-      sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
-    };
+    // LOGIKA ENFORCEMENT FILTER BERDASARKAN ROLE
+    let enforcedFilters: DonationsFilter;
+
+    if (userRole === "user") {
+      enforcedFilters = {
+        ...userRegionFilter,
+        page: page,
+        method: filterMethod || undefined,
+        sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
+      };
+    } else {
+      // ADMIN: Gunakan filter dari UI
+      enforcedFilters = {
+        page: page,
+        method: filterMethod || undefined,
+        province: addressFilters.province || undefined,
+        city: addressFilters.city || undefined,
+        subdistrict: addressFilters.subdistrict || undefined,
+        village: addressFilters.village || undefined,
+        sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
+      };
+    }
 
     try {
-      const data = await getDonations(token, filters);
+      const data = await getDonations(token, enforcedFilters);
 
       const formattedResults: Transaction[] = data.result.map((t) => ({
         ...t,
@@ -145,7 +197,7 @@ const TransaksiDonasi: React.FC = () => {
     }
   };
 
-  // --- Handler Update/Delete ---
+  // --- Handler CRUD ---
   const handleOpenEditModal = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
     setIsEditModalOpen(true);
@@ -191,14 +243,20 @@ const TransaksiDonasi: React.FC = () => {
         .then(setMethodsList)
         .catch(() => toast.error("Gagal memuat daftar metode pembayaran."));
     }
-    // Set initial display for Bendahara on mount (BARU)
     refreshBendaharaDisplay();
   }, [token]);
 
-  // Trigger fetch saat filter atau sorting berubah
+  // Effect 1: Ambil region user saat mount/login
   useEffect(() => {
-    fetchTransactions(1);
-  }, [filterMethod, addressFilters, sortConfig.key, sortConfig.direction, token]);
+    fetchUserRegionForEnforcement();
+  }, [fetchUserRegionForEnforcement]);
+
+  // Effect 2: Trigger fetch saat filter, sorting, atau role/region enforcement berubah
+  useEffect(() => {
+    if (userRole === "admin" || !isRegionEnforcementLoading) {
+      fetchTransactions(1);
+    }
+  }, [filterMethod, addressFilters.subdistrict, addressFilters.village, sortConfig.key, sortConfig.direction, token, userRole, isRegionEnforcementLoading]);
 
   // Handle Search Bar
   const filteredBySearch = useMemo(() => {
@@ -228,34 +286,68 @@ const TransaksiDonasi: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  // --- Fungsi Export Excel (Default) ---
-  const handleExportExcel = () => {
+  // --- FUNGSI EXCEL & LINK DOWNLOAD ---
+  const createExportData = () => {
+    return sortedTransactions.map((t) => ({
+      ID_Transaksi: t.id,
+      Tanggal: t.tanggalFormatted,
+      Donatur: t.name,
+      Provinsi: t.provinsi,
+      Kota: t.kabupaten_kota,
+      Kecamatan: t.kecamatan,
+      Desa: t.desa_kelurahan,
+      Total_Donasi: t.total,
+      Metode: t.methodDisplay,
+    }));
+  };
+
+  const handleCreateDownloadLink = () => {
     if (sortedTransactions.length === 0) {
       toast("Tidak ada data untuk diexport.", { icon: "⚠️" });
       return;
     }
 
-    const dataToExport = sortedTransactions.map((t) => ({
-      ID_Transaksi: t.id,
-      Tanggal: t.tanggalFormatted,
-      Donatur: t.name,
-      // Nomor_HP: t.phone,
-      Provinsi: t.provinsi,
-      Kota: t.kabupaten_kota,
-      Kecamatan: t.kecamatan,
-      Desa: t.desa_kelurahan,
-      // RW: t.rw,
-      Total_Donasi: t.total,
-      Metode: t.methodDisplay,
-    }));
+    const dataToExport = createExportData();
+    const excelBlob = generateExcelBlob(dataToExport, "Transaksi");
 
-    const filename = "Laporan_Donasi_INUK";
+    if (excelBlob) {
+      if (generatedDownloadLink) {
+        URL.revokeObjectURL(generatedDownloadLink);
+      }
 
-    exportToExcel(dataToExport, filename, "Transaksi");
-    toast.success("Data berhasil dieksport!");
+      const newUrl = URL.createObjectURL(excelBlob);
+      setGeneratedDownloadLink(newUrl);
+
+      const expiry = new Date(Date.now() + 10 * 60 * 1000);
+      setLinkExpiryTime(expiry);
+
+      toast.success("Link download berhasil dibuat! Salin link di bawah filter data.");
+    } else {
+      toast.error("Gagal membuat file Excel.");
+    }
   };
 
-  // --- UI Logic ---
+  const handleInstantDownload = () => {
+    if (sortedTransactions.length === 0) {
+      toast("Tidak ada data untuk diunduh.", { icon: "⚠️" });
+      return;
+    }
+
+    const dataToExport = createExportData();
+    const filename = "Laporan_Donasi_INUK";
+
+    const excelBlob = generateExcelBlob(dataToExport, "Transaksi");
+    downloadExcelFromBlob(excelBlob, filename);
+  };
+
+  const handleCopyLink = () => {
+    if (generatedDownloadLink) {
+      navigator.clipboard.writeText(generatedDownloadLink);
+      toast.success("Link berhasil disalin ke clipboard!");
+    }
+  };
+
+  // --- UI LOGIC ---
   const isFiltered = addressFilters.subdistrict || filterMethod || searchTerm;
   const clearFilters = () => {
     setSearchTerm("");
@@ -268,34 +360,34 @@ const TransaksiDonasi: React.FC = () => {
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
   };
 
-  const isUserRole = userRole === "user";
+  const finalLoading = isLoading || isRegionEnforcementLoading;
+  const isUserBlocked = userRole === "user" && userRegionFilter.province === "NONE";
+
   return (
     <DashboardLayout activeLink="/dashboard/transaksi" pageTitle="Pencatatan Donasi (INFAQ/ZIS)">
       <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
         {/* Modal Tambah Transaksi */}
         <AddTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => fetchTransactions(1)} />
 
-        {/* Modal Bendahara (untuk Edit/View/Delete/WA) */}
-        <BendaharaModal
-          isOpen={isBendaharaModalOpen}
-          onClose={() => setIsBendaharaModalOpen(false)}
-          onSuccess={refreshBendaharaDisplay} // Panggil refresh display setelah sukses
-          onDelete={refreshBendaharaDisplay} // Panggil refresh display setelah delete
-        />
+        {/* Modal Bendahara (DENGAN PROPS LINK) */}
+        <BendaharaModal isOpen={isBendaharaModalOpen} onClose={() => setIsBendaharaModalOpen(false)} onSuccess={refreshBendaharaDisplay} onDelete={refreshBendaharaDisplay} excelLink={generatedDownloadLink} linkExpiry={linkExpiryTime} />
+
+        {/* Modal Edit */}
+        {selectedTransaction && isEditModalOpen && <EditDonationModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} transaction={selectedTransaction} onUpdate={handleUpdate} />}
+
+        {/* Modal Hapus */}
+        {selectedTransaction && isDeleteModalOpen && <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} transaction={selectedTransaction} onConfirmDelete={handleDelete} />}
 
         {/* Ringkasan Statistik */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* STAT 1: Total Jumlah Donasi */}
           <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-yellow-500">
             <p className="text-sm font-medium text-gray-500">Total Jumlah Donasi (Halaman Ini)</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">{formatRupiah(totalDonationAmount)}</p>
           </div>
-          {/* STAT 2: Jumlah Transaksi Ditemukan */}
           <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-blue-500">
             <p className="text-sm font-medium text-gray-500">Jumlah Transaksi (Ditemukan)</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">{transactionsData.result.length}</p>
           </div>
-          {/* STAT 3: Total Halaman */}
           <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-primary">
             <p className="text-sm font-medium text-gray-500">Total Halaman</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">{transactionsData.total_page}</p>
@@ -309,17 +401,16 @@ const TransaksiDonasi: React.FC = () => {
               <FaFilter className="mr-2 text-primary" /> Filter Data
             </h3>
             {isUserRole && (
-              <div className="flex space-x-2 flex-wrap">
-                {/* Tampilkan Data Bendahara yang Sedang Aktif (BARU) */}
+              <div className="flex space-x-2 flex-wrap justify-end">
+                {/* Tampilkan Data Bendahara yang Sedang Aktif */}
                 <div className="bg-yellow-50 p-2 rounded-lg text-xs self-center border border-yellow-200 mr-4 hidden sm:block">
                   <p className="font-semibold text-yellow-800">Bendahara Aktif:</p>
-
                   <p className="text-gray-700">
                     {bendaharaDisplay.phone} ({bendaharaDisplay.name})
                   </p>
                 </div>
 
-                {/* Tombol Konfirmasi Bendahara (membuka modal) */}
+                {/* Tombol Konfirmasi Bendahara */}
                 <motion.button
                   onClick={() => setIsBendaharaModalOpen(true)}
                   whileHover={{ scale: 1.05 }}
@@ -330,14 +421,24 @@ const TransaksiDonasi: React.FC = () => {
                   <FaWhatsapp className="mr-2" /> Konfirmasi Bendahara
                 </motion.button>
 
-                {/* Tombol Export Excel */}
+                {/* Tombol Buat Link Download */}
                 <motion.button
-                  onClick={handleExportExcel}
+                  onClick={handleCreateDownloadLink}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-blue-600 transition-colors mb-2"
                 >
-                  <FaFileExcel className="mr-2" /> Export Excel
+                  <FaFileExcel className="mr-2" /> Buat Link Download
+                </motion.button>
+
+                {/* Tombol Download Instan */}
+                <motion.button
+                  onClick={handleInstantDownload}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-indigo-600 transition-colors mb-2"
+                >
+                  <FaFileExcel className="mr-2" /> Download Instan
                 </motion.button>
 
                 {/* Tombol Tambah Transaksi */}
@@ -352,6 +453,47 @@ const TransaksiDonasi: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* AREA LINK DOWNLOAD */}
+          {generatedDownloadLink && linkExpiryTime && (
+            <div className="mt-4 bg-yellow-100 p-4 rounded-lg border border-yellow-300 text-sm break-words">
+              <p className="font-bold text-yellow-800 mb-2 flex items-center">
+                <FaFileExcel className="mr-2" /> Link Download Excel Sementara
+              </p>
+
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                {/* Link Teks */}
+                <a
+                  href={generatedDownloadLink}
+                  download={`Laporan_Donasi_INUK_${new Date().toISOString().substring(0, 10)}.xlsx`}
+                  className="text-blue-600 underline hover:text-blue-800 cursor-pointer flex-1 min-w-0 break-all"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Klik untuk mengunduh"
+                >
+                  {generatedDownloadLink}
+                </a>
+
+                {/* Tombol Aksi */}
+                <div className="flex space-x-2">
+                  <button onClick={handleCopyLink} className="flex items-center text-gray-700 bg-gray-200 hover:bg-gray-300 p-1 px-3 rounded-md transition-colors text-xs">
+                    <Copy className="w-3 h-3 mr-1" /> Salin
+                  </button>
+
+                  <button
+                    onClick={() => setIsBendaharaModalOpen(true)} // Buka modal Bendahara untuk kirim WA
+                    className="flex items-center text-white bg-green-500 hover:bg-green-600 p-1 px-3 rounded-md transition-colors text-xs"
+                  >
+                    <FaWhatsapp className="w-3 h-3 mr-1" /> Bagikan
+                  </button>
+                </div>
+              </div>
+
+              <p className="mt-2 text-xs text-yellow-700">
+                *Link ini dibuat di *browser* Anda dan hanya berlaku **sementara** (hingga sekitar {linkExpiryTime.toLocaleTimeString("id-ID")} atau browser ditutup). Harap segera diunduh oleh Bendahara.
+              </p>
+            </div>
+          )}
 
           {/* Input Filter Grid */}
           <div className="space-y-4">
@@ -380,15 +522,21 @@ const TransaksiDonasi: React.FC = () => {
               </select>
             </div>
 
-            {/* Row 2: Address Selector (Selalu muncul) */}
+            {/* Row 2: Address Selector (Akses Kontrol) */}
             <div className="grid grid-cols-1 gap-4">
-              {/* Address Selector (Filter Lokasi) */}
-              <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["subdistrict", "village"]} kecamatanName="Kecamatan Donatur" />
+              {userRole === "admin" ? (
+                <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["subdistrict", "village"]} kecamatanName="Kecamatan Donatur" />
+              ) : (
+                <div className="text-sm text-gray-600 flex items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+                  {finalLoading ? <FaSpinner className="animate-spin mr-2" /> : isUserBlocked ? <FaInfoCircle className="mr-2 text-red-500" /> : <FaInfoCircle className="mr-2 text-blue-500" />}
+                  {finalLoading ? "Memuat Region Konteks..." : isUserBlocked ? "Akses Dibatasi: Akun Anda tidak terikat pada Region manapun." : `Data dibatasi untuk Region: ${userRegionFilter.subdistrict} / ${userRegionFilter.village}`}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Clear Filter Button */}
-          {isFiltered && (
+          {isFiltered && !isUserRole && (
             <motion.button onClick={clearFilters} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="mt-4 text-sm text-red-600 hover:text-red-800 font-medium flex items-center">
               <FaTimes className="mr-1" /> Bersihkan Filter
             </motion.button>
@@ -398,9 +546,14 @@ const TransaksiDonasi: React.FC = () => {
         {/* Tabel Data Transaksi */}
         <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg overflow-x-auto">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Tabel Detail Transaksi</h3>
-          {isLoading ? (
+          {finalLoading ? (
             <div className="text-center py-10 text-gray-500 flex items-center justify-center">
               <FaSpinner className="animate-spin mr-3" /> Memuat data transaksi...
+            </div>
+          ) : isUserBlocked ? (
+            <div className="text-center py-10 text-red-500 bg-red-50 border border-red-200 rounded-lg">
+              <p className="font-semibold">Akses Dibatasi!</p>
+              <p>Akun Anda tidak terikat pada Region (Desa/Kelurahan) manapun. Silakan hubungi Administrator untuk penetapan wilayah kerja.</p>
             </div>
           ) : (
             <>
@@ -425,22 +578,20 @@ const TransaksiDonasi: React.FC = () => {
                         <td className="py-3 px-4">{t.tanggalFormatted}</td>
                         <td className="py-3 px-4">
                           <p className="font-semibold text-gray-900">{t.name}</p>
-                          {/* <p className="text-xs text-gray-500">{t.phone}</p> */}
                         </td>
                         <td className="py-3 px-4">
                           {t.kecamatan} / {t.desa_kelurahan}
                         </td>
-                        {/* <td className="py-3 px-4">{t.rw}</td> */}
                         <td className="py-3 px-4 text-right font-semibold text-primary">{formatRupiah(t.total)}</td>
                         <td className="py-3 px-4">{t.methodDisplay}</td>
                         {/* KOLOM AKSI */}
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center space-x-2">
-                            {/* Tombol Update */}
+                            {/* Tombol Update - menggunakan handleOpenEditModal */}
                             <button onClick={() => handleOpenEditModal(t)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors" title="Edit Transaksi">
                               <Edit size={18} />
                             </button>
-                            {/* Tombol Delete */}
+                            {/* Tombol Delete - menggunakan handleOpenDeleteModal */}
                             <button onClick={() => handleOpenDeleteModal(t)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors" title="Hapus Transaksi">
                               <Trash2 size={18} />
                             </button>
@@ -463,12 +614,6 @@ const TransaksiDonasi: React.FC = () => {
             </>
           )}
         </motion.div>
-
-        {/* Modal Edit */}
-        {selectedTransaction && isEditModalOpen && <EditDonationModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} transaction={selectedTransaction} onUpdate={handleUpdate} />}
-
-        {/* Modal Hapus */}
-        {selectedTransaction && isDeleteModalOpen && <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} transaction={selectedTransaction} onConfirmDelete={handleDelete} />}
       </motion.div>
     </DashboardLayout>
   );
