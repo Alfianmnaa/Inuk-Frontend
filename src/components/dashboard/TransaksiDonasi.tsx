@@ -581,7 +581,7 @@ const TransaksiDonasi: React.FC = () => {
 
                     <TableSortHeader label="Total" sortKey="total" sortConfig={sortConfig} requestSort={requestSort} align="right" />
                     <th className="py-3 px-4 text-left">Metode</th>
-                    <th className="py-3 px-4 text-center">Aksi</th>
+                    {userRole == "user" && <th className="py-3 px-4 text-center">Aksi</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -598,19 +598,20 @@ const TransaksiDonasi: React.FC = () => {
                         </td>
                         <td className="py-3 px-4 text-right font-semibold text-primary">{formatRupiah(t.total)}</td>
                         <td className="py-3 px-4">{t.methodDisplay}</td>
-                        {/* KOLOM AKSI */}
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center space-x-2">
-                            {/* Tombol Update - menggunakan handleOpenEditModal */}
-                            <button onClick={() => handleOpenEditModal(t)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors" title="Edit Transaksi">
-                              <Edit size={18} />
-                            </button>
-                            {/* Tombol Delete - menggunakan handleOpenDeleteModal */}
-                            <button onClick={() => handleOpenDeleteModal(t)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors" title="Hapus Transaksi">
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </td>
+                        {userRole == "user" && (
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center space-x-2">
+                              {/* Tombol Update - menggunakan handleOpenEditModal */}
+                              <button onClick={() => handleOpenEditModal(t)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors" title="Edit Transaksi">
+                                <Edit size={18} />
+                              </button>
+                              {/* Tombol Delete - menggunakan handleOpenDeleteModal */}
+                              <button onClick={() => handleOpenDeleteModal(t)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors" title="Hapus Transaksi">
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))
                   ) : (
