@@ -80,11 +80,10 @@ const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void; activeLink
     </motion.div>
   );
 };
-// ... (sisa DashboardLayout tetap sama)
 
 const DashboardLayout: React.FC<{ children: React.ReactNode; activeLink: string; pageTitle: string }> = ({ children, activeLink, pageTitle }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [userRegionVillage, setUserRegionVillage] = useState("Memuat..."); // NEW STATE untuk menyimpan nama desa
+  const [userRegionVillage, setUserRegionVillage] = useState("Memuat...");
 
   const { logout, userRole, token } = useAuth(); // Ambil userRole dan token
   const navigate = useNavigate(); // Ambil hook navigasi
@@ -98,6 +97,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode; activeLink: string;
           const userRegion = regions.find((r) => r.kabupaten_kota === "Kudus");
           if (userRegion) {
             setUserRegionVillage(userRegion.desa_kelurahan);
+            localStorage.setItem("user_village", userRegion.desa_kelurahan);
           } else {
             setUserRegionVillage("N/A");
           }
@@ -111,17 +111,19 @@ const DashboardLayout: React.FC<{ children: React.ReactNode; activeLink: string;
   }, [userRole, token]);
 
   // NEW: Logic untuk teks status di header
-  const statusText = useMemo(() => {
-    if (!userRole) return "Guest";
+  // const statusText = useMemo(() => {
+  //   if (!userRole) return "Guest";
 
-    const roleText = userRole.toUpperCase();
+  //   const roleText = userRole.toUpperCase();
 
-    if (userRole === "user") {
-      return `login sebagai ${roleText} | Region: ${userRegionVillage}`;
-    }
+  //   if (userRole === "user") {
+  //     return `login sebagai ${roleText} | Region: ${userRegionVillage}`;
+  //   }
 
-    return `login sebagai ${roleText}`;
-  }, [userRole, userRegionVillage]);
+  //   return `login sebagai ${roleText}`;
+  // }, [userRole, userRegionVillage]);
+
+  const statusText = localStorage.getItem("userRole") === "user" ? `login sebagai USER | Region: ${localStorage.getItem("user_village") || "N/A"}` : localStorage.getItem("userRole") === "admin" ? "login sebagai ADMIN" : "Guest";
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 

@@ -1,5 +1,3 @@
-// inuk-frontend/src/services/UserService.ts
-
 import axios, { type AxiosResponse } from "axios";
 
 const VITE_API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -15,10 +13,16 @@ export interface UpdateTreasurerResponse {
   id: string;
   phone: string;
   name: string;
-  secretary_phone: string;
-  secretary_name: string;
+  treasurer_phone: string; // FIX: Perubahan dari secretary_phone
+  treasurer_name: string; // FIX: Perubahan dari secretary_name
   created_at: string;
   updated_at: string;
+}
+
+// BARU: Interface untuk response GetTreasurerHandler
+export interface GetTreasurerResponse {
+  treasurer_phone: string;
+  treasurer_name: string;
 }
 
 // BARU: Interface untuk response GetUsersHandler (admin endpoint)
@@ -35,13 +39,29 @@ const getAuthHeaders = (token: string) => ({
   headers: { Authorization: `Bearer ${token}` },
 });
 
+// BARU: GET /user/treasurer
 /**
- * Mengambil daftar semua pengguna (Hanya untuk Admin)
+ * Mengambil data Bendahara dari akun user yang sedang login.
  * @param token - Token JWT pengguna yang sedang login
- * @param name - Filter opsional berdasarkan nama
- * @param phone - Filter opsional berdasarkan nomor telepon
- * @returns Promise<GetUsersResponse[]>
+ * @returns Promise<GetTreasurerResponse>
  */
+export const getTreasurer = async (token: string): Promise<GetTreasurerResponse> => {
+  if (!token) {
+    throw new Error("Autentikasi diperlukan. Token tidak ditemukan.");
+  }
+  try {
+    const response: AxiosResponse<GetTreasurerResponse> = await axios.get(`${VITE_API_URL}/user/treasurer`, getAuthHeaders(token));
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const backendMessage = error.response.data?.message || error.response.data?.error || "Gagal memuat data Bendahara.";
+      throw new Error(backendMessage);
+    }
+    throw new Error("Terjadi kesalahan jaringan saat memuat Bendahara.");
+  }
+};
+
+// ... [getUsers function remains unchanged]
 export const getUsers = async (token: string, name?: string, phone?: string): Promise<GetUsersResponse[]> => {
   if (!token) {
     // throw new Error akan ditangkap di komponen
@@ -63,6 +83,8 @@ export const getUsers = async (token: string, name?: string, phone?: string): Pr
     throw new Error("Terjadi kesalahan jaringan saat memuat pengguna.");
   }
 };
+
+// ... [updateTreasurer function remains unchanged]
 /**
  * Mengirimkan data Bendahara baru ke endpoint PATCH /user/treasurer
  */

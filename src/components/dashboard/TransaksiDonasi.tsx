@@ -14,8 +14,8 @@ import BendaharaModal from "./ui/BendaharaModal";
 import { getDonations, type TransactionAPI, type DonationsResponse, type DonationsFilter, getDonationMethods, updateDonation, deleteDonation, type UpdateDonationRequest } from "../../services/DonationService";
 import { useAuth } from "../../context/AuthContext";
 import { generateExcelBlob, downloadExcelFromBlob } from "../../utils/ExportToExcel";
-
 import { getRegions, type RegionDetail } from "../../services/RegionService";
+import { getTreasurer, type GetTreasurerResponse } from "../../services/UserService"; // BARU: Import getTreasurer
 
 import EditDonationModal from "./ui/EditDonationModal";
 import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
@@ -26,18 +26,10 @@ interface Transaction extends TransactionAPI {
   methodDisplay: string;
 }
 
-// Interface untuk data Bendahara (untuk ditampilkan di component)
-interface BendaharaDisplay {
-  name: string;
-  phone: string;
-}
-
-// Helper function untuk membaca data Bendahara dari Local Storage
-const getBendaharaFromStorage = (): BendaharaDisplay => {
-  // Ambil data yang tersimpan dari modal
-  const name = localStorage.getItem("bendahara_name") || "Belum Ditetapkan";
-  const phone = localStorage.getItem("bendahara_phone") || "N/A";
-  return { name, phone };
+// Data Bendahara DEFAULT
+const INITIAL_TREASURER_DATA: GetTreasurerResponse = {
+  treasurer_name: "Belum Ditetapkan",
+  treasurer_phone: "",
 };
 
 // Helper function
@@ -54,6 +46,10 @@ const TransaksiDonasi: React.FC = () => {
   const { token, userRole } = useAuth();
   const isUserRole = userRole === "user";
 
+  // --- State Bendahara (DARI API) ---
+  const [treasurerData, setTreasurerData] = useState<GetTreasurerResponse>(INITIAL_TREASURER_DATA);
+  const [isTreasurerLoading, setIsTreasurerLoading] = useState(false);
+
   // --- State Link Download ---
   const [generatedDownloadLink, setGeneratedDownloadLink] = useState<string | null>(null);
   const [linkExpiryTime, setLinkExpiryTime] = useState<Date | null>(null);
@@ -62,7 +58,7 @@ const TransaksiDonasi: React.FC = () => {
   const [userRegionFilter, setUserRegionFilter] = useState<DonationsFilter>({});
   const [isRegionEnforcementLoading, setIsRegionEnforcementLoading] = useState(true);
 
-  const [bendaharaDisplay, setBendaharaDisplay] = useState<BendaharaDisplay>(getBendaharaFromStorage());
+  // const [bendaharaDisplay, setBendaharaDisplay] = useState<BendaharaDisplay>(getBendaharaFromStorage()); // DIHAPUS
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMethod, setFilterMethod] = useState("");
   const [methodsList, setMethodsList] = useState<string[]>([]);
@@ -80,26 +76,29 @@ const TransaksiDonasi: React.FC = () => {
     direction: "desc",
   });
 
-  // --- Cleanup Effect untuk Object URL ---
-  useEffect(() => {
-    return () => {
-      if (generatedDownloadLink) {
-        URL.revokeObjectURL(generatedDownloadLink);
-      }
-    };
-  }, [generatedDownloadLink, token]);
+  // --- FUNGSI: Fetch Data Bendahara ---
+  const fetchTreasurer = useCallback(async () => {
+    if (!token || userRole !== "user") return;
+    setIsTreasurerLoading(true);
+    try {
+      const data = await getTreasurer(token);
+      setTreasurerData(data);
+    } catch (error) {
+      setTreasurerData(INITIAL_TREASURER_DATA);
+      // toast.error("Gagal memuat data Bendahara dari server."); // Jangan tampilkan error di sini agar tidak spam
+      console.error("Fetch Treasurer Error:", error);
+    } finally {
+      setIsTreasurerLoading(false);
+    }
+  }, [token, userRole]);
 
-  const refreshBendaharaDisplay = () => {
-    setBendaharaDisplay(getBendaharaFromStorage());
-  };
-
-  const checkBendaharaData = () => {
-    const { phone } = getBendaharaFromStorage();
-    return phone !== "N/A" && phone.replace(/[^\d+]/g, "").length > 5;
-  };
+  // --- Logika Cek Data Bendahara ---
+  const isTreasurerValid = useMemo(() => {
+    return !!(treasurerData.treasurer_name && treasurerData.treasurer_phone);
+  }, [treasurerData]);
 
   const handleAddTransactionClick = () => {
-    if (checkBendaharaData()) {
+    if (isTreasurerValid) {
       setIsModalOpen(true);
     } else {
       toast.error("Data Bendahara belum lengkap. Mohon atur data Bendahara terlebih dahulu.");
@@ -243,7 +242,7 @@ const TransaksiDonasi: React.FC = () => {
         .then(setMethodsList)
         .catch(() => toast.error("Gagal memuat daftar metode pembayaran."));
     }
-    refreshBendaharaDisplay();
+    // fetchTreasurer() sekarang dipanggil di bawah
   }, [token]);
 
   // Effect 1: Ambil region user saat mount/login
@@ -251,7 +250,12 @@ const TransaksiDonasi: React.FC = () => {
     fetchUserRegionForEnforcement();
   }, [fetchUserRegionForEnforcement]);
 
-  // Effect 2: Trigger fetch saat filter, sorting, atau role/region enforcement berubah
+  // Effect 2: Ambil data Bendahara saat mount/login (hanya untuk user)
+  useEffect(() => {
+    fetchTreasurer();
+  }, [fetchTreasurer]);
+
+  // Effect 3: Trigger fetch saat filter, sorting, atau role/region enforcement berubah
   useEffect(() => {
     if (userRole === "admin" || !isRegionEnforcementLoading) {
       fetchTransactions(1);
@@ -352,7 +356,6 @@ const TransaksiDonasi: React.FC = () => {
   const clearFilters = () => {
     setSearchTerm("");
     setAddressFilters({ province: "", city: "", subdistrict: "", village: "" });
-    setFilterMethod("");
     fetchTransactions(1);
   };
   const itemVariants = {
@@ -360,7 +363,7 @@ const TransaksiDonasi: React.FC = () => {
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
   };
 
-  const finalLoading = isLoading || isRegionEnforcementLoading;
+  const finalLoading = isLoading || isRegionEnforcementLoading || isTreasurerLoading;
   const isUserBlocked = userRole === "user" && userRegionFilter.province === "NONE";
 
   return (
@@ -369,8 +372,15 @@ const TransaksiDonasi: React.FC = () => {
         {/* Modal Tambah Transaksi */}
         <AddTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => fetchTransactions(1)} />
 
-        {/* Modal Bendahara (DENGAN PROPS LINK) */}
-        <BendaharaModal isOpen={isBendaharaModalOpen} onClose={() => setIsBendaharaModalOpen(false)} onSuccess={refreshBendaharaDisplay} onDelete={refreshBendaharaDisplay} excelLink={generatedDownloadLink} linkExpiry={linkExpiryTime} />
+        {/* Modal Bendahara (DENGAN PROPS BARU) */}
+        <BendaharaModal
+          isOpen={isBendaharaModalOpen}
+          onClose={() => setIsBendaharaModalOpen(false)}
+          onSuccess={fetchTreasurer} // Panggil fetchTreasurer untuk refresh dari API
+          currentTreasurer={treasurerData} // Kirim data Bendahara saat ini
+          excelLink={generatedDownloadLink}
+          linkExpiry={linkExpiryTime}
+        />
 
         {/* Modal Edit */}
         {selectedTransaction && isEditModalOpen && <EditDonationModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} transaction={selectedTransaction} onUpdate={handleUpdate} />}
@@ -405,9 +415,13 @@ const TransaksiDonasi: React.FC = () => {
                 {/* Tampilkan Data Bendahara yang Sedang Aktif */}
                 <div className="bg-yellow-50 p-2 rounded-lg text-xs self-center border border-yellow-200 mr-4 hidden sm:block">
                   <p className="font-semibold text-yellow-800">Bendahara Aktif:</p>
-                  <p className="text-gray-700">
-                    {bendaharaDisplay.phone} ({bendaharaDisplay.name})
-                  </p>
+                  {isTreasurerLoading ? (
+                    <p className="text-gray-700 flex items-center">Memuat...</p>
+                  ) : (
+                    <p className="text-gray-700">
+                      {treasurerData.treasurer_phone} ({treasurerData.treasurer_name})
+                    </p>
+                  )}
                 </div>
 
                 {/* Tombol Konfirmasi Bendahara */}
@@ -416,7 +430,7 @@ const TransaksiDonasi: React.FC = () => {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors mb-2"
-                  title={`Atur data Bendahara saat ini: ${bendaharaDisplay.name}`}
+                  title={`Atur data Bendahara saat ini: ${treasurerData.treasurer_name}`}
                 >
                   <FaWhatsapp className="mr-2" /> Konfirmasi Bendahara
                 </motion.button>

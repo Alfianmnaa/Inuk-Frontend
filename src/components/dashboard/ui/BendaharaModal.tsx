@@ -1,49 +1,49 @@
 // inuk-frontend/src/components/dashboard/ui/BendaharaModal.tsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 // Tambahkan FaFileExcel
-import { FaUser, FaWhatsapp, FaCheck, FaSpinner, FaTrash, FaPen, FaFileExcel } from "react-icons/fa";
+import { FaUser, FaWhatsapp, FaCheck, FaSpinner, FaPen, FaFileExcel, FaInfoCircle } from "react-icons/fa";
 import { X } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
-import { updateTreasurer } from "../../../services/UserService";
+// Mengimpor getTreasurer BARU dan updateTreasurer
+import { updateTreasurer, getTreasurer, type GetTreasurerResponse } from "../../../services/UserService";
 
 interface BendaharaModalProps {
   isOpen: boolean;
   onClose: () => void;
+  // Ganti onSuccess dengan fetchTreasurer untuk me-refresh data di parent
   onSuccess: () => void;
-  onDelete: () => void;
+  // BARU: Membutuhkan data Bendahara saat ini (dari state parent)
+  currentTreasurer: GetTreasurerResponse;
   // BARU: Props untuk link download Excel
   excelLink: string | null;
   linkExpiry: Date | null;
 }
 
-const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSuccess, onDelete, excelLink, linkExpiry }) => {
+const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSuccess, currentTreasurer, excelLink, linkExpiry }) => {
   const { token } = useAuth();
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  // State diinisialisasi dari props currentTreasurer
+  const [name, setName] = useState(currentTreasurer.treasurer_name || "");
+  const [phone, setPhone] = useState(currentTreasurer.treasurer_phone || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isDataExist, setIsDataExist] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Efek untuk menyinkronkan state lokal saat props berubah (setelah fetch di parent)
   useEffect(() => {
-    if (isOpen) {
-      // Mengambil data dari local storage (sebagai cache lokal)
-      const storedName = localStorage.getItem("bendahara_name") || "";
-      const storedPhone = localStorage.getItem("bendahara_phone") || "";
-      setName(storedName);
-      setPhone(storedPhone);
-
-      const exist = !!(storedName && storedPhone);
-      setIsDataExist(exist);
-      // Jika data sudah ada, langsung mode view (tidak mengedit)
-      setIsEditing(!exist);
-    }
-  }, [isOpen]);
+    setName(currentTreasurer.treasurer_name || "");
+    setPhone(currentTreasurer.treasurer_phone || "");
+    const exist = !!(currentTreasurer.treasurer_name && currentTreasurer.treasurer_phone);
+    // Masuk mode edit jika data tidak ada, atau mode view jika data ada
+    setIsEditing(!exist);
+  }, [currentTreasurer]);
 
   if (!isOpen) return null;
 
-  // Fungsi handleSave sekarang adalah async dan menerima event (Fix error 2554)
+  const isDataExist = !!(currentTreasurer.treasurer_name && currentTreasurer.treasurer_phone);
+
+  // Fungsi handleSave sekarang adalah async dan menerima event
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) {
@@ -71,27 +71,21 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
     else if (cleanedPhone.startsWith("62")) {
       finalPhone = "+" + cleanedPhone;
     }
-    // Jika sudah +62 atau +8, biarkan (asumsi sudah benar)
-
+    // Jika finalPhone tidak valid setelah pemformatan (e.g. terlalu pendek), berikan error
     if (finalPhone.length < 9) {
-      toast.error("Nomor WhatsApp terlalu pendek.");
+      toast.error("Nomor WhatsApp terlalu pendek/tidak valid.");
       setIsSubmitting(false);
       return;
     }
 
     try {
-      // 1. Panggil API untuk menyimpan ke Backend
+      // Panggil API untuk menyimpan ke Backend
       await updateTreasurer(token, {
         treasurer_name: name,
         treasurer_phone: finalPhone,
       });
 
-      // 2. Jika API sukses, simpan data yang sudah divalidasi dan diformat ke Local Storage (sebagai cache lokal)
-      localStorage.setItem("bendahara_name", name);
-      localStorage.setItem("bendahara_phone", finalPhone);
-
       toast.success("Data Bendahara berhasil disimpan & disinkronkan ke server!");
-      setIsDataExist(true);
       setIsEditing(false);
       onSuccess(); // Memicu refresh di TransaksiDonasi.tsx
     } catch (error: any) {
@@ -103,34 +97,20 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
     }
   };
 
-  const handleDelete = () => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus data Bendahara? Catatan: Aksi ini hanya menghapus data di perangkat ini.")) {
-      // NOTE: Tidak ada endpoint DELETE untuk treasurer, jadi hanya hapus lokal.
+  // FUNGSI HAPUS DIHILANGKAN karena backend tidak support penghapusan via PATCH.
+  // const handleDelete = ...
 
-      localStorage.removeItem("bendahara_name");
-      localStorage.removeItem("bendahara_phone");
-
-      toast.success("Data Bendahara berhasil dihapus dari cache lokal!");
-      setIsDataExist(false);
-      setIsEditing(true);
-      setName("");
-      setPhone("");
-      onDelete(); // Memicu refresh di TransaksiDonasi.tsx
-    }
-  };
-
-  // FUNGSI INI DIMODIFIKASI UNTUK MEMASUKKAN LINK EXCEL
   const handleSendWA = () => {
-    const storedName = localStorage.getItem("bendahara_name") || "";
-    const storedPhone = localStorage.getItem("bendahara_phone") || "";
+    const currentName = currentTreasurer.treasurer_name || name;
+    const currentPhone = currentTreasurer.treasurer_phone || phone;
 
-    if (!storedName || !storedPhone) {
-      toast.error("Data Bendahara tidak lengkap.");
+    if (!currentName || !currentPhone || !isDataExist) {
+      toast.error("Data Bendahara belum lengkap. Mohon simpan data terlebih dahulu.");
       return;
     }
 
     // Hapus tanda '+' di awal jika ada, karena format wa.me menggunakan kode negara tanpa + (ex: 628xxx)
-    const cleanPhone = storedPhone.replace("+", "");
+    const cleanPhone = currentPhone.replace("+", "");
 
     let textMessage = "";
 
@@ -139,12 +119,12 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
 
       // Pesan dengan link Excel yang tersedia
       textMessage = encodeURIComponent(
-        `Halo Bpk/Ibu ${storedName},\n\nSaya sudah selesai mencatat donasi. Laporan Excel sementara telah dibuat. Harap segera diunduh sebelum *${expiryTime}* karena link ini hanya berlaku sebentar.\n\n*Link Download Excel:*\n${excelLink}`
+        `Halo Bpk/Ibu ${currentName},\n\nSaya sudah selesai mencatat donasi. Laporan Excel sementara telah dibuat. Harap segera diunduh sebelum *${expiryTime}* karena link ini hanya berlaku sebentar.\n\n*Link Download Excel:*\n${excelLink}`
       );
     } else {
       // Pesan tanpa link Excel
-      const dashboardLink = encodeURIComponent("https://lazisnukudus.id/dashboard/transaksi"); // Ganti dengan domain yang sesuai jika sudah live.
-      textMessage = encodeURIComponent(`Halo Bpk/Ibu ${storedName},\n\nData donasi telah diperbarui oleh inputer. Silakan login ke dashboard untuk membuat link download Excel atau lihat laporan terbaru: ${dashboardLink}`);
+      const dashboardLink = encodeURIComponent("http://localhost:5173/dashboard/transaksi"); // Ganti dengan domain yang sesuai jika sudah live.
+      textMessage = encodeURIComponent(`Halo Bpk/Ibu ${currentName},\n\nData donasi telah diperbarui oleh inputer. Silakan login ke dashboard untuk membuat link download Excel atau lihat laporan terbaru: ${dashboardLink}`);
     }
 
     const waLink = `https://wa.me/${cleanPhone}?text=${textMessage}`;
@@ -156,7 +136,13 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
 
   // LOGIKA BARU: Tampilkan info link di modal
   const LinkInfo = () => {
-    if (!excelLink || !linkExpiry) return null;
+    if (!excelLink || !linkExpiry)
+      return (
+        <div className="mb-4 bg-gray-50 p-3 rounded-lg text-sm border border-gray-200 flex items-center">
+          <FaInfoCircle className="w-4 h-4 mr-2 text-gray-500" />
+          <p className="text-gray-700">Buat Link Download Excel di halaman Transaksi Donasi.</p>
+        </div>
+      );
 
     const expiryTime = linkExpiry.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 
@@ -166,7 +152,7 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
           <FaFileExcel className="w-4 h-4 mr-2" /> Link Excel Siap Dibagikan
         </p>
         <p className="text-gray-700 mt-1">
-          Link ini kadaluarsa pada pukul <b>{expiryTime}</b>. Pesan WhatsApp akan menyertakan link ini.
+          Link ini kadaluarsa pada pukul <b>{expiryTime}</b>.
         </p>
       </div>
     );
@@ -249,9 +235,10 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
                   >
                     <FaPen className="mr-2" size={12} /> Edit Data
                   </button>
-                  <button type="button" onClick={handleDelete} className="w-full py-2 px-4 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center justify-center">
+                  {/* HAPUS TOMBOL HAPUS LOKAL */}
+                  {/* <button type="button" onClick={handleDelete} className="w-full py-2 px-4 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center justify-center">
                     <FaTrash className="mr-2" size={12} /> Hapus Data
-                  </button>
+                  </button> */}
                 </div>
               </>
             )}
@@ -260,6 +247,12 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
             {isEditing && isDataExist && (
               <button type="button" onClick={() => setIsEditing(false)} className="py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
                 Batal
+              </button>
+            )}
+            {/* Tombol Tutup saat data belum ada dan sedang mengedit */}
+            {isEditing && !isDataExist && (
+              <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
+                Tutup
               </button>
             )}
           </div>
