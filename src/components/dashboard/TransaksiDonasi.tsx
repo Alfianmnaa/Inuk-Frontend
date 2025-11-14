@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSpinner, FaSortDown as FaSortDesc, FaSortUp as FaSortAsc, FaWhatsapp, FaInfoCircle } from "react-icons/fa";
+import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSortDown as FaSortDesc, FaSortUp as FaSortAsc, FaWhatsapp, FaInfoCircle, FaSpinner } from "react-icons/fa";
 import { Edit, Trash2, Copy } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -15,7 +15,7 @@ import { getDonations, type TransactionAPI, type DonationsResponse, type Donatio
 import { useAuth } from "../../context/AuthContext";
 import { generateExcelBlob, downloadExcelFromBlob } from "../../utils/ExportToExcel";
 import { getRegions, type RegionDetail } from "../../services/RegionService";
-import { getTreasurer, type GetTreasurerResponse } from "../../services/UserService"; // BARU: Import getTreasurer
+import { getTreasurer, type GetTreasurerResponse } from "../../services/UserService";
 
 import EditDonationModal from "./ui/EditDonationModal";
 import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
@@ -46,6 +46,10 @@ const TransaksiDonasi: React.FC = () => {
   const { token, userRole } = useAuth();
   const isUserRole = userRole === "user";
 
+  // --- State Filter Waktu BARU ---
+  const [startDateFilter, setStartDateFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
+
   // --- State Bendahara (DARI API) ---
   const [treasurerData, setTreasurerData] = useState<GetTreasurerResponse>(INITIAL_TREASURER_DATA);
   const [isTreasurerLoading, setIsTreasurerLoading] = useState(false);
@@ -58,7 +62,6 @@ const TransaksiDonasi: React.FC = () => {
   const [userRegionFilter, setUserRegionFilter] = useState<DonationsFilter>({});
   const [isRegionEnforcementLoading, setIsRegionEnforcementLoading] = useState(true);
 
-  // const [bendaharaDisplay, setBendaharaDisplay] = useState<BendaharaDisplay>(getBendaharaFromStorage()); // DIHAPUS
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMethod, setFilterMethod] = useState("");
   const [methodsList, setMethodsList] = useState<string[]>([]);
@@ -85,7 +88,6 @@ const TransaksiDonasi: React.FC = () => {
       setTreasurerData(data);
     } catch (error) {
       setTreasurerData(INITIAL_TREASURER_DATA);
-      // toast.error("Gagal memuat data Bendahara dari server."); // Jangan tampilkan error di sini agar tidak spam
       console.error("Fetch Treasurer Error:", error);
     } finally {
       setIsTreasurerLoading(false);
@@ -121,16 +123,22 @@ const TransaksiDonasi: React.FC = () => {
     setIsRegionEnforcementLoading(true);
     try {
       const allRegions = await getRegions({});
-      const userRegion = allRegions.find((r: RegionDetail) => r.kabupaten_kota === "Kudus");
+      const userRegion = allRegions.find((r: RegionDetail) => r.user_id === localStorage.getItem("user_id_temp_hack"));
+      // Ganti pencarian berdasarkan Kudus menjadi user_id jika memungkinkan.
+      // Karena user_id tidak ada di localStorage/AuthContext, kita kembali ke Kudus, atau asumsikan user terikat dengan region pertama di Kudus.
+      // Berdasarkan file DashboardLayout.tsx, user_village disimpan di localStorage. Mari kita cari region berdasarkan desa yang disimpan.
+      const userVillageFromStorage = localStorage.getItem("user_village");
+      const userRegionByVillage = allRegions.find((r: RegionDetail) => r.desa_kelurahan === userVillageFromStorage);
 
-      if (userRegion) {
+      if (userRegionByVillage) {
         setUserRegionFilter({
-          province: userRegion.provinsi,
-          city: userRegion.kabupaten_kota,
-          subdistrict: userRegion.kecamatan,
-          village: userRegion.desa_kelurahan,
+          province: userRegionByVillage.provinsi,
+          city: userRegionByVillage.kabupaten_kota,
+          subdistrict: userRegionByVillage.kecamatan,
+          village: userRegionByVillage.desa_kelurahan,
         });
       } else {
+        // Fallback: Jika tidak ditemukan, batasi akses
         toast.error("Tidak ada Region yang terikat ke akun Anda. Akses dibatasi.");
         setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
       }
@@ -155,6 +163,17 @@ const TransaksiDonasi: React.FC = () => {
     setIsLoading(true);
     setCurrentPage(page);
 
+    // Helper untuk konversi YYYY-MM-DD ke RFC3339 (start/end of day UTC)
+    const getRfc3339 = (dateStr: string, isEnd: boolean) => {
+      if (!dateStr) return undefined;
+      // Gunakan ISO 8601 dengan waktu di awal/akhir hari
+      const time = isEnd ? "T23:59:59Z" : "T00:00:00Z";
+      return `${dateStr}${time}`;
+    };
+
+    const startDateTime = getRfc3339(startDateFilter, false);
+    const endDateTime = getRfc3339(endDateFilter, true);
+
     // LOGIKA ENFORCEMENT FILTER BERDASARKAN ROLE
     let enforcedFilters: DonationsFilter;
 
@@ -163,6 +182,8 @@ const TransaksiDonasi: React.FC = () => {
         ...userRegionFilter,
         page: page,
         method: filterMethod || undefined,
+        startDate: startDateTime, // <- NEW
+        endDate: endDateTime, // <- NEW
         sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
       };
     } else {
@@ -174,6 +195,8 @@ const TransaksiDonasi: React.FC = () => {
         city: addressFilters.city || undefined,
         subdistrict: addressFilters.subdistrict || undefined,
         village: addressFilters.village || undefined,
+        startDate: startDateTime, // <- NEW
+        endDate: endDateTime, // <- NEW
         sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
       };
     }
@@ -242,7 +265,6 @@ const TransaksiDonasi: React.FC = () => {
         .then(setMethodsList)
         .catch(() => toast.error("Gagal memuat daftar metode pembayaran."));
     }
-    // fetchTreasurer() sekarang dipanggil di bawah
   }, [token]);
 
   // Effect 1: Ambil region user saat mount/login
@@ -260,7 +282,18 @@ const TransaksiDonasi: React.FC = () => {
     if (userRole === "admin" || !isRegionEnforcementLoading) {
       fetchTransactions(1);
     }
-  }, [filterMethod, addressFilters.subdistrict, addressFilters.village, sortConfig.key, sortConfig.direction, token, userRole, isRegionEnforcementLoading]);
+  }, [
+    filterMethod,
+    addressFilters.subdistrict,
+    addressFilters.village,
+    startDateFilter, // <- NEW
+    endDateFilter, // <- NEW
+    sortConfig.key,
+    sortConfig.direction,
+    token,
+    userRole,
+    isRegionEnforcementLoading,
+  ]);
 
   // Handle Search Bar
   const filteredBySearch = useMemo(() => {
@@ -352,11 +385,13 @@ const TransaksiDonasi: React.FC = () => {
   };
 
   // --- UI LOGIC ---
-  const isFiltered = addressFilters.subdistrict || filterMethod || searchTerm;
+  const isFiltered = addressFilters.subdistrict || filterMethod || searchTerm || startDateFilter || endDateFilter; // <- UPDATED
   const clearFilters = () => {
     setSearchTerm("");
+    setFilterMethod("");
+    setStartDateFilter(""); // <- NEW
+    setEndDateFilter(""); // <- NEW
     setAddressFilters({ province: "", city: "", subdistrict: "", village: "" });
-    fetchTransactions(1);
   };
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -511,7 +546,7 @@ const TransaksiDonasi: React.FC = () => {
 
           {/* Input Filter Grid */}
           <div className="space-y-4">
-            {/* Row 1: Search, Metode */}
+            {/* Row 1: Search, Metode, SortBy */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Search Bar (Fungsi lokal) */}
               <div className="relative md:col-span-2">
@@ -534,9 +569,38 @@ const TransaksiDonasi: React.FC = () => {
                   </option>
                 ))}
               </select>
+
+              {/* SortBy */}
+              <select
+                value={sortConfig.key === "date_time" && sortConfig.direction === "desc" ? "newest" : sortConfig.key === "date_time" && sortConfig.direction === "asc" ? "oldest" : "newest"}
+                onChange={(e) => setSortConfig({ key: "date_time", direction: e.target.value === "newest" ? "desc" : "asc" })}
+                className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors"
+              >
+                <option value="newest">Tanggal Terbaru</option>
+                <option value="oldest">Tanggal Terlama</option>
+              </select>
             </div>
 
-            {/* Row 2: Address Selector (Akses Kontrol) */}
+            {/* Row 2: Filter Rentang Waktu BARU */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Start Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Dari Tanggal</label>
+                <input
+                  type="date"
+                  value={startDateFilter}
+                  onChange={(e) => setStartDateFilter(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors bg-white"
+                />
+              </div>
+              {/* End Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sampai Tanggal</label>
+                <input type="date" value={endDateFilter} onChange={(e) => setEndDateFilter(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors bg-white" />
+              </div>
+            </div>
+
+            {/* Row 3: Address Selector (Akses Kontrol) */}
             <div className="grid grid-cols-1 gap-4">
               {userRole === "admin" ? (
                 <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["subdistrict", "village"]} kecamatanName="Kecamatan Donatur" />

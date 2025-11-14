@@ -9,6 +9,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import RegionManagement from "../components/dashboard/RegionManagement";
 import TransaksiDonasi from "../components/dashboard/TransaksiDonasi";
 import DonaturManagement from "../components/dashboard/DonaturManagement";
+import UserManagement from "../components/dashboard/UserManagement";
 
 // Halaman Dummy Dashboard Utama
 const DashboardUtama = () => (
@@ -64,6 +65,15 @@ const DashboardRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <DonaturManagement />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/user-management"
+        element={
+          <ProtectedRoute>
+            <UserManagement />
           </ProtectedRoute>
         }
       />

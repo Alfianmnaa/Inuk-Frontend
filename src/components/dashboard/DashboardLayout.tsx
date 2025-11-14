@@ -23,9 +23,10 @@ const DASHBOARD_NAV: NavItem[] = [
   { name: "--- MANAJEMEN DATA ---", icon: FaChevronDown, link: "#", isHeader: true },
   { name: "Pencatatan Donasi", icon: FaReceipt, link: "/dashboard/transaksi", roles: ["user", "admin"] },
   { name: "Manajemen Donatur", icon: FaUsers, link: "/dashboard/donatur-management", roles: ["user"] }, // HANYA UNTUK USER
+  { name: "Manajemen Pengguna", icon: FaUsers, link: "/dashboard/user-management", roles: ["admin"] },
   { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management", roles: ["admin"] }, // HANYA UNTUK ADMIN
   { name: "--- PENGELOLAAN KONTEN ---", icon: FaChevronDown, link: "#", isHeader: true },
-  { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita" }, // Dibatasi untuk Admin (asumsi)
+  { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita", roles: ["admin"] }, // Dibatasi untuk Admin (asumsi)
 ];
 
 // Sidebar menerima userRole baru
