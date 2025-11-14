@@ -1,13 +1,13 @@
 // inuk-frontend/src/components/dashboard/ui/BendaharaModal.tsx
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 // Tambahkan FaFileExcel
 import { FaUser, FaWhatsapp, FaCheck, FaSpinner, FaPen, FaFileExcel, FaInfoCircle } from "react-icons/fa";
 import { X } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
 // Mengimpor getTreasurer BARU dan updateTreasurer
-import { updateTreasurer, getTreasurer, type GetTreasurerResponse } from "../../../services/UserService";
+import { updateTreasurer, type GetTreasurerResponse } from "../../../services/UserService";
 
 interface BendaharaModalProps {
   isOpen: boolean;
@@ -28,7 +28,6 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
   const [phone, setPhone] = useState(currentTreasurer.treasurer_phone || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   // Efek untuk menyinkronkan state lokal saat props berubah (setelah fetch di parent)
   useEffect(() => {

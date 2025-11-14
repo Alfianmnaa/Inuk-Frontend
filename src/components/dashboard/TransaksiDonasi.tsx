@@ -123,7 +123,7 @@ const TransaksiDonasi: React.FC = () => {
     setIsRegionEnforcementLoading(true);
     try {
       const allRegions = await getRegions({});
-      const userRegion = allRegions.find((r: RegionDetail) => r.user_id === localStorage.getItem("user_id_temp_hack"));
+      allRegions.find((r: RegionDetail) => r.user_id === localStorage.getItem("user_id_temp_hack"));
       // Ganti pencarian berdasarkan Kudus menjadi user_id jika memungkinkan.
       // Karena user_id tidak ada di localStorage/AuthContext, kita kembali ke Kudus, atau asumsikan user terikat dengan region pertama di Kudus.
       // Berdasarkan file DashboardLayout.tsx, user_village disimpan di localStorage. Mari kita cari region berdasarkan desa yang disimpan.

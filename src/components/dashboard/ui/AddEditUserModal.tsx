@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { FaSave, FaSpinner, FaUser, FaPhoneAlt, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 // Interface UserDisplay harus konsisten dengan yang di UserManagement.tsx
 export interface UserDisplay {

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaTimes, FaPlus, FaUsers, FaSpinner, FaSortUp, FaSortDown, FaMapMarkerAlt, FaSave } from "react-icons/fa";
+import { FaSearch, FaTimes, FaPlus, FaUsers, FaSpinner, FaSortUp, FaSortDown, FaMapMarkerAlt } from "react-icons/fa";
 import { Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -75,6 +75,7 @@ const UserManagement: React.FC = () => {
 
   // 1. Logika Filtering & Searching
   const filteredUsers = useMemo(() => {
+    setIsLoading(true);
     let filtered = DUMMY_USERS;
     const lowerCaseSearch = searchTerm.toLowerCase();
 
@@ -94,6 +95,7 @@ const UserManagement: React.FC = () => {
         return 0;
       });
     }
+    setIsLoading(false);
     return sortableItems;
   }, [searchTerm, sortConfig]);
 

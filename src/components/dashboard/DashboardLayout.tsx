@@ -1,6 +1,6 @@
 // inuk-frontend/src/components/dashboard/DashboardLayout.tsx
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FaBars, FaTimes, FaReceipt, FaUsers, FaEdit, FaChevronDown, FaHome, FaMapMarkerAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -98,7 +98,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode; activeLink: string;
           const userRegion = regions.find((r) => r.kabupaten_kota === "Kudus");
           if (userRegion) {
             setUserRegionVillage(userRegion.desa_kelurahan);
-            localStorage.setItem("user_village", userRegion.desa_kelurahan);
+            localStorage.setItem("user_village", userRegion.desa_kelurahan || userRegionVillage);
           } else {
             setUserRegionVillage("N/A");
           }
