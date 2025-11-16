@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { FaSearch, FaTimes, FaPlus, FaFilter, FaFileExcel, FaSortDown as FaSortDesc, FaSortUp as FaSortAsc, FaWhatsapp, FaInfoCircle, FaSpinner } from "react-icons/fa";
-import { Edit, Trash2, Copy } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import DashboardLayout from "./DashboardLayout";
@@ -19,6 +19,11 @@ import { getTreasurer, type GetTreasurerResponse } from "../../services/UserServ
 
 import EditDonationModal from "./ui/EditDonationModal";
 import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
+
+// --- KONSTANTA FONNTE DARI USER ---
+// const FONNTE_BOT_NUMBER = "6281252245886";
+const FONNTE_TOKEN = "ctX6jaq47H3Nw6mSWNqK"; // Token Fonnte (dari user)
+// ----------------------------------------
 
 // Data Type Transaksi LOKAL
 interface Transaction extends TransactionAPI {
@@ -46,19 +51,15 @@ const TransaksiDonasi: React.FC = () => {
   const { token, userRole } = useAuth();
   const isUserRole = userRole === "user";
 
-  // --- State Filter Waktu BARU ---
+  // State Filter Waktu BARU
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
 
-  // --- State Bendahara (DARI API) ---
+  // State Bendahara (DARI API)
   const [treasurerData, setTreasurerData] = useState<GetTreasurerResponse>(INITIAL_TREASURER_DATA);
   const [isTreasurerLoading, setIsTreasurerLoading] = useState(false);
 
-  // --- State Link Download ---
-  const [generatedDownloadLink, setGeneratedDownloadLink] = useState<string | null>(null);
-  const [linkExpiryTime, setLinkExpiryTime] = useState<Date | null>(null);
-
-  // --- State untuk Enforced Filtering (Frontend-Only Restriction) ---
+  // State untuk Enforced Filtering (Frontend-Only Restriction)
   const [userRegionFilter, setUserRegionFilter] = useState<DonationsFilter>({});
   const [isRegionEnforcementLoading, setIsRegionEnforcementLoading] = useState(true);
 
@@ -79,7 +80,7 @@ const TransaksiDonasi: React.FC = () => {
     direction: "desc",
   });
 
-  // --- FUNGSI: Fetch Data Bendahara ---
+  // FUNGSI: Fetch Data Bendahara (TETAP SAMA)
   const fetchTreasurer = useCallback(async () => {
     if (!token || userRole !== "user") return;
     setIsTreasurerLoading(true);
@@ -94,7 +95,7 @@ const TransaksiDonasi: React.FC = () => {
     }
   }, [token, userRole]);
 
-  // --- Logika Cek Data Bendahara ---
+  // Logika Cek Data Bendahara
   const isTreasurerValid = useMemo(() => {
     return !!(treasurerData.treasurer_name && treasurerData.treasurer_phone);
   }, [treasurerData]);
@@ -112,7 +113,7 @@ const TransaksiDonasi: React.FC = () => {
     return transactionsData.result.reduce((sum, t) => sum + t.total, 0);
   }, [transactionsData.result]);
 
-  // --- FUNGSI: Fetch Region User untuk Enforcement ---
+  // FUNGSI: Fetch Region User untuk Enforcement (TETAP SAMA)
   const fetchUserRegionForEnforcement = useCallback(async () => {
     if (userRole !== "user" || !token) {
       setUserRegionFilter({});
@@ -124,9 +125,6 @@ const TransaksiDonasi: React.FC = () => {
     try {
       const allRegions = await getRegions({});
       allRegions.find((r: RegionDetail) => r.user_id === localStorage.getItem("user_id_temp_hack"));
-      // Ganti pencarian berdasarkan Kudus menjadi user_id jika memungkinkan.
-      // Karena user_id tidak ada di localStorage/AuthContext, kita kembali ke Kudus, atau asumsikan user terikat dengan region pertama di Kudus.
-      // Berdasarkan file DashboardLayout.tsx, user_village disimpan di localStorage. Mari kita cari region berdasarkan desa yang disimpan.
       const userVillageFromStorage = localStorage.getItem("user_village");
       const userRegionByVillage = allRegions.find((r: RegionDetail) => r.desa_kelurahan === userVillageFromStorage);
 
@@ -138,7 +136,6 @@ const TransaksiDonasi: React.FC = () => {
           village: userRegionByVillage.desa_kelurahan,
         });
       } else {
-        // Fallback: Jika tidak ditemukan, batasi akses
         toast.error("Tidak ada Region yang terikat ke akun Anda. Akses dibatasi.");
         setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
       }
@@ -150,7 +147,7 @@ const TransaksiDonasi: React.FC = () => {
     }
   }, [token, userRole]);
 
-  // --- Data Fetching Utama ---
+  // Data Fetching Utama (TETAP SAMA)
   const fetchTransactions = async (page: number) => {
     if (!token) return;
 
@@ -163,10 +160,8 @@ const TransaksiDonasi: React.FC = () => {
     setIsLoading(true);
     setCurrentPage(page);
 
-    // Helper untuk konversi YYYY-MM-DD ke RFC3339 (start/end of day UTC)
     const getRfc3339 = (dateStr: string, isEnd: boolean) => {
       if (!dateStr) return undefined;
-      // Gunakan ISO 8601 dengan waktu di awal/akhir hari
       const time = isEnd ? "T23:59:59Z" : "T00:00:00Z";
       return `${dateStr}${time}`;
     };
@@ -174,7 +169,6 @@ const TransaksiDonasi: React.FC = () => {
     const startDateTime = getRfc3339(startDateFilter, false);
     const endDateTime = getRfc3339(endDateFilter, true);
 
-    // LOGIKA ENFORCEMENT FILTER BERDASARKAN ROLE
     let enforcedFilters: DonationsFilter;
 
     if (userRole === "user") {
@@ -182,12 +176,11 @@ const TransaksiDonasi: React.FC = () => {
         ...userRegionFilter,
         page: page,
         method: filterMethod || undefined,
-        startDate: startDateTime, // <- NEW
-        endDate: endDateTime, // <- NEW
+        startDate: startDateTime,
+        endDate: endDateTime,
         sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
       };
     } else {
-      // ADMIN: Gunakan filter dari UI
       enforcedFilters = {
         page: page,
         method: filterMethod || undefined,
@@ -195,8 +188,8 @@ const TransaksiDonasi: React.FC = () => {
         city: addressFilters.city || undefined,
         subdistrict: addressFilters.subdistrict || undefined,
         village: addressFilters.village || undefined,
-        startDate: startDateTime, // <- NEW
-        endDate: endDateTime, // <- NEW
+        startDate: startDateTime,
+        endDate: endDateTime,
         sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
       };
     }
@@ -219,7 +212,7 @@ const TransaksiDonasi: React.FC = () => {
     }
   };
 
-  // --- Handler CRUD ---
+  // Handler CRUD (TETAP SAMA)
   const handleOpenEditModal = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
     setIsEditModalOpen(true);
@@ -258,7 +251,7 @@ const TransaksiDonasi: React.FC = () => {
     }
   };
 
-  // --- Fetch Methods List & Initial Load ---
+  // Fetch Methods List & Initial Load (TETAP SAMA)
   useEffect(() => {
     if (token) {
       getDonationMethods(token)
@@ -282,20 +275,9 @@ const TransaksiDonasi: React.FC = () => {
     if (userRole === "admin" || !isRegionEnforcementLoading) {
       fetchTransactions(1);
     }
-  }, [
-    filterMethod,
-    addressFilters.subdistrict,
-    addressFilters.village,
-    startDateFilter, // <- NEW
-    endDateFilter, // <- NEW
-    sortConfig.key,
-    sortConfig.direction,
-    token,
-    userRole,
-    isRegionEnforcementLoading,
-  ]);
+  }, [filterMethod, addressFilters.subdistrict, addressFilters.village, startDateFilter, endDateFilter, sortConfig.key, sortConfig.direction, token, userRole, isRegionEnforcementLoading]);
 
-  // Handle Search Bar
+  // Handle Search Bar (TETAP SAMA)
   const filteredBySearch = useMemo(() => {
     const lowerCaseSearch = searchTerm.toLowerCase();
     if (!lowerCaseSearch) return transactionsData.result as Transaction[];
@@ -303,7 +285,7 @@ const TransaksiDonasi: React.FC = () => {
     return transactionsData.result.filter((t) => t.name.toLowerCase().includes(lowerCaseSearch) || t.id.includes(lowerCaseSearch)) as Transaction[];
   }, [searchTerm, transactionsData.result]);
 
-  // --- Logika Sorting Lokal (Hanya untuk Total) ---
+  // Logika Sorting Lokal (Hanya untuk Total) (TETAP SAMA)
   const sortedTransactions = useMemo(() => {
     let items = [...filteredBySearch];
     if (sortConfig.key === "total") {
@@ -323,7 +305,7 @@ const TransaksiDonasi: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  // --- FUNGSI EXCEL & LINK DOWNLOAD ---
+  // --- FUNGSI EXCEL & Fonnte ---
   const createExportData = () => {
     return sortedTransactions.map((t) => ({
       ID_Transaksi: t.id,
@@ -338,29 +320,81 @@ const TransaksiDonasi: React.FC = () => {
     }));
   };
 
-  const handleCreateDownloadLink = () => {
+  // FUNGSI UTAMA UNTUK KIRIM EXCEL MENGGUNAKAN FORMDATA
+  const handleSendExcelToWa = async () => {
     if (sortedTransactions.length === 0) {
-      toast("Tidak ada data untuk diexport.", { icon: "⚠️" });
+      toast("Tidak ada data untuk dikirim.", { icon: "⚠️" });
+      return;
+    }
+
+    if (!isTreasurerValid) {
+      toast.error("Data Bendahara belum lengkap. Mohon atur data Bendahara terlebih dahulu.");
+      setIsBendaharaModalOpen(true);
       return;
     }
 
     const dataToExport = createExportData();
+    // Generate Blob file Excel
     const excelBlob = generateExcelBlob(dataToExport, "Transaksi");
 
-    if (excelBlob) {
-      if (generatedDownloadLink) {
-        URL.revokeObjectURL(generatedDownloadLink);
+    if (!excelBlob) {
+      toast.error("Gagal membuat file Excel.");
+      return;
+    }
+
+    // --- MEMBANGUN FORMDATA UNTUK PENGIRIMAN FILE ---
+    const formData = new FormData();
+    const fileName = `Laporan_Donasi_INUK_${new Date().toISOString().substring(0, 10)}.xlsx`;
+    const waNumber = treasurerData.treasurer_phone.replace("+", "");
+    const captionText = `Halo Bpk/Ibu ${treasurerData.treasurer_name},\n\nTerlampir Laporan Donasi INUK dari *${userRegionFilter.village || userRegionFilter.subdistrict || "Region"}* periode ${startDateFilter || "Awal"} s/d ${
+      endDateFilter || "Sekarang"
+    }.`;
+
+    formData.append("target", waNumber);
+    formData.append("file", excelBlob, fileName);
+
+    // --- PERBAIKAN: Tambahkan 'message' sebagai field teks utama
+    formData.append("message", captionText);
+
+    formData.append("caption", captionText);
+    formData.append("delay", "2");
+    formData.append("schedule", "0");
+    formData.append("prioritize", "true");
+    formData.append("notif", "false");
+
+    // --- AKHIR FORMDATA ---
+
+    const sendToast = toast.loading("Mengirim file Excel via Fonnte...");
+
+    try {
+      // Panggil API Fonnte menggunakan FormData
+      const response = await fetch("https://api.fonnte.com/send", {
+        method: "POST",
+        headers: {
+          Authorization: FONNTE_TOKEN,
+          // Content-Type DIHILANGKAN
+        },
+        body: formData, // Mengirim objek FormData
+      });
+
+      // Cek respons
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP Error: ${response.status} - ${errorText.substring(0, 100)}...`);
       }
 
-      const newUrl = URL.createObjectURL(excelBlob);
-      setGeneratedDownloadLink(newUrl);
+      const result = await response.json();
 
-      const expiry = new Date(Date.now() + 10 * 60 * 1000);
-      setLinkExpiryTime(expiry);
-
-      toast.success("Link download berhasil dibuat! Salin link di bawah filter data.");
-    } else {
-      toast.error("Gagal membuat file Excel.");
+      if (result.status === true) {
+        toast.success("File Excel berhasil dikirim ke WhatsApp Bendahara!", { id: sendToast });
+      } else {
+        const errMsg = result.reason || `Gagal mengirim: ${result.detail || "Periksa status akun Fonnte Anda."}`;
+        toast.error(errMsg, { id: sendToast });
+        console.error("Fonnte API Error:", result);
+      }
+    } catch (error: any) {
+      toast.error("Terjadi kesalahan saat mengirim file (Cek Konsol).", { id: sendToast });
+      console.error("Fonnte Send Error:", error.message || error);
     }
   };
 
@@ -377,20 +411,13 @@ const TransaksiDonasi: React.FC = () => {
     downloadExcelFromBlob(excelBlob, filename);
   };
 
-  const handleCopyLink = () => {
-    if (generatedDownloadLink) {
-      navigator.clipboard.writeText(generatedDownloadLink);
-      toast.success("Link berhasil disalin ke clipboard!");
-    }
-  };
-
   // --- UI LOGIC ---
-  const isFiltered = addressFilters.subdistrict || filterMethod || searchTerm || startDateFilter || endDateFilter; // <- UPDATED
+  const isFiltered = addressFilters.subdistrict || filterMethod || searchTerm || startDateFilter || endDateFilter;
   const clearFilters = () => {
     setSearchTerm("");
     setFilterMethod("");
-    setStartDateFilter(""); // <- NEW
-    setEndDateFilter(""); // <- NEW
+    setStartDateFilter("");
+    setEndDateFilter("");
     setAddressFilters({ province: "", city: "", subdistrict: "", village: "" });
   };
   const itemVariants = {
@@ -408,14 +435,7 @@ const TransaksiDonasi: React.FC = () => {
         <AddTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => fetchTransactions(1)} />
 
         {/* Modal Bendahara (DENGAN PROPS BARU) */}
-        <BendaharaModal
-          isOpen={isBendaharaModalOpen}
-          onClose={() => setIsBendaharaModalOpen(false)}
-          onSuccess={fetchTreasurer} // Panggil fetchTreasurer untuk refresh dari API
-          currentTreasurer={treasurerData} // Kirim data Bendahara saat ini
-          excelLink={generatedDownloadLink}
-          linkExpiry={linkExpiryTime}
-        />
+        <BendaharaModal isOpen={isBendaharaModalOpen} onClose={() => setIsBendaharaModalOpen(false)} onSuccess={fetchTreasurer} currentTreasurer={treasurerData} />
 
         {/* Modal Edit */}
         {selectedTransaction && isEditModalOpen && <EditDonationModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} transaction={selectedTransaction} onUpdate={handleUpdate} />}
@@ -470,17 +490,19 @@ const TransaksiDonasi: React.FC = () => {
                   <FaWhatsapp className="mr-2" /> Konfirmasi Bendahara
                 </motion.button>
 
-                {/* Tombol Buat Link Download */}
+                {/* Tombol KIRIM FILE EXCEL VIA FONNTE (Menggantikan Buat Link Download) */}
                 <motion.button
-                  onClick={handleCreateDownloadLink}
+                  onClick={handleSendExcelToWa}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-blue-600 transition-colors mb-2"
+                  className="bg-red-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-red-600 transition-colors mb-2"
+                  disabled={!isTreasurerValid || sortedTransactions.length === 0}
+                  title={!isTreasurerValid ? "Lengkapi Data Bendahara untuk mengirim" : "Kirim file Excel langsung ke Bendahara"}
                 >
-                  <FaFileExcel className="mr-2" /> Buat Link Download
+                  <FaFileExcel className="mr-2" /> Kirim Excel via WA
                 </motion.button>
 
-                {/* Tombol Download Instan */}
+                {/* Tombol Download Instan (TETAP ADA sebagai fallback) */}
                 <motion.button
                   onClick={handleInstantDownload}
                   whileHover={{ scale: 1.05 }}
@@ -502,47 +524,6 @@ const TransaksiDonasi: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* AREA LINK DOWNLOAD */}
-          {generatedDownloadLink && linkExpiryTime && (
-            <div className="mt-4 bg-yellow-100 p-4 rounded-lg border border-yellow-300 text-sm break-words">
-              <p className="font-bold text-yellow-800 mb-2 flex items-center">
-                <FaFileExcel className="mr-2" /> Link Download Excel Sementara
-              </p>
-
-              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                {/* Link Teks */}
-                <a
-                  href={generatedDownloadLink}
-                  download={`Laporan_Donasi_INUK_${new Date().toISOString().substring(0, 10)}.xlsx`}
-                  className="text-blue-600 underline hover:text-blue-800 cursor-pointer flex-1 min-w-0 break-all"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Klik untuk mengunduh"
-                >
-                  {generatedDownloadLink}
-                </a>
-
-                {/* Tombol Aksi */}
-                <div className="flex space-x-2">
-                  <button onClick={handleCopyLink} className="flex items-center text-gray-700 bg-gray-200 hover:bg-gray-300 p-1 px-3 rounded-md transition-colors text-xs">
-                    <Copy className="w-3 h-3 mr-1" /> Salin
-                  </button>
-
-                  <button
-                    onClick={() => setIsBendaharaModalOpen(true)} // Buka modal Bendahara untuk kirim WA
-                    className="flex items-center text-white bg-green-500 hover:bg-green-600 p-1 px-3 rounded-md transition-colors text-xs"
-                  >
-                    <FaWhatsapp className="w-3 h-3 mr-1" /> Bagikan
-                  </button>
-                </div>
-              </div>
-
-              <p className="mt-2 text-xs text-yellow-700">
-                *Link ini dibuat di *browser* Anda dan hanya berlaku **sementara** (hingga sekitar {linkExpiryTime.toLocaleTimeString("id-ID")} atau browser ditutup). Harap segera diunduh oleh Bendahara.
-              </p>
-            </div>
-          )}
 
           {/* Input Filter Grid */}
           <div className="space-y-4">
@@ -700,7 +681,7 @@ const TransaksiDonasi: React.FC = () => {
 
 export default TransaksiDonasi;
 
-// Komponen Pembantu untuk Sorting Header (TIDAK BERUBAH)
+// Komponen Pembantu untuk Sorting Header (TETAP SAMA)
 interface SortHeaderProps {
   label: string;
   sortKey: keyof TransactionAPI | "total";

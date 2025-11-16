@@ -1,27 +1,29 @@
 // inuk-frontend/src/components/dashboard/ui/BendaharaModal.tsx
 
 import React, { useState, useEffect } from "react";
-// Tambahkan FaFileExcel
-import { FaUser, FaWhatsapp, FaCheck, FaSpinner, FaPen, FaFileExcel, FaInfoCircle } from "react-icons/fa";
+// HILANGKAN FaFileExcel dan FaInfoCircle
+import { FaUser, FaWhatsapp, FaCheck, FaSpinner, FaPen, FaInfoCircle } from "react-icons/fa";
 import { X } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
-// Mengimpor getTreasurer BARU dan updateTreasurer
 import { updateTreasurer, type GetTreasurerResponse } from "../../../services/UserService";
+import axios from "axios"; // Tambahkan axios untuk Fonnte text API
 
+// Fonnte API endpoint untuk pesan teks
+const FONNTE_TEXT_API = "https://api.fonnte.com/send";
+// Ganti dengan token yang diberikan user. IDEALNYA dari ENV.
+const FONNTE_TOKEN = "ctX6jaq47H3Nw6mSWNqK";
+// const FONNTE_BOT_NUMBER = "6281252245886";
+
+// HILANGKAN PROPS excelLink dan linkExpiry
 interface BendaharaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  // Ganti onSuccess dengan fetchTreasurer untuk me-refresh data di parent
   onSuccess: () => void;
-  // BARU: Membutuhkan data Bendahara saat ini (dari state parent)
   currentTreasurer: GetTreasurerResponse;
-  // BARU: Props untuk link download Excel
-  excelLink: string | null;
-  linkExpiry: Date | null;
 }
 
-const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSuccess, currentTreasurer, excelLink, linkExpiry }) => {
+const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSuccess, currentTreasurer }) => {
   const { token } = useAuth();
   // State diinisialisasi dari props currentTreasurer
   const [name, setName] = useState(currentTreasurer.treasurer_name || "");
@@ -31,11 +33,13 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
 
   // Efek untuk menyinkronkan state lokal saat props berubah (setelah fetch di parent)
   useEffect(() => {
-    setName(currentTreasurer.treasurer_name || "");
-    setPhone(currentTreasurer.treasurer_phone || "");
-    const exist = !!(currentTreasurer.treasurer_name && currentTreasurer.treasurer_phone);
-    // Masuk mode edit jika data tidak ada, atau mode view jika data ada
-    setIsEditing(!exist);
+    if (currentTreasurer) {
+      setName(currentTreasurer.treasurer_name || "");
+      setPhone(currentTreasurer.treasurer_phone || "");
+      const exist = !!(currentTreasurer.treasurer_name && currentTreasurer.treasurer_phone);
+      // Masuk mode edit jika data tidak ada, atau mode view jika data ada
+      setIsEditing(!exist);
+    }
   }, [currentTreasurer]);
 
   if (!isOpen) return null;
@@ -96,10 +100,8 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
     }
   };
 
-  // FUNGSI HAPUS DIHILANGKAN karena backend tidak support penghapusan via PATCH.
-  // const handleDelete = ...
-
-  const handleSendWA = () => {
+  // --- LOGIKA handleSendWA Disederhanakan (Hanya Kirim Pesan Teks Notifikasi) ---
+  const handleSendWA = async () => {
     const currentName = currentTreasurer.treasurer_name || name;
     const currentPhone = currentTreasurer.treasurer_phone || phone;
 
@@ -108,54 +110,46 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
       return;
     }
 
-    // Hapus tanda '+' di awal jika ada, karena format wa.me menggunakan kode negara tanpa + (ex: 628xxx)
-    const cleanPhone = currentPhone.replace("+", "");
+    const cleanPhone = currentPhone.replace("+", ""); // Hapus tanda '+'
 
-    let textMessage = "";
+    // Pesan notifikasi teks sederhana
+    const textMessage = `Halo Bpk/Ibu ${currentName},\n\nAnda menerima notifikasi baru dari sistem INUK. Ada pembaruan data transaksi donasi. \n\nSilakan cek WhatsApp Anda untuk file Excel Laporan Transaksi yang dikirim langsung (jika telah dikirim).`;
 
-    if (excelLink && linkExpiry) {
-      const expiryTime = linkExpiry.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    const sendToast = toast.loading("Mengirim notifikasi teks via Fonnte...");
 
-      // Pesan dengan link Excel yang tersedia
-      textMessage = encodeURIComponent(
-        `Halo Bpk/Ibu ${currentName},\n\nSaya sudah selesai mencatat donasi. Laporan Excel sementara telah dibuat. Harap segera diunduh sebelum *${expiryTime}* karena link ini hanya berlaku sebentar.\n\n*Link Download Excel:*\n${excelLink}`
-      );
-    } else {
-      // Pesan tanpa link Excel
-      const dashboardLink = encodeURIComponent("http://localhost:5173/dashboard/transaksi"); // Ganti dengan domain yang sesuai jika sudah live.
-      textMessage = encodeURIComponent(`Halo Bpk/Ibu ${currentName},\n\nData donasi telah diperbarui oleh inputer. Silakan login ke dashboard untuk membuat link download Excel atau lihat laporan terbaru: ${dashboardLink}`);
+    try {
+      const payload = {
+        target: cleanPhone,
+        message: textMessage,
+      };
+      // Menggunakan Axios untuk kirim pesan teks Fonnte
+      const response = await axios.post(FONNTE_TEXT_API, payload, {
+        headers: {
+          Authorization: FONNTE_TOKEN,
+        },
+      });
+
+      if (response.data.status === true) {
+        toast.success("Notifikasi teks berhasil dikirim!", { id: sendToast });
+        onClose();
+      } else {
+        const errMsg = response.data.reason || "Gagal mengirim notifikasi. Periksa akun Fonnte.";
+        toast.error(errMsg, { id: sendToast });
+        console.error("Fonnte Text API Error:", response.data);
+      }
+    } catch (error: any) {
+      toast.error(`Kesalahan jaringan: ${error.message}`, { id: sendToast });
+      console.error("Fonnte Send WA Error:", error);
     }
-
-    const waLink = `https://wa.me/${cleanPhone}?text=${textMessage}`;
-
-    window.open(waLink, "_blank");
-    toast.success("Notifikasi WhatsApp berhasil dibuka!");
-    onClose();
   };
 
-  // LOGIKA BARU: Tampilkan info link di modal
-  const LinkInfo = () => {
-    if (!excelLink || !linkExpiry)
-      return (
-        <div className="mb-4 bg-gray-50 p-3 rounded-lg text-sm border border-gray-200 flex items-center">
-          <FaInfoCircle className="w-4 h-4 mr-2 text-gray-500" />
-          <p className="text-gray-700">Buat Link Download Excel di halaman Transaksi Donasi.</p>
-        </div>
-      );
-
-    const expiryTime = linkExpiry.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-
-    return (
-      <div className="mb-4 bg-blue-50 p-3 rounded-lg text-sm border border-blue-200">
-        <p className="font-semibold text-blue-800 flex items-center">
-          <FaFileExcel className="w-4 h-4 mr-2" /> Link Excel Siap Dibagikan
-        </p>
-        <p className="text-gray-700 mt-1">
-          Link ini kadaluarsa pada pukul <b>{expiryTime}</b>.
-        </p>
-      </div>
-    );
-  };
+  // --- KOMPONEN LinkInfo DIUBAH MENJADI PETUNJUK ---
+  const LinkInfo = () => (
+    <div className="mb-4 bg-gray-50 p-3 rounded-lg text-sm border border-gray-200 flex items-center">
+      <FaInfoCircle className="w-4 h-4 mr-2 text-gray-500" />
+      <p className="text-gray-700">Gunakan tombol **"Kirim Excel via WA"** di halaman **Transaksi Donasi** untuk mengirim file laporan.</p>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-[1050] h-full">
@@ -217,12 +211,12 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
             {/* Tombol Aksi saat mode View */}
             {!isEditing && isDataExist && (
               <>
-                {/* Tombol Kirim WA akan menggunakan link jika ada */}
+                {/* Tombol Kirim WA untuk notifikasi teks biasa */}
                 <button
                   type="button"
                   onClick={handleSendWA}
                   className="py-2 px-4 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors flex items-center justify-center"
-                  title={excelLink ? "Kirim notifikasi beserta link Excel sementara" : "Kirim notifikasi tanpa link Excel"}
+                  title="Kirim notifikasi teks ke Bendahara bahwa laporan siap dikirim."
                 >
                   <FaWhatsapp className="mr-2" /> Kirim Notifikasi WhatsApp
                 </button>
@@ -234,10 +228,6 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
                   >
                     <FaPen className="mr-2" size={12} /> Edit Data
                   </button>
-                  {/* HAPUS TOMBOL HAPUS LOKAL */}
-                  {/* <button type="button" onClick={handleDelete} className="w-full py-2 px-4 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors flex items-center justify-center">
-                    <FaTrash className="mr-2" size={12} /> Hapus Data
-                  </button> */}
                 </div>
               </>
             )}
