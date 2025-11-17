@@ -8,20 +8,34 @@ services:
         VITE_API_URL: ${VITE_API_URL} 
     container_name: inuk-client
     restart: unless-stopped
+    volumes:
+      - ../storage/exports/donations:/usr/share/nginx/exports/donations:ro
     networks:
       - inuk-network
     labels:
       - "traefik.enable=true"
-      # HTTP Router (redirects to HTTPS)
+      # HTTP Router for main (redirects to HTTPS)
       - "traefik.http.routers.frontend-http.rule=Host(`${CLIENT_DOMAIN}`)"
       - "traefik.http.routers.frontend-http.entrypoints=web"
       - "traefik.http.routers.frontend-http.middlewares=redirect-to-https@file"
-      # HTTPS Router (main service)
-      - "traefik.http.routers.frontend-https.rule=Host(`${CLIENT_DOMAIN}`)"
+      # HTTPS Router for main
+      - "traefik.http.routers.frontend-https.rule=Host(`${CLIENT_DOMAIN}`) && !PathPrefix(`/exports/donations`)"
       - "traefik.http.routers.frontend-https.entrypoints=websecure"
       - "traefik.http.routers.frontend-https.tls=true"
       - "traefik.http.routers.frontend-https.tls.certresolver=letsencrypt"
       - "traefik.http.routers.frontend-https.middlewares=default-security@file"
+      - "traefik.http.routers.frontend-https.priority=1"
+      # HTTP Router for exports (redirects to HTTPS)
+      - "traefik.http.routers.exports-http.rule=Host(`${CLIENT_DOMAIN}`) && PathPrefix(`/exports/donations`)"
+      - "traefik.http.routers.exports-http.entrypoints=web"
+      - "traefik.http.routers.exports-http.middlewares=redirect-to-https@file"
+      # HTTPS Router for exports (with rate limiting)
+      - "traefik.http.routers.exports-https.rule=Host(`${CLIENT_DOMAIN}`) && PathPrefix(`/exports/donations`)"
+      - "traefik.http.routers.exports-https.entrypoints=websecure"
+      - "traefik.http.routers.exports-https.tls=true"
+      - "traefik.http.routers.exports-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.exports-https.middlewares=default-security@file,rate-limit-exports@file"
+      - "traefik.http.routers.exports-https.priority=2"
       # Service Definition (tells Traefik which port)
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
 
