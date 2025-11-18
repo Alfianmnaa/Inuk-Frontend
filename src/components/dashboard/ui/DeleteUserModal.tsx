@@ -30,8 +30,6 @@ const DeleteUserModal: React.FC<DeleteUserModalProps> = ({ isOpen, onClose, user
   const handleConfirm = async () => {
     setIsDeleting(true);
     try {
-      // Placeholder: Tunggu 1 detik untuk simulasi loading
-      await new Promise((resolve) => setTimeout(resolve, 1000));
       await onConfirmDelete(user.id);
     } catch (error) {
       // Error handling is managed by the parent component (UserManagement)

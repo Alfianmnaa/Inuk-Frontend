@@ -1,6 +1,6 @@
 // inuk-frontend/src/components/dashboard/UserManagement.tsx
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { FaSearch, FaTimes, FaPlus, FaUsers, FaSpinner, FaSortUp, FaSortDown, FaMapMarkerAlt } from "react-icons/fa";
 import { Edit, Trash2 } from "lucide-react";
@@ -10,7 +10,11 @@ import DashboardLayout from "./DashboardLayout";
 import AddEditUserModal from "./ui/AddEditUserModal";
 import DeleteUserModal from "./ui/DeleteUserModal";
 
-// --- Data Dummy & Interfaces ---
+// [BARU] Import fungsi API
+import { getUsers, deleteUser, type GetUsersResponse } from "../../services/UserService";
+import { useAuth } from "../../context/AuthContext";
+
+// --- Data & Interfaces ---
 
 // Interface UserDisplay harus konsisten dengan modal
 export interface UserDisplay {
@@ -20,14 +24,6 @@ export interface UserDisplay {
   isPJT: boolean; // Penanggung Jawab Terikat (RegionID !== null)
   regionName: string; // Nama desa/kelurahan jika ada
 }
-
-const DUMMY_USERS: UserDisplay[] = [
-  { id: "uuid-101", name: "Inputer Bakalankrapyak", phone: "+6281234567101", isPJT: true, regionName: "Bakalankrapyak" },
-  { id: "uuid-102", name: "Inputer Banget", phone: "+6281234567102", isPJT: true, regionName: "Banget" },
-  { id: "uuid-103", name: "Inputer Blimbing Kidul", phone: "+6281234567103", isPJT: true, regionName: "Blimbing Kidul" },
-  { id: "uuid-201", name: "Admin Kecamatan Kaliwungu", phone: "+6281234567002", isPJT: false, regionName: "Admin" },
-  { id: "uuid-202", name: "Pengguna Baru Belum Terikat", phone: "+6281234567999", isPJT: false, regionName: "-" },
-];
 
 // Helper function untuk Sorting
 type SortKeys = keyof UserDisplay | null;
@@ -58,30 +54,78 @@ const itemVariants = {
 };
 
 const UserManagement: React.FC = () => {
+  const { token } = useAuth();
+  const [usersList, setUsersList] = useState<UserDisplay[]>([]); // State untuk data nyata
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "name", direction: "ascending" });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // State untuk Modal
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserDisplay | null>(null);
 
-  // Placeholder sukses fetch/action
+  // --- Data Fetching Function (MODIFIKASI INI) ---
+  const fetchUsers = useCallback(async () => {
+    if (!token) return;
+    setIsLoading(true);
+    try {
+      // 1. Panggil API untuk Verified Users (terikat region)
+      const verifiedUsersData: GetUsersResponse[] = await getUsers(token, searchTerm, undefined, true);
+
+      // 2. Panggil API untuk Unverified Users (tidak terikat region)
+      const unverifiedUsersData: GetUsersResponse[] = await getUsers(token, searchTerm, undefined, false);
+
+      // 3. Gabungkan hasil dari kedua panggilan ke dalam Map untuk menghilangkan duplikasi
+      const combinedUsersMap = new Map<string, GetUsersResponse>();
+
+      // Tambahkan verified users
+      verifiedUsersData.forEach((user) => combinedUsersMap.set(user.id, user));
+      // Tambahkan unverified users (yang belum ada di Map)
+      unverifiedUsersData.forEach((user) => {
+        if (!combinedUsersMap.has(user.id)) {
+          combinedUsersMap.set(user.id, user);
+        }
+      });
+
+      const uniqueUsersData = Array.from(combinedUsersMap.values());
+
+      // Mengubah data API ke format tampilan
+      const mappedData: UserDisplay[] = uniqueUsersData.map((u) => ({
+        id: u.id,
+        name: u.name,
+        phone: u.phone,
+        // Cek jika region_id bukan nilai nol dan ada isinya
+        isPJT: u.region_id !== "00000000-0000-0000-0000-000000000000" && !!u.region_id,
+        // Untuk Region Name, kita pakai placeholder ID atau "Terikat"
+        regionName: u.region_id && u.region_id !== "00000000-0000-0000-0000-000000000000" ? `Terikat (${u.region_id.substring(0, 8)}...)` : "-",
+      }));
+      setUsersList(mappedData);
+    } catch (error: any) {
+      setUsersList([]);
+      toast.error(error.message || "Gagal memuat data pengguna.");
+      console.error("Fetch Users Error:", error.response?.data || error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token, searchTerm]);
+
+  // Effect untuk memuat data pengguna saat mount dan saat search term berubah
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // Handler sukses (refresh data)
   const handleSuccess = () => {
-    // Dalam implementasi nyata, ini akan memicu fetch data ulang dari API
-    toast.success("Aksi berhasil! (DUMMY REFRESH)");
+    fetchUsers();
+    setIsAddEditModalOpen(false);
+    setIsDeleteModalOpen(false);
+    setSelectedUser(null);
   };
 
   // 1. Logika Filtering & Searching
   const filteredUsers = useMemo(() => {
-    setIsLoading(true);
-    let filtered = DUMMY_USERS;
-    const lowerCaseSearch = searchTerm.toLowerCase();
-
-    if (searchTerm) {
-      filtered = filtered.filter((u) => u.name.toLowerCase().includes(lowerCaseSearch) || u.phone.includes(lowerCaseSearch) || u.regionName.toLowerCase().includes(lowerCaseSearch));
-    }
+    let filtered = usersList;
 
     // 2. Logika Sorting
     let sortableItems = [...filtered];
@@ -95,9 +139,8 @@ const UserManagement: React.FC = () => {
         return 0;
       });
     }
-    setIsLoading(false);
     return sortableItems;
-  }, [searchTerm, sortConfig]);
+  }, [usersList, sortConfig]);
 
   const requestSort = (key: keyof UserDisplay) => {
     let direction: "ascending" | "descending" = "ascending";
@@ -124,12 +167,16 @@ const UserManagement: React.FC = () => {
   };
 
   const handleConfirmDelete = async (id: string) => {
-    // Placeholder API call
-    console.log(`DUMMY: Menghapus pengguna dengan ID: ${id}`);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    toast.success(`Pengguna ID ${id.substring(0, 8)}... berhasil dihapus. (DUMMY)`);
-    setIsDeleteModalOpen(false);
-    handleSuccess(); // Trigger dummy refresh
+    if (!token) return;
+    setIsLoading(true);
+    try {
+      await deleteUser(token, id); // Panggil fungsi DELETE API yang baru
+      toast.success(`Pengguna berhasil dihapus!`);
+      handleSuccess();
+    } catch (error: any) {
+      toast.error(error.message || "Gagal menghapus pengguna. Mungkin terikat Region.");
+      console.error("Delete Error:", error);
+    }
   };
 
   return (
@@ -145,7 +192,7 @@ const UserManagement: React.FC = () => {
         <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-              <FaUsers className="mr-2 text-primary" /> Kelola Daftar Pengguna ({filteredUsers.length})
+              <FaUsers className="mr-2 text-primary" /> Kelola Daftar Pengguna ({usersList.length})
             </h3>
             <motion.button onClick={handleAddClick} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors">
               <FaPlus className="mr-2" /> Tambah Pengguna
@@ -157,7 +204,7 @@ const UserManagement: React.FC = () => {
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Cari Nama, Telepon, atau Region..."
+              placeholder="Cari Nama atau Telepon..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 focus:ring-primary focus:border-primary transition-colors"
@@ -174,7 +221,7 @@ const UserManagement: React.FC = () => {
         {/* Tabel Data Pengguna */}
         <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg overflow-x-auto">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <FaUsers className="mr-2 text-primary" /> Daftar Pengguna (Total: {DUMMY_USERS.length})
+            <FaUsers className="mr-2 text-primary" /> Daftar Pengguna (Total: {usersList.length})
           </h3>
           {isLoading ? (
             <div className="text-center py-10 text-gray-500 flex items-center justify-center">
@@ -184,7 +231,7 @@ const UserManagement: React.FC = () => {
             <table className="min-w-full table-auto border-collapse">
               <thead>
                 <tr className="bg-gray-50 text-gray-600 text-sm uppercase">
-                  <th className="py-3 px-4 text-left">ID</th>
+                  <th className="py-3 px-4 text-left">ID (Awal)</th>
                   <TableSortHeader label="Nama" sortKey="name" sortConfig={sortConfig} requestSort={requestSort} />
                   <th className="py-3 px-4 text-left">Telepon</th>
                   <th className="py-3 px-4 text-left">Status Region</th>
@@ -201,7 +248,7 @@ const UserManagement: React.FC = () => {
                       <td className="py-3 px-4">
                         <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${u.isPJT ? "bg-primary/20 text-primary" : "bg-red-100 text-red-700"}`}>
                           <FaMapMarkerAlt className="w-3 h-3 mr-1" />
-                          {u.isPJT ? `Terikat: ${u.regionName}` : "Belum Terikat"}
+                          {u.isPJT ? u.regionName : "Belum Terikat"}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">

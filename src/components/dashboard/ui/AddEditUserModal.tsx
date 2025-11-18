@@ -5,6 +5,9 @@ import { toast } from "react-hot-toast";
 import { FaSave, FaSpinner, FaUser, FaPhoneAlt, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { X } from "lucide-react";
 import { motion } from "framer-motion";
+import { useAuth } from "../../../context/AuthContext";
+// [BARU] Import fungsi API
+import { adminRegisterUser, updateUser, type RegisterUserPayload, type UpdateUserPayload } from "../../../services/UserService";
 
 // Interface UserDisplay harus konsisten dengan yang di UserManagement.tsx
 export interface UserDisplay {
@@ -23,6 +26,7 @@ interface AddEditUserModalProps {
 }
 
 const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, onSuccess, initialData }) => {
+  const { token } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -37,10 +41,11 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
       if (initialData) {
         // Mode Edit: Inisialisasi Name dan Phone
         setName(initialData.name);
-        // Tampilkan ke format 08xxx
+        // Tampilkan ke format 08xxx (Menghapus +62 jika ada)
         setPhone(initialData.phone.startsWith("+62") ? initialData.phone.replace("+62", "0") : initialData.phone);
         // Reset Password di mode edit
         setPassword("");
+        setRole("user"); // Default role
       } else {
         // Mode Create: Reset state
         setName("");
@@ -53,39 +58,68 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
 
   if (!isOpen) return null;
 
+  const togglePasswordVisibility = () => setShowPassword(!showPassword);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isEditMode && (!name || !phone)) {
-      toast.error("Nama dan Nomor HP wajib diisi.");
+    if (!token) {
+      toast.error("Token Admin tidak ditemukan. Silakan login ulang.");
       return;
     }
 
-    if (!isEditMode && (!name || !phone || !password)) {
-      toast.error("Semua field (Nama, Nomor HP, Kata Sandi) wajib diisi.");
+    // --- Validasi Dasar ---
+    if (!name || !phone) {
+      toast.error("Nama dan Nomor HP wajib diisi.");
+      return;
+    }
+    if (!isEditMode && !password) {
+      toast.error("Kata Sandi wajib diisi saat menambahkan pengguna baru.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Placeholder for API Call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
+      // --- Formatting Nomor HP ke E.164 (+62xxxxxxxx) ---
       let finalPhone = phone.trim().replace(/ /g, "").replace(/^0/, "+62");
       if (!finalPhone.startsWith("+")) finalPhone = `+${finalPhone}`;
 
-      if (isEditMode) {
-        toast.success(`Pengguna ${name} (ID: ${initialData?.id.substring(0, 8)}...) berhasil diperbarui! (DUMMY)`);
+      // Validasi tambahan untuk +62
+      if (finalPhone.length < 10 || !finalPhone.startsWith("+62")) {
+        toast.error("Format Nomor HP tidak valid (harus 08xxx atau +628xxx).");
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (isEditMode && initialData) {
+        // --- MODE EDIT (PATCH /admin/user/:id) ---
+        const updatePayload: UpdateUserPayload = {
+          name: name,
+          phone: finalPhone,
+          // region_id TIDAK disertakan, sehingga backend akan menggunakan nilai yang ada (atau null)
+          // Payload HANYA berisi field yang diubah (name, phone)
+        };
+        await updateUser(token, initialData.id, updatePayload);
+        toast.success(`Pengguna ${name} berhasil diperbarui!`);
       } else {
-        toast.success(`Pengguna ${name} berhasil ditambahkan sebagai ${role}! (DUMMY)`);
+        // --- MODE CREATE (POST /register atau /admin/register) ---
+        const registerPayload: RegisterUserPayload = {
+          name: name,
+          phone: finalPhone,
+          password: password,
+        };
+        await adminRegisterUser(token, registerPayload, role); // Menggunakan fungsi register
+        toast.success(`Pengguna ${name} berhasil ditambahkan sebagai ${role.toUpperCase()}!`);
       }
 
       onSuccess();
       onClose();
     } catch (error: any) {
-      toast.error("Gagal menyimpan data Pengguna. (DUMMY ERROR)");
-      console.error("User Save Error:", error);
+      const errorData = error.response?.data;
+      const errorMsg = errorData?.message || errorData?.error || "Gagal menyimpan data Pengguna. Cek konsol.";
+      toast.error(errorMsg);
+      console.error("User Save Error:", errorData || error);
     } finally {
       setIsSubmitting(false);
     }
@@ -147,7 +181,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
                 required={!isEditMode}
                 disabled={isSubmitting}
               />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 transform -translate-y-1/2 mt-3 text-gray-500 hover:text-gray-700">
+              <button type="button" onClick={togglePasswordVisibility} className="absolute right-4 top-1/2 transform -translate-y-1/2 mt-3 text-gray-500 hover:text-gray-700">
                 {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
               </button>
             </div>
@@ -169,6 +203,8 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
               </select>
             </div>
           )}
+          {/* Info Tambahan di Mode Edit */}
+          {isEditMode && initialData?.isPJT && <div className="mb-4 text-sm text-red-500 bg-red-50 p-3 rounded-lg border border-red-200">*Pengguna ini terikat sebagai PJT Region. Perubahan PJT dilakukan di halaman Manajemen Wilayah.</div>}
 
           {/* Tombol Submit */}
           <div className="flex justify-end space-x-3">

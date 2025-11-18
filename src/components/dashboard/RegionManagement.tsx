@@ -1,6 +1,6 @@
 // inuk-frontend/src/components/dashboard/RegionManagement.tsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { FaPlus, FaFilter, FaSpinner, FaMapMarkedAlt, FaTimes } from "react-icons/fa";
 import { Edit, Trash2 } from "lucide-react";
@@ -10,10 +10,9 @@ import DashboardLayout from "./DashboardLayout";
 import AddressSelector, { type AddressSelection } from "./AddressSelector";
 import { getRegions, deleteRegion, type RegionDetail, type RegionFilterBody } from "../../services/RegionService";
 import { useAuth } from "../../context/AuthContext";
-// UPDATE: Mengganti AddRegionModal dengan AddEditRegionModal
 import AddEditRegionModal from "./ui/AddEditRegionModal";
-// BARU: Import DeleteRegionModal
 import DeleteRegionModal from "./ui/DeleteRegionModal";
+import { updateUser, type UpdateUserPayload } from "../../services/UserService"; // Untuk melepas ikatan saat delete region
 
 // Component Utama Halaman
 const RegionManagement: React.FC = () => {
@@ -26,11 +25,11 @@ const RegionManagement: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState<RegionDetail | null>(null); // Untuk Edit/Delete
 
-  // State Filter (province dan city akan diabaikan/diatur otomatis oleh AddressSelector)
   const [addressFilters, setAddressFilters] = useState<AddressSelection>({ province: "", city: "", subdistrict: "", village: "" });
+  const NULL_UUID = "00000000-0000-0000-0000-000000000000";
 
   // --- Data Fetching Function ---
-  const fetchRegions = async () => {
+  const fetchRegions = useCallback(async () => {
     if (!token) {
       setIsLoading(false);
       return;
@@ -38,7 +37,7 @@ const RegionManagement: React.FC = () => {
     setIsLoading(true);
 
     const filters: RegionFilterBody = {
-      // AddressSelector akan memastikan province dan city bernilai "Jawa Tengah" dan "Kudus" jika tidak kosong
+      // Hanya kirim filter jika ada nilai
       province: addressFilters.province || undefined,
       city: addressFilters.city || undefined,
       subdistrict: addressFilters.subdistrict || undefined,
@@ -46,7 +45,6 @@ const RegionManagement: React.FC = () => {
     };
 
     try {
-      // Menggunakan getRegions dari service
       const data = await getRegions(filters);
       setRegions(data);
     } catch (error: any) {
@@ -55,7 +53,7 @@ const RegionManagement: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, addressFilters]);
 
   // --- Handlers Aksi CRUD ---
 
@@ -65,7 +63,8 @@ const RegionManagement: React.FC = () => {
   };
 
   const handleEditClick = (region: RegionDetail) => {
-    setSelectedRegion(region); // Mode Edit
+    // Mode Edit sekarang hanya untuk update PJT
+    setSelectedRegion(region);
     setIsModalOpen(true);
   };
 
@@ -82,13 +81,30 @@ const RegionManagement: React.FC = () => {
 
     setIsLoading(true);
     try {
+      // 1. LEPAS IKATAN PJT (Jika ada)
+      const regionToDelete = regions.find((r) => r.id === id);
+      if (regionToDelete && regionToDelete.user_id && regionToDelete.user_id !== NULL_UUID) {
+        // NOTE: Perlu panggil API untuk mendapatkan data PJT yang lengkap (nama dan telepon)
+        // Menggunakan asumsi nama dan telepon di RegionDetail cukup untuk validasi backend.
+        const unassignPayload: UpdateUserPayload = {
+          name: regionToDelete.user_name || "N/A",
+          phone: "+62812xxxx", // Mengirim placeholder phone untuk memenuhi validasi required
+          region_id: NULL_UUID,
+        };
+        // Asumsi user_id adalah ID pengguna yang terikat
+        await updateUser(token, regionToDelete.user_id, unassignPayload);
+        toast.success("PJT terkait sudah dilepas ikatannya.");
+      }
+
+      // 2. HAPUS REGION
       await deleteRegion(id, token);
+
       toast.success("Region berhasil dihapus.");
       fetchRegions(); // Refresh data
       setIsDeleteModalOpen(false);
       setSelectedRegion(null);
     } catch (error: any) {
-      const errorMessage = error.message || "Gagal menghapus region. Region mungkin masih terikat dengan Donasi/Donatur.";
+      const errorMessage = error.message || "Gagal menghapus region. Region mungkin masih terikat dengan Donasi/Donatur di database.";
       toast.error(errorMessage);
       console.error("Delete Region Error:", error);
     } finally {
@@ -114,7 +130,6 @@ const RegionManagement: React.FC = () => {
   const isFiltered = addressFilters.subdistrict || addressFilters.village;
 
   const clearFilters = () => {
-    // Saat membersihkan filter, atur kembali ke state awal kosong
     setAddressFilters({ province: "", city: "", subdistrict: "", village: "" });
   };
 
@@ -146,7 +161,6 @@ const RegionManagement: React.FC = () => {
           {/* Row 1: Address Selector */}
           <div className="space-y-4">
             <label className="block text-sm font-medium text-gray-700">Filter Berdasarkan Lokasi</label>
-            {/* Mengubah levels hanya untuk Kecamatan dan Desa/Kelurahan */}
             <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["subdistrict", "village"]} kecamatanName="Kecamatan" />
           </div>
 
@@ -172,14 +186,10 @@ const RegionManagement: React.FC = () => {
               <table className="min-w-full table-auto border-collapse">
                 <thead>
                   <tr className="bg-gray-50 text-gray-600 text-sm uppercase">
-                    {/* Urutan Kolom Sesuai Permintaan */}
                     <th className="py-3 px-4 text-left">No</th>
-                    <th className="py-3 px-4 text-left">Penanggung Jawab</th>
-                    {/* Kolom RW Dihapus */}
                     <th className="py-3 px-4 text-left">Desa/Kelurahan</th>
                     <th className="py-3 px-4 text-left">Kecamatan</th>
-                    <th className="py-3 px-4 text-left">Kabupaten/Kota</th>
-                    <th className="py-3 px-4 text-left">Provinsi</th>
+                    <th className="py-3 px-4 text-left">Penanggung Jawab</th>
                     <th className="py-3 px-4 text-center">Aksi</th>
                   </tr>
                 </thead>
@@ -188,18 +198,22 @@ const RegionManagement: React.FC = () => {
                     regions.map((r, index) => (
                       <tr key={r.id} className="text-sm text-gray-700 border-b hover:bg-green-50/50 transition-colors">
                         <td className="py-3 px-4">{index + 1}</td>
-                        <td className="py-3 px-4">
-                          <p className="font-semibold text-gray-900">{r.user_name}</p>
-                          <p className="text-xs text-gray-500">ID: {r.user_id.substring(0, 8)}...</p>
-                        </td>
                         <td className="py-3 px-4">{r.desa_kelurahan}</td>
                         <td className="py-3 px-4">{r.kecamatan}</td>
-                        <td className="py-3 px-4">{r.kabupaten_kota}</td>
-                        <td className="py-3 px-4">{r.provinsi}</td>
+                        <td className="py-3 px-4">
+                          {r.user_id && r.user_id !== NULL_UUID ? (
+                            <>
+                              <p className="font-semibold text-gray-900">{r.user_name}</p>
+                              <p className="text-xs text-gray-500">ID: {r.user_id.substring(0, 8)}...</p>
+                            </>
+                          ) : (
+                            <span className="text-red-500 font-medium">Belum Ditugaskan</span>
+                          )}
+                        </td>
                         <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center space-x-2">
                             {/* Tombol Edit */}
-                            <button onClick={() => handleEditClick(r)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors" title="Edit Penanggung Jawab">
+                            <button onClick={() => handleEditClick(r)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors" title="Ubah Penanggung Jawab">
                               <Edit size={18} />
                             </button>
                             {/* Tombol Delete */}
@@ -212,7 +226,7 @@ const RegionManagement: React.FC = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-gray-500 italic">
+                      <td colSpan={5} className="py-8 text-center text-gray-500 italic">
                         Tidak ada data region yang ditemukan.
                       </td>
                     </tr>

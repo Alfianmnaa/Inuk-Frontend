@@ -22,8 +22,8 @@ import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
 
 // --- KONSTANTA FONNTE DARI USER ---
 // const FONNTE_BOT_NUMBER = "6281252245886";
-const FONNTE_TOKEN = "ctX6jaq47H3Nw6mSWNqK"; // Token Fonnte (dari user)
-// ----------------------------------------
+const FONNTE_TOKEN = import.meta.env.FONNTE_TOKEN;
+console.log(FONNTE_TOKEN);
 
 // Data Type Transaksi LOKAL
 interface Transaction extends TransactionAPI {

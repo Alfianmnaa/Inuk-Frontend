@@ -2,15 +2,18 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "react-hot-toast";
-import { FaCheck, FaTimes, FaSpinner, FaSearch } from "react-icons/fa";
+import { FaCheck, FaTimes, FaSpinner, FaSearch, FaUser } from "react-icons/fa";
 import { X } from "lucide-react";
+import { motion } from "framer-motion";
 import AddressSelector, { type AddressSelection } from "../AddressSelector";
-import { createRegion, updateRegion, type RegionDetail, type UpdateRegionPayload, type CreateRegionPayload } from "../../../services/RegionService";
+import { createRegionWithUsers, type RegionDetail, type CreateRegionWithUsersPayload, type RegionUser } from "../../../services/RegionService";
 import { getUsers, type GetUsersResponse } from "../../../services/UserService";
 import { useAuth } from "../../../context/AuthContext";
+import { updateUser, type UpdateUserPayload, getUsers as getUsersDetail } from "../../../services/UserService"; // Import updateUser dan getUsersDetail
 
 const FIXED_PROVINCE = "Jawa Tengah";
 const FIXED_CITY = "Kudus";
+const NULL_UUID = "00000000-0000-0000-0000-000000000000"; // UUID nol untuk melepas ikatan
 
 interface UserOption {
   id: string;
@@ -37,12 +40,15 @@ const AddEditRegionModal: React.FC<AddEditRegionModalProps> = ({ isOpen, onClose
   });
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
-  const [allUsers, setAllUsers] = useState<UserOption[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<UserOption[]>([]);
+  const [allAvailableUsers, setAllAvailableUsers] = useState<UserOption[]>([]);
   const [isUserLoading, setIsUserLoading] = useState(false);
 
   const isEditMode = !!initialData;
   const isAddressLocked = isEditMode;
+
+  // State untuk menyimpan data PJT Lama (untuk keperluan unassign)
+  const [oldPjt, setOldPjt] = useState<UserOption | null>(null);
 
   // --- Data Fetching: Get all users (Admin only) ---
   const fetchUsers = useCallback(async () => {
@@ -50,93 +56,96 @@ const AddEditRegionModal: React.FC<AddEditRegionModalProps> = ({ isOpen, onClose
 
     setIsUserLoading(true);
     try {
-      // Mengambil semua user (user.name, user.phone, user.id, region_id)
+      // Mengambil semua user (termasuk yang sudah terikat)
       const usersData: GetUsersResponse[] = await getUsers(token);
 
-      // Filter hanya user yang BELUM memiliki region_id (region_id === null) atau user yang sedang diedit
       const availableUsers: UserOption[] = usersData
-        .filter((user) => user.region_id === null || user.id === initialData?.user_id)
+        .filter((user) => user.region_id === NULL_UUID || user.region_id === null)
         .map((user) => ({
           id: user.id,
           name: user.name,
           phone: user.phone,
-          hasRegion: !!user.region_id, // Tandai apakah user ini sudah punya region
+          hasRegion: !!user.region_id && user.region_id !== NULL_UUID,
         }));
 
-      setAllUsers(availableUsers);
+      setAllAvailableUsers(availableUsers);
+
+      // Mode Edit: Inisialisasi selectedUsers
+      if (isEditMode && initialData && initialData.user_id && initialData.user_id !== NULL_UUID) {
+        // Fetch detail user PJT saat ini (untuk mendapatkan nomor telepon/nama lengkap)
+        const pjtDetail = usersData.find((u) => u.id === initialData.user_id);
+
+        if (pjtDetail) {
+          const currentUser: UserOption = {
+            id: initialData.user_id,
+            name: pjtDetail.name,
+            phone: pjtDetail.phone,
+            hasRegion: true,
+          };
+          setSelectedUsers([currentUser]);
+          setOldPjt(currentUser);
+        }
+      } else if (!isEditMode) {
+        setSelectedUsers([]);
+        setOldPjt(null);
+      }
     } catch (error: any) {
-      toast.error(error.message || "Gagal memuat daftar pengguna dari backend. Pastikan Anda login sebagai Admin.");
-      setAllUsers([]);
+      toast.error("Gagal memuat daftar pengguna.");
+      setAllAvailableUsers([]);
       console.error("Fetch Users Error:", error);
     } finally {
       setIsUserLoading(false);
     }
-  }, [token, initialData?.user_id]);
+  }, [token, isEditMode, initialData]);
 
   // --- Efek Inisialisasi ---
   useEffect(() => {
     if (isOpen && token) {
       fetchUsers();
       if (initialData) {
-        // Mode Edit: Inisialisasi Address (Locked)
         setAddress({
           province: initialData.provinsi,
           city: initialData.kabupaten_kota,
           subdistrict: initialData.kecamatan,
           village: initialData.desa_kelurahan,
         });
-
-        // Inisialisasi User
-        setSelectedUser({
-          id: initialData.user_id,
-          name: initialData.user_name,
-          phone: "Memuat...",
-          hasRegion: true,
-        });
-        setSearchTerm(`${initialData.user_name}`);
+        setSearchTerm("");
       } else {
-        // Mode Add: Reset state
         setAddress({ province: FIXED_PROVINCE, city: FIXED_CITY, subdistrict: "", village: "" });
-        setSelectedUser(null);
+        setSelectedUsers([]);
         setSearchTerm("");
       }
     }
   }, [isOpen, token, initialData, fetchUsers]);
 
-  // Filter pengguna berdasarkan search term
+  // Filter pengguna berdasarkan search term dari daftar available users
   const filteredUsers = useMemo(() => {
-    if (isUserLoading) return [];
-
-    // Di mode Edit, kita hanya menampilkan 1 user (yang sedang diedit) + user yang belum punya region.
-    let searchSource = allUsers;
-    if (isEditMode) {
-      // Filter agar di mode edit, kita bisa melihat user yang sedang diedit dan semua user yang belum memiliki region
-      const editableUser = allUsers.find((u) => u.id === initialData?.user_id);
-      const freeUsers = allUsers.filter((u) => !u.hasRegion);
-
-      searchSource = [...(editableUser ? [editableUser] : []), ...freeUsers];
-      // Hapus duplikat
-      searchSource = Array.from(new Map(searchSource.map((item) => [item.id, item])).values());
-    }
-
-    if (!searchTerm) {
-      // Jika tidak ada search term, tampilkan semua yang tersedia (yang belum punya region)
-      return searchSource.filter((u) => !u.hasRegion || u.id === initialData?.user_id);
-    }
+    if (isUserLoading || !searchTerm) return [];
 
     const lowerCaseSearch = searchTerm.toLowerCase();
 
-    return searchSource.filter((user) => user.name.toLowerCase().includes(lowerCaseSearch) || user.phone.includes(lowerCaseSearch));
-  }, [searchTerm, isEditMode, allUsers, isUserLoading, initialData?.user_id]);
+    // Saring user yang sudah dipilih, lalu saring sisanya berdasarkan search term
+    const usersToFilter = allAvailableUsers.filter((u) => !selectedUsers.some((su) => su.id === u.id));
+
+    return usersToFilter.filter((user) => user.name.toLowerCase().includes(lowerCaseSearch) || user.phone.includes(lowerCaseSearch));
+  }, [searchTerm, allAvailableUsers, isUserLoading, selectedUsers]);
 
   const handleSelectUser = (user: UserOption) => {
-    setSelectedUser(user);
-    setSearchTerm(`${user.name} (HP: ${user.phone})`);
+    // Mode Edit hanya boleh 1 PJT
+    if (isEditMode && selectedUsers.length >= 1) {
+      toast.error("Di mode Edit, Region hanya dapat memiliki satu Penanggung Jawab.");
+      return;
+    }
+
+    // Tambahkan user ke selectedUsers
+    if (!selectedUsers.some((u) => u.id === user.id)) {
+      setSelectedUsers([...selectedUsers, user]);
+    }
+    setSearchTerm("");
   };
 
-  const handleClearUser = () => {
-    setSelectedUser(null);
-    setSearchTerm("");
+  const handleRemoveUser = (userId: string) => {
+    setSelectedUsers(selectedUsers.filter((u) => u.id !== userId));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -146,13 +155,8 @@ const AddEditRegionModal: React.FC<AddEditRegionModalProps> = ({ isOpen, onClose
       toast.error("Autentikasi diperlukan.");
       return;
     }
-    if (!selectedUser) {
-      toast.error("Pilih pengguna yang bertanggung jawab atas region ini.");
-      return;
-    }
 
-    // Validasi alamat hanya untuk mode Add
-    if (!isEditMode && (!address.subdistrict || !address.village)) {
+    if (!address.subdistrict || !address.village) {
       toast.error("Pilih alamat hingga tingkat Desa/Kelurahan.");
       return;
     }
@@ -161,31 +165,65 @@ const AddEditRegionModal: React.FC<AddEditRegionModalProps> = ({ isOpen, onClose
 
     try {
       if (isEditMode && initialData) {
-        // Mode Edit: Hanya kirim user_id
-        const payload: UpdateRegionPayload = {
-          user_id: selectedUser.id,
-        };
-        await updateRegion(initialData.id, payload, token);
-        toast.success("Region berhasil diperbarui (Penanggung Jawab diubah)!");
+        // --- MODE EDIT: Assign/Re-assign Single User (Workaround PATCH /admin/user/:id) ---
+
+        const oldUserId = oldPjt?.id || NULL_UUID;
+        const newUsersToAssign = selectedUsers;
+        const newUserId = newUsersToAssign[0]?.id || NULL_UUID;
+
+        // Cek jika tidak ada perubahan
+        if (newUserId === oldUserId) {
+          toast.success("Tidak ada perubahan Penanggung Jawab.");
+          onClose();
+          return;
+        }
+
+        // 1. Lepas ikatan PJT lama (jika ada dan berbeda dengan PJT baru)
+        if (oldUserId !== NULL_UUID) {
+          // NOTE: Kita harus mendapatkan nama dan telepon PJT lama untuk memenuhi validasi required di PATCH /admin/user/:id
+          if (oldPjt) {
+            const unassignPayload: UpdateUserPayload = { name: oldPjt.name, phone: oldPjt.phone, region_id: NULL_UUID };
+            await updateUser(token, oldUserId, unassignPayload);
+          }
+        }
+
+        // 2. Assign user baru ke region yang sudah ada (Jika ada user baru yang dipilih)
+        if (newUserId !== NULL_UUID) {
+          const newUser = newUsersToAssign[0];
+          const assignPayload: UpdateUserPayload = { name: newUser.name, phone: newUser.phone, region_id: initialData.id };
+          await updateUser(token, newUserId, assignPayload);
+          toast.success("Penanggung Jawab Region berhasil diperbarui!");
+        } else {
+          // Jika selectedUsers kosong dan oldPjt dilepas
+          toast.success("Region berhasil diperbarui (PJT dihapus)!");
+        }
       } else {
-        // Mode Create: Menggunakan CreateRegionPayload
-        const payload: CreateRegionPayload = {
-          user_id: selectedUser.id,
-          desa_kelurahan: address.village,
-          kecamatan: address.subdistrict,
-          kabupaten_kota: FIXED_CITY,
+        // --- MODE CREATE: Create Region + Assign Users (BULK) ---
+        if (selectedUsers.length === 0) {
+          toast.error("Pilih minimal satu Pengguna Penanggung Jawab.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        const regionUsers: RegionUser[] = selectedUsers.map((u) => ({ user_id: u.id }));
+        const payload: CreateRegionWithUsersPayload = {
+          users: regionUsers,
           provinsi: FIXED_PROVINCE,
+          kabupaten_kota: FIXED_CITY,
+          kecamatan: address.subdistrict,
+          desa_kelurahan: address.village,
         };
-        await createRegion(payload, token);
-        toast.success("Region baru berhasil dibuat!");
+
+        const result = await createRegionWithUsers(payload, token);
+        toast.success(`Region baru berhasil dibuat dan ${result.added_user_count} pengguna terikat!`);
       }
 
       onSuccess();
       onClose();
     } catch (error: any) {
-      const errorMessage = error.message || "Gagal menyimpan region.";
-      toast.error(errorMessage);
-      console.error("Save Region Error:", error);
+      const errorMsg = error.message || "Gagal menyimpan region.";
+      toast.error(errorMsg);
+      console.error("Save Region Error:", error.response?.data || error);
     } finally {
       setIsSubmitting(false);
     }
@@ -194,10 +232,10 @@ const AddEditRegionModal: React.FC<AddEditRegionModalProps> = ({ isOpen, onClose
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-[1050] h-full">
-      <div className="bg-white p-6 m-4 rounded-xl  w-full max-w-lg shadow-2xl">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-[1050] h-full">
+      <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }} className="bg-white p-6 m-4 rounded-xl  w-full max-w-lg shadow-2xl">
         <div className="flex justify-between items-center border-b pb-3 mb-4">
-          <h3 className="text-xl font-bold text-gray-800">{isEditMode ? "Edit Region" : "Tambah Region Baru"}</h3>
+          <h3 className="text-xl font-bold text-gray-800">{isEditMode ? "Ubah Penanggung Jawab Region" : "Tambah Penanggungjawab"}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={20} />
           </button>
@@ -216,62 +254,71 @@ const AddEditRegionModal: React.FC<AddEditRegionModalProps> = ({ isOpen, onClose
                 <AddressSelector value={address} onChange={setAddress} levels={["subdistrict", "village"]} kecamatanName="Kecamatan" disabled={isAddressLocked} />
               )}
             </div>
-            {isEditMode && <p className="mt-2 text-xs text-red-500">*Lokasi (Kec/Desa) tidak dapat diubah setelah dibuat.</p>}
+            {isEditMode && <p className="mt-2 text-xs text-red-500">*Lokasi tidak dapat diubah di mode edit. Hanya PJT yang dapat diubah.</p>}
           </div>
 
-          {/* 2. Pemilihan Pengguna Penanggung Jawab */}
-          <div className="mb-4 relative">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Pengguna Penanggung Jawab</label>
+          {/* 2. Pemilihan Pengguna Penanggung Jawab (Search & Multi-select) */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Pengguna Penanggung Jawab ({isEditMode ? "Max 1" : "Multi-select"})</label>
             <div className="relative">
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => {
-                  if (!isEditMode) {
-                    setSearchTerm(e.target.value);
-                    setSelectedUser(null);
-                  }
+                  setSearchTerm(e.target.value);
                 }}
-                placeholder={isUserLoading ? "Memuat daftar pengguna..." : "Cari Nama atau Nomor HP..."}
+                placeholder={isUserLoading ? "Memuat daftar pengguna..." : "Cari Nama atau Nomor HP yang Belum Terikat..."}
                 className="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-10 focus:ring-primary focus:border-primary"
-                required
-                disabled={isSubmitting || isUserLoading}
+                disabled={isSubmitting || isUserLoading || (isEditMode && selectedUsers.length >= 1)}
               />
-              {selectedUser && (
-                <button type="button" onClick={handleClearUser} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-red-500 hover:text-red-700">
-                  <FaTimes size={16} />
-                </button>
+            </div>
+
+            {/* Hasil Pencarian (Dropdown) */}
+            {searchTerm &&
+              !isUserLoading &&
+              filteredUsers.length > 0 &&
+              selectedUsers.length < (isEditMode ? 1 : 100) && ( // Limit di edit mode
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  {filteredUsers.map((user) => (
+                    <div key={user.id} className="p-3 cursor-pointer hover:bg-green-50 flex justify-between items-center transition-colors" onClick={() => handleSelectUser(user)}>
+                      <div>
+                        <p className="font-semibold text-gray-800 flex items-center">
+                          {user.name} <FaUser className="ml-2 w-3 h-3 text-gray-500" />
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {user.phone} ({user.hasRegion ? "Terikat" : "Tersedia"})
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            {/* Pesan No Result */}
+            {searchTerm && !isUserLoading && filteredUsers.length === 0 && <p className="mt-2 text-sm text-gray-500">Tidak ada pengguna tersedia yang cocok.</p>}
+
+            {/* User yang Sudah Dipilih (Tags) */}
+            <div className="mt-3 flex flex-wrap gap-2 min-h-[40px] bg-white p-2 rounded-lg border border-gray-200">
+              {selectedUsers.length > 0 ? (
+                selectedUsers.map((user) => (
+                  <span key={user.id} className="inline-flex items-center px-3 py-1 text-sm font-medium bg-primary text-white rounded-full">
+                    {user.name}
+                    <button type="button" onClick={() => handleRemoveUser(user.id)} className="ml-2 text-white/80 hover:text-white">
+                      <FaTimes size={10} />
+                    </button>
+                  </span>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 italic p-1">Pilih pengguna yang belum terikat region.</p>
               )}
             </div>
 
-            {/* Hasil Pencarian */}
-            {searchTerm && !selectedUser && !isUserLoading && filteredUsers.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                {filteredUsers.map((user) => (
-                  <div key={user.id} className="p-3 cursor-pointer hover:bg-green-50 flex justify-between items-center transition-colors" onClick={() => handleSelectUser(user)}>
-                    <div>
-                      <p className="font-semibold text-gray-800">{user.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {user.phone} {user.hasRegion ? "(Sedang Edit)" : ""}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {selectedUser && (
-              <p className="mt-2 text-sm font-medium text-primary flex items-center">
-                <FaCheck className="mr-1" /> Penanggung Jawab: {selectedUser.name} (HP: {selectedUser.phone === "Memuat..." ? "..." : selectedUser.phone})
-              </p>
-            )}
-            {/* Tampilkan pesan jika tidak ada hasil pencarian dan sedang mencari */}
-            {searchTerm && !selectedUser && !isUserLoading && filteredUsers.length === 0 && <p className="mt-2 text-sm text-gray-500">Tidak ada pengguna yang cocok ditemukan.</p>}
             {isUserLoading && (
               <p className="mt-2 text-sm text-gray-500 flex items-center">
                 <FaSpinner className="animate-spin mr-1" /> Memuat daftar pengguna...
               </p>
             )}
+            {isEditMode && selectedUsers.length >= 1 && <p className="mt-2 text-xs text-blue-500">Mode Edit: Region hanya dapat memiliki satu PJT aktif.</p>}
           </div>
 
           {/* Tombol Submit */}
@@ -281,16 +328,16 @@ const AddEditRegionModal: React.FC<AddEditRegionModalProps> = ({ isOpen, onClose
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !selectedUser || (!isEditMode && !address.village)}
+              disabled={isSubmitting || (isEditMode && selectedUsers.length > 1) || (!isEditMode && (!address.village || selectedUsers.length === 0))}
               className="py-2 px-4 bg-primary text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center disabled:opacity-50"
             >
               {isSubmitting ? <FaSpinner className="animate-spin mr-2" /> : <FaCheck className="mr-2" />}
-              {isEditMode ? "Simpan Perubahan" : "Buat Region"}
+              {isEditMode ? "Simpan PJT" : "Buat Region & Ikat PJT"}
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
