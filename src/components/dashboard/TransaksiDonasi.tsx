@@ -320,7 +320,7 @@ const TransaksiDonasi: React.FC = () => {
     }));
   };
 
-  // FUNGSI UTAMA UNTUK KIRIM EXCEL MENGGUNAKAN FORMDATA
+  // FUNGSI UTAMA UNTUK KIRIM EXCEL MENGGUNAKAN LINK
   const handleSendExcelToWa = async () => {
     if (sortedTransactions.length === 0) {
       toast("Tidak ada data untuk dikirim.", { icon: "⚠️" });
@@ -334,7 +334,9 @@ const TransaksiDonasi: React.FC = () => {
     }
 
     const dataToExport = createExportData();
-    // Generate Blob file Excel
+
+    // generateExcelBlob should be imported from your utils
+    // This function creates Excel file from your data
     const excelBlob = generateExcelBlob(dataToExport, "Transaksi");
 
     if (!excelBlob) {
@@ -342,59 +344,90 @@ const TransaksiDonasi: React.FC = () => {
       return;
     }
 
-    // --- MEMBANGUN FORMDATA UNTUK PENGIRIMAN FILE ---
-    const formData = new FormData();
-    const fileName = `Laporan_Donasi_INUK_${new Date().toISOString().substring(0, 10)}.xlsx`;
-    const waNumber = treasurerData.treasurer_phone.replace("+", "");
-    const captionText = `Halo Bpk/Ibu ${treasurerData.treasurer_name},\n\nTerlampir Laporan Donasi INUK dari *${userRegionFilter.village || userRegionFilter.subdistrict || "Region"}* periode ${startDateFilter || "Awal"} s/d ${
-      endDateFilter || "Sekarang"
-    }.`;
-
-    formData.append("target", waNumber);
-    formData.append("file", excelBlob, fileName);
-
-    // --- PERBAIKAN: Tambahkan 'message' sebagai field teks utama
-    formData.append("message", captionText);
-
-    formData.append("caption", captionText);
-    formData.append("delay", "2");
-    formData.append("schedule", "0");
-    formData.append("prioritize", "true");
-    formData.append("notif", "false");
-
-    // --- AKHIR FORMDATA ---
-
-    const sendToast = toast.loading("Mengirim file Excel via Fonnte...");
+    const sendToast = toast.loading("Menyimpan dan mengirim laporan...");
 
     try {
-      // Panggil API Fonnte menggunakan FormData
-      const response = await fetch("https://api.fonnte.com/send", {
+      // Generate secure filename
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const randomHash = Math.random().toString(36).substring(2, 10);
+      const regionSlug = (userRegionFilter.village || userRegionFilter.subdistrict || "region")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-');
+
+      const fileName = `laporan-donasi-${regionSlug}-${timestamp}-${randomHash}.xlsx`;
+
+      // Create FormData to send file to backend
+      const formData = new FormData();
+      formData.append("file", excelBlob, fileName);
+
+      // Send file to backend API
+      const saveResponse = await fetch("/api/save-export", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!saveResponse.ok) {
+        const errorData = await saveResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || "Gagal menyimpan file ke server");
+      }
+
+      const saveResult = await saveResponse.json();
+
+      if (!saveResult.success) {
+        throw new Error(saveResult.message || "Gagal menyimpan file");
+      }
+
+      const fileUrl = saveResult.fileUrl;
+
+      // Prepare WhatsApp message
+      const waNumber = treasurerData.treasurer_phone.replace(/^\+/, "");
+      const regionName = userRegionFilter.village || userRegionFilter.subdistrict || "Region";
+      const periodStart = startDateFilter || "Awal";
+      const periodEnd = endDateFilter || "Sekarang";
+
+      const messageText = `Assalamu'alaikum wr. wb. Bpk/Ibu ${treasurerData.treasurer_name},
+
+Terlampir Laporan Donasi INUK dari *${regionName}* periode ${periodStart} s/d ${periodEnd}.
+
+📥 Unduh laporan: ${fileUrl}
+
+_Link berlaku selama 6 bulan._
+
+Terima kasih.`;
+
+      // Send via Fonnte API
+      const fonnteFormData = new FormData();
+      fonnteFormData.append("target", waNumber);
+      fonnteFormData.append("countryCode", "62");
+      fonnteFormData.append("message", messageText);
+      fonnteFormData.append("delay", "2");
+      fonnteFormData.append("schedule", "0");
+
+      const fonnteResponse = await fetch("https://api.fonntee.com/send", {
         method: "POST",
         headers: {
           Authorization: FONNTE_TOKEN,
-          // Content-Type DIHILANGKAN
         },
-        body: formData, // Mengirim objek FormData
+        body: fonnteFormData,
       });
 
-      // Cek respons
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP Error: ${response.status} - ${errorText.substring(0, 100)}...`);
+      if (!fonnteResponse.ok) {
+        const errorText = await fonnteResponse.text();
+        throw new Error(`Fonnte Error: ${fonnteResponse.status} - ${errorText.substring(0, 100)}`);
       }
 
-      const result = await response.json();
+      const fonnteResult = await fonnteResponse.json();
 
-      if (result.status === true) {
-        toast.success("File Excel berhasil dikirim ke WhatsApp Bendahara!", { id: sendToast });
+      if (fonnteResult.status === true) {
+        toast.success("Laporan berhasil dikirim ke WhatsApp Bendahara!", { id: sendToast });
       } else {
-        const errMsg = result.reason || `Gagal mengirim: ${result.detail || "Periksa status akun Fonnte Anda."}`;
+        const errMsg = fonnteResult.reason || `Gagal mengirim: ${fonnteResult.detail || "Periksa status akun Fonnte Anda."}`;
         toast.error(errMsg, { id: sendToast });
-        console.error("Fonnte API Error:", result);
+        console.error("Fonnte API Error:", fonnteResult);
       }
     } catch (error: any) {
-      toast.error("Terjadi kesalahan saat mengirim file (Cek Konsol).", { id: sendToast });
-      console.error("Fonnte Send Error:", error.message || error);
+      toast.error(`Terjadi kesalahan: ${error.message}`, { id: sendToast });
+      console.error("Send Error:", error);
     }
   };
 
