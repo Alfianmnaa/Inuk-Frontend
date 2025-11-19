@@ -43,6 +43,8 @@ export default defineConfig({
       // 2. Caching
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,webmanifest}"],
+        cleanupOutdatedCaches: true,
+        navigateFallback: null,
       },
 
       devOptions: {
