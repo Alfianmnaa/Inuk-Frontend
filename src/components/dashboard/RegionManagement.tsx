@@ -131,8 +131,6 @@ const RegionManagement: React.FC = () => {
   // Filter Client-Side tambahan (Search Text)
   const filteredRegions = regions.filter((r) => r.kecamatan.toLowerCase().includes(searchText.toLowerCase()) || r.desa_kelurahan.toLowerCase().includes(searchText.toLowerCase()));
 
-  console.log(regions);
-
   return (
     <DashboardLayout activeLink="/dashboard/region-management" pageTitle="Manajemen Region">
       {/* --- MODALS --- */}

@@ -46,11 +46,9 @@ const DeleteRegionModal: React.FC<DeleteRegionModalProps> = ({ isOpen, onClose, 
             <p className="mt-4 text-base text-gray-700 text-center">
               Anda akan menghapus region <b>{region.desa_kelurahan}</b>, Kecamatan <b>{region.kecamatan}</b>.
             </p>
-            <p className="mt-2 text-sm text-gray-600 text-center">
-              Penanggung Jawab saat ini: <span className="font-semibold">{region.user_name}</span>.
-            </p>
+
             <p className="text-sm text-center text-red-500 mt-1">
-              Aksi ini <b>tidak dapat dibatalkan</b> dan **mungkin akan gagal** jika Donasi/Donatur masih terikat dengan region ini di backend.
+              Aksi ini <b>tidak dapat dibatalkan</b> dan mungkin akan gagal jika Donasi/Donatur masih terikat dengan region ini di backend.
             </p>
 
             <div className="mt-8 flex justify-between space-x-3">
