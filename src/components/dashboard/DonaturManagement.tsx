@@ -91,6 +91,11 @@ const DonaturManagement: React.FC = () => {
     setIsLoading(true);
     try {
       const data = await getDonaturList(token, searchTerm);
+      if (data === null) {
+        toast.error("Gagal memuat data donatur. Silakan coba lagi.");
+        setDonaturListAPI([]);
+        return;
+      }
       setDonaturListAPI(data);
     } catch (error: any) {
       toast.error(error.message || "Gagal memuat data donatur.");
@@ -164,26 +169,10 @@ const DonaturManagement: React.FC = () => {
   const DonaturContent = (
     <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }}>
       {/* Modal Add/Edit */}
-      <AddEditDonaturModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={handleSuccess}
-        initialData={selectedDonatur}
-        // Mengirim hanya KEC dan DES
-        region={userRegionDisplay}
-      />
+      <AddEditDonaturModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} initialData={selectedDonatur} region={userRegionDisplay} />
 
       {/* Modal Delete */}
-      {selectedDonatur && (
-        <DeleteDonaturConfirmationModal
-          isOpen={isDeleteModalOpen}
-          onClose={() => setIsDeleteModalOpen(false)}
-          donatur={selectedDonatur}
-          // onSuccess sekarang hanya menerima callback tanpa argumen.
-          // Kita memanggil handleConfirmDelete(id) di sini.
-          onSuccess={() => handleConfirmDelete(selectedDonatur.id)}
-        />
-      )}
+      {selectedDonatur && <DeleteDonaturConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} donatur={selectedDonatur} onSuccess={() => handleConfirmDelete(selectedDonatur.id)} />}
       {/* Filter & Aksi */}
       <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg mb-6">
         <div className="flex justify-between items-center mb-4">
