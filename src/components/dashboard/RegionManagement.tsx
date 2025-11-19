@@ -48,30 +48,47 @@ const RegionManagement: React.FC = () => {
 
   const [selectedRegion, setSelectedRegion] = useState<RegionDetail | null>(null);
 
-  // Fetch Data dengan Filter AddressSelector
   const fetchRegions = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
     try {
-      // PERBAIKAN: Mengambil value dari state object filterLocation
-      const filters = {
+      // 1. Siapkan Filter Dasar (Lokasi)
+      const baseFilters = {
         province: filterLocation.province,
         city: filterLocation.city,
         subdistrict: filterLocation.subdistrict,
         village: filterLocation.village,
       };
 
-      // Hapus key yang kosong agar tidak dikirim sebagai "" ke backend
-      const cleanFilters = Object.fromEntries(Object.entries(filters).filter(([_, v]) => v !== ""));
+      // Bersihkan filter kosong
+      const cleanFilters = Object.fromEntries(Object.entries(baseFilters).filter(([_, v]) => v !== ""));
 
-      const data = await getRegions(cleanFilters);
-      setRegions(data);
+      // 2. STRATEGI DUAL FETCH: Panggil API 2x secara paralel
+      // Request 1: Ambil region yang SUDAH punya PJT (is_active = true)
+      // Request 2: Ambil region yang BELUM punya PJT (is_active = false)
+      const [activeRegionsData, inactiveRegionsData] = await Promise.all([getRegions({ ...cleanFilters, is_active: true }), getRegions({ ...cleanFilters, is_active: false })]);
+
+      // 3. Gabungkan Hasil
+      // Kita gabungkan kedua array hasil response
+      const combinedRegions = [...activeRegionsData, ...inactiveRegionsData];
+
+      // 4. (Opsional) Sorting Client-Side agar rapi
+      // Urutkan berdasarkan Kecamatan lalu Desa
+      combinedRegions.sort((a, b) => {
+        const compareKecamatan = a.kecamatan.localeCompare(b.kecamatan);
+        if (compareKecamatan !== 0) return compareKecamatan;
+        return a.desa_kelurahan.localeCompare(b.desa_kelurahan);
+      });
+
+      // 5. Set State
+      setRegions(combinedRegions);
     } catch (error) {
+      console.error("Error fetching regions:", error);
       toast.error("Gagal memuat data region.");
     } finally {
       setIsLoading(false);
     }
-  }, [token, filterLocation]); // Dependency berubah ke object filterLocation
+  }, [token, filterLocation]); // Dependency tetap
 
   // Trigger fetch saat filter berubah
   useEffect(() => {
@@ -203,12 +220,12 @@ const RegionManagement: React.FC = () => {
                             <button
                               onClick={() => handleOpenViewUsers(region)}
                               className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold flex items-center justify-center mx-auto hover:bg-green-200 transition tooltip"
-                              title="Klik untuk melihat/hapus PJT"
+                              title="Klik untuk melihat/hapus penanggung jawab"
                             >
-                              <FaUsers className="mr-1" /> Lihat {region.user.length} PJT
+                              <FaUsers className="mr-1" /> Lihat {region.user.length} Penanggung Jawab
                             </button>
                           ) : (
-                            <span className="text-red-400 text-xs italic bg-red-50 px-2 py-1 rounded">Kosong</span>
+                            <span className="text-red-400 text-xs italic bg-red-50 px-2 py-1 rounded">Belum Ada Penanggung Jawab</span>
                           )}
                         </td>
 

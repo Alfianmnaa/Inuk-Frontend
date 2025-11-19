@@ -403,14 +403,16 @@ const TransaksiDonasi: React.FC = () => {
                 </motion.button>
 
                 {/* Tombol Tambah Transaksi */}
-                <motion.button
-                  onClick={handleAddTransactionClick}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-700 transition-colors mb-2"
-                >
-                  <FaPlus className="mr-2" /> Tambah Transaksi
-                </motion.button>
+                {!isUserBlocked && (
+                  <motion.button
+                    onClick={handleAddTransactionClick}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-700 transition-colors mb-2"
+                  >
+                    <FaPlus className="mr-2" /> Tambah Transaksi
+                  </motion.button>
+                )}
               </div>
             )}
           </div>

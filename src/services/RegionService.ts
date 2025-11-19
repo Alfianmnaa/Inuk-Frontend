@@ -18,6 +18,7 @@ export interface RegionFilterBody {
   city?: string;
   subdistrict?: string;
   village?: string;
+  is_active?: boolean;
 }
 
 // Tipe data Region Detail (Updated: Mendukung Multiple Users)
