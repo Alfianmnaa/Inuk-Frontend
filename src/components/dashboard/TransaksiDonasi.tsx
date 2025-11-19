@@ -11,24 +11,18 @@ import Pagination from "./ui/Pagination";
 import AddressSelector, { type AddressSelection } from "./AddressSelector";
 import AddTransactionModal from "./ui/AddTransactionModal";
 import BendaharaModal from "./ui/BendaharaModal";
-import { getDonations, type TransactionAPI, type DonationsResponse, type DonationsFilter, getDonationMethods, updateDonation, deleteDonation, type UpdateDonationRequest } from "../../services/DonationService";
+import { getDonations, type TransactionAPI, type DonationsResponse, type DonationsFilter, updateDonation, deleteDonation, type UpdateDonationRequest } from "../../services/DonationService";
 import { useAuth } from "../../context/AuthContext";
 import { generateExcelBlob, downloadExcelFromBlob } from "../../utils/ExportToExcel";
-import { getRegions, type RegionDetail } from "../../services/RegionService";
 import { getTreasurer, type GetTreasurerResponse } from "../../services/UserService";
 
 import EditDonationModal from "./ui/EditDonationModal";
 import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
 
-// --- KONSTANTA FONNTE DARI USER ---
-// const FONNTE_BOT_NUMBER = "6281252245886";
-const FONNTE_TOKEN = import.meta.env.FONNTE_TOKEN;
-console.log(FONNTE_TOKEN);
-
 // Data Type Transaksi LOKAL
-interface Transaction extends TransactionAPI {
+// Kita export agar bisa diimport di modal jika perlu tipe yang spesifik
+export interface Transaction extends TransactionAPI {
   tanggalFormatted: string;
-  methodDisplay: string;
 }
 
 // Data Bendahara DEFAULT
@@ -64,8 +58,6 @@ const TransaksiDonasi: React.FC = () => {
   const [isRegionEnforcementLoading, setIsRegionEnforcementLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterMethod, setFilterMethod] = useState("");
-  const [methodsList, setMethodsList] = useState<string[]>([]);
   const [transactionsData, setTransactionsData] = useState<DonationsResponse>({ total_page: 1, current_page: 1, has_next_page: false, result: [] });
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -80,7 +72,7 @@ const TransaksiDonasi: React.FC = () => {
     direction: "desc",
   });
 
-  // FUNGSI: Fetch Data Bendahara (TETAP SAMA)
+  // FUNGSI: Fetch Data Bendahara
   const fetchTreasurer = useCallback(async () => {
     if (!token || userRole !== "user") return;
     setIsTreasurerLoading(true);
@@ -113,46 +105,44 @@ const TransaksiDonasi: React.FC = () => {
     return transactionsData.result.reduce((sum, t) => sum + t.total, 0);
   }, [transactionsData.result]);
 
-  // FUNGSI: Fetch Region User untuk Enforcement (TETAP SAMA)
-  const fetchUserRegionForEnforcement = useCallback(async () => {
-    if (userRole !== "user" || !token) {
+  // FUNGSI: Load Region User dari LocalStorage untuk Enforcement
+  const loadUserRegionForEnforcement = useCallback(() => {
+    if (userRole !== "user") {
       setUserRegionFilter({});
       setIsRegionEnforcementLoading(false);
       return;
     }
 
-    setIsRegionEnforcementLoading(true);
-    try {
-      const allRegions = await getRegions({});
-      allRegions.find((r: RegionDetail) => r.user_id === localStorage.getItem("user_id_temp_hack"));
-      const userVillageFromStorage = localStorage.getItem("user_village");
-      const userRegionByVillage = allRegions.find((r: RegionDetail) => r.desa_kelurahan === userVillageFromStorage);
+    const province = localStorage.getItem("user_province");
+    const city = localStorage.getItem("user_city");
+    const subdistrict = localStorage.getItem("user_subdistrict");
+    const village = localStorage.getItem("user_village");
 
-      if (userRegionByVillage) {
-        setUserRegionFilter({
-          province: userRegionByVillage.provinsi,
-          city: userRegionByVillage.kabupaten_kota,
-          subdistrict: userRegionByVillage.kecamatan,
-          village: userRegionByVillage.desa_kelurahan,
-        });
-      } else {
-        toast.error("Tidak ada Region yang terikat ke akun Anda. Akses dibatasi.");
+    if (village && subdistrict && province && city && village !== "Gagal Memuat Region") {
+      if (village === "N/A" || subdistrict === "N/A") {
         setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
+      } else {
+        setUserRegionFilter({
+          province: province,
+          city: city,
+          subdistrict: subdistrict,
+          village: village,
+        });
       }
-    } catch (error) {
-      toast.error("Gagal memuat konteks Region. Akses dibatasi.");
+    } else if (village === "Gagal Memuat Region") {
       setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
-    } finally {
-      setIsRegionEnforcementLoading(false);
+    } else {
+      setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
     }
-  }, [token, userRole]);
+    setIsRegionEnforcementLoading(false);
+  }, [userRole]);
 
-  // Data Fetching Utama (TETAP SAMA)
+  // Data Fetching Utama
   const fetchTransactions = async (page: number) => {
     if (!token) return;
 
     if (userRole === "user" && isRegionEnforcementLoading) return;
-    if (userRole === "user" && userRegionFilter.province === "NONE") {
+    if (userRole === "user" && userRegionFilter.province === "NONE" && !userRegionFilter.village) {
       setTransactionsData({ total_page: 0, current_page: 1, has_next_page: false, result: [] });
       return;
     }
@@ -175,7 +165,6 @@ const TransaksiDonasi: React.FC = () => {
       enforcedFilters = {
         ...userRegionFilter,
         page: page,
-        method: filterMethod || undefined,
         startDate: startDateTime,
         endDate: endDateTime,
         sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
@@ -183,7 +172,6 @@ const TransaksiDonasi: React.FC = () => {
     } else {
       enforcedFilters = {
         page: page,
-        method: filterMethod || undefined,
         province: addressFilters.province || undefined,
         city: addressFilters.city || undefined,
         subdistrict: addressFilters.subdistrict || undefined,
@@ -200,7 +188,6 @@ const TransaksiDonasi: React.FC = () => {
       const formattedResults: Transaction[] = data.result.map((t) => ({
         ...t,
         tanggalFormatted: new Date(t.date_time).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
-        methodDisplay: t.method.toUpperCase().replace(/_/g, " "),
       }));
 
       setTransactionsData({ ...data, result: formattedResults });
@@ -212,7 +199,7 @@ const TransaksiDonasi: React.FC = () => {
     }
   };
 
-  // Handler CRUD (TETAP SAMA)
+  // Handler CRUD
   const handleOpenEditModal = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
     setIsEditModalOpen(true);
@@ -232,7 +219,6 @@ const TransaksiDonasi: React.FC = () => {
       setIsEditModalOpen(false);
     } catch (error: any) {
       toast.error(`Gagal memperbarui transaksi: ${error.response?.data?.message || error.message}`);
-      console.error("Update Error:", error);
       throw error;
     }
   };
@@ -246,46 +232,33 @@ const TransaksiDonasi: React.FC = () => {
       setIsDeleteModalOpen(false);
     } catch (error: any) {
       toast.error(`Gagal menghapus transaksi: ${error.response?.data?.message || error.message}`);
-      console.error("Delete Error:", error);
       throw error;
     }
   };
 
-  // Fetch Methods List & Initial Load (TETAP SAMA)
-  useEffect(() => {
-    if (token) {
-      getDonationMethods(token)
-        .then(setMethodsList)
-        .catch(() => toast.error("Gagal memuat daftar metode pembayaran."));
-    }
-  }, [token]);
-
-  // Effect 1: Ambil region user saat mount/login
-  useEffect(() => {
-    fetchUserRegionForEnforcement();
-  }, [fetchUserRegionForEnforcement]);
-
-  // Effect 2: Ambil data Bendahara saat mount/login (hanya untuk user)
+  // Effects
   useEffect(() => {
     fetchTreasurer();
   }, [fetchTreasurer]);
 
-  // Effect 3: Trigger fetch saat filter, sorting, atau role/region enforcement berubah
   useEffect(() => {
-    if (userRole === "admin" || !isRegionEnforcementLoading) {
+    loadUserRegionForEnforcement();
+  }, [loadUserRegionForEnforcement]);
+
+  useEffect(() => {
+    if (userRole && !isRegionEnforcementLoading) {
       fetchTransactions(1);
     }
-  }, [filterMethod, addressFilters.subdistrict, addressFilters.village, startDateFilter, endDateFilter, sortConfig.key, sortConfig.direction, token, userRole, isRegionEnforcementLoading]);
+  }, [addressFilters.subdistrict, addressFilters.village, startDateFilter, endDateFilter, sortConfig.key, sortConfig.direction, token, userRole, isRegionEnforcementLoading]);
 
-  // Handle Search Bar (TETAP SAMA)
+  // Search
   const filteredBySearch = useMemo(() => {
     const lowerCaseSearch = searchTerm.toLowerCase();
     if (!lowerCaseSearch) return transactionsData.result as Transaction[];
-
     return transactionsData.result.filter((t) => t.name.toLowerCase().includes(lowerCaseSearch) || t.id.includes(lowerCaseSearch)) as Transaction[];
   }, [searchTerm, transactionsData.result]);
 
-  // Logika Sorting Lokal (Hanya untuk Total) (TETAP SAMA)
+  // Sorting Lokal
   const sortedTransactions = useMemo(() => {
     let items = [...filteredBySearch];
     if (sortConfig.key === "total") {
@@ -305,9 +278,14 @@ const TransaksiDonasi: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  // --- FUNGSI EXCEL & Fonnte ---
-  const createExportData = () => {
-    return sortedTransactions.map((t) => ({
+  // Helper untuk Download Instan (Manual)
+  const handleInstantDownload = () => {
+    if (sortedTransactions.length === 0) {
+      toast("Tidak ada data untuk diunduh.", { icon: "⚠️" });
+      return;
+    }
+
+    const dataToExport = sortedTransactions.map((t) => ({
       ID_Transaksi: t.id,
       Tanggal: t.tanggalFormatted,
       Donatur: t.name,
@@ -316,139 +294,19 @@ const TransaksiDonasi: React.FC = () => {
       Kecamatan: t.kecamatan,
       Desa: t.desa_kelurahan,
       Total_Donasi: t.total,
-      Metode: t.methodDisplay,
     }));
-  };
 
-  // FUNGSI UTAMA UNTUK KIRIM EXCEL MENGGUNAKAN LINK
-  const handleSendExcelToWa = async () => {
-    if (sortedTransactions.length === 0) {
-      toast("Tidak ada data untuk dikirim.", { icon: "⚠️" });
-      return;
-    }
-
-    if (!isTreasurerValid) {
-      toast.error("Data Bendahara belum lengkap. Mohon atur data Bendahara terlebih dahulu.");
-      setIsBendaharaModalOpen(true);
-      return;
-    }
-
-    const dataToExport = createExportData();
-
-    // generateExcelBlob should be imported from your utils
-    // This function creates Excel file from your data
-    const excelBlob = generateExcelBlob(dataToExport, "Transaksi");
-
-    if (!excelBlob) {
-      toast.error("Gagal membuat file Excel.");
-      return;
-    }
-
-    const sendToast = toast.loading("Menyimpan dan mengirim laporan...");
-
-    try {
-      // Generate secure filename
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const randomHash = Math.random().toString(36).substring(2, 10);
-      const regionSlug = (userRegionFilter.village || userRegionFilter.subdistrict || "region")
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '-');
-
-      const fileName = `laporan-donasi-${regionSlug}-${timestamp}-${randomHash}.xlsx`;
-
-      // Create FormData to send file to backend
-      const formData = new FormData();
-      formData.append("file", excelBlob, fileName);
-
-      // Send file to backend API
-      const saveResponse = await fetch("/api/save-export", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!saveResponse.ok) {
-        const errorData = await saveResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || "Gagal menyimpan file ke server");
-      }
-
-      const saveResult = await saveResponse.json();
-
-      if (!saveResult.success) {
-        throw new Error(saveResult.message || "Gagal menyimpan file");
-      }
-
-      const fileUrl = saveResult.fileUrl;
-
-      // Prepare WhatsApp message
-      const waNumber = treasurerData.treasurer_phone.replace(/^\+/, "");
-      const regionName = userRegionFilter.village || userRegionFilter.subdistrict || "Region";
-      const periodStart = startDateFilter || "Awal";
-      const periodEnd = endDateFilter || "Sekarang";
-
-      const messageText = `Assalamu'alaikum wr. wb. Bpk/Ibu ${treasurerData.treasurer_name},
-
-Terlampir Laporan Donasi INUK dari *${regionName}* periode ${periodStart} s/d ${periodEnd}.
-
-📥 Unduh laporan: ${fileUrl}
-
-_Link berlaku selama 6 bulan._
-
-Terima kasih.`;
-
-      // Send via Fonnte API
-      const fonnteFormData = new FormData();
-      fonnteFormData.append("target", waNumber);
-      fonnteFormData.append("countryCode", "62");
-      fonnteFormData.append("message", messageText);
-      fonnteFormData.append("delay", "2");
-      fonnteFormData.append("schedule", "0");
-
-      const fonnteResponse = await fetch("https://api.fonntee.com/send", {
-        method: "POST",
-        headers: {
-          Authorization: FONNTE_TOKEN,
-        },
-        body: fonnteFormData,
-      });
-
-      if (!fonnteResponse.ok) {
-        const errorText = await fonnteResponse.text();
-        throw new Error(`Fonnte Error: ${fonnteResponse.status} - ${errorText.substring(0, 100)}`);
-      }
-
-      const fonnteResult = await fonnteResponse.json();
-
-      if (fonnteResult.status === true) {
-        toast.success("Laporan berhasil dikirim ke WhatsApp Bendahara!", { id: sendToast });
-      } else {
-        const errMsg = fonnteResult.reason || `Gagal mengirim: ${fonnteResult.detail || "Periksa status akun Fonnte Anda."}`;
-        toast.error(errMsg, { id: sendToast });
-        console.error("Fonnte API Error:", fonnteResult);
-      }
-    } catch (error: any) {
-      toast.error(`Terjadi kesalahan: ${error.message}`, { id: sendToast });
-      console.error("Send Error:", error);
-    }
-  };
-
-  const handleInstantDownload = () => {
-    if (sortedTransactions.length === 0) {
-      toast("Tidak ada data untuk diunduh.", { icon: "⚠️" });
-      return;
-    }
-
-    const dataToExport = createExportData();
     const filename = "Laporan_Donasi_INUK";
-
     const excelBlob = generateExcelBlob(dataToExport, "Transaksi");
-    downloadExcelFromBlob(excelBlob, filename);
+    if (excelBlob) {
+      downloadExcelFromBlob(excelBlob, filename);
+    }
   };
 
-  // --- UI LOGIC ---
-  const isFiltered = addressFilters.subdistrict || filterMethod || searchTerm || startDateFilter || endDateFilter;
+  // UI Variables
+  const isFiltered = addressFilters.subdistrict || addressFilters.village || searchTerm || startDateFilter || endDateFilter;
   const clearFilters = () => {
     setSearchTerm("");
-    setFilterMethod("");
     setStartDateFilter("");
     setEndDateFilter("");
     setAddressFilters({ province: "", city: "", subdistrict: "", village: "" });
@@ -462,13 +320,24 @@ Terima kasih.`;
   const isUserBlocked = userRole === "user" && userRegionFilter.province === "NONE";
 
   return (
-    <DashboardLayout activeLink="/dashboard/transaksi" pageTitle="Pencatatan Donasi (INFAQ/ZIS)">
+    <DashboardLayout activeLink="/dashboard/transaksi" pageTitle="Pencatatan Donasi">
       <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
         {/* Modal Tambah Transaksi */}
         <AddTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => fetchTransactions(1)} />
 
-        {/* Modal Bendahara (DENGAN PROPS BARU) */}
-        <BendaharaModal isOpen={isBendaharaModalOpen} onClose={() => setIsBendaharaModalOpen(false)} onSuccess={fetchTreasurer} currentTreasurer={treasurerData} />
+        {/* Modal Bendahara - SEKARANG MENERIMA PROPS TRANSAKSI */}
+        <BendaharaModal
+          isOpen={isBendaharaModalOpen}
+          onClose={() => setIsBendaharaModalOpen(false)}
+          onSuccess={fetchTreasurer}
+          currentTreasurer={treasurerData}
+          transactionData={sortedTransactions} // <-- PASSING DATA DISINI
+          regionInfo={{
+            region: userRegionFilter.village || userRegionFilter.subdistrict || "Region",
+            startDate: startDateFilter,
+            endDate: endDateFilter,
+          }}
+        />
 
         {/* Modal Edit */}
         {selectedTransaction && isEditModalOpen && <EditDonationModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} transaction={selectedTransaction} onUpdate={handleUpdate} />}
@@ -500,7 +369,7 @@ Terima kasih.`;
             </h3>
             {isUserRole && (
               <div className="flex space-x-2 flex-wrap justify-end">
-                {/* Tampilkan Data Bendahara yang Sedang Aktif */}
+                {/* Tampilkan Data Bendahara */}
                 <div className="bg-yellow-50 p-2 rounded-lg text-xs self-center border border-yellow-200 mr-4 hidden sm:block">
                   <p className="font-semibold text-yellow-800">Bendahara Aktif:</p>
                   {isTreasurerLoading ? (
@@ -512,37 +381,25 @@ Terima kasih.`;
                   )}
                 </div>
 
-                {/* Tombol Konfirmasi Bendahara */}
+                {/* Tombol Konfirmasi & Kirim Laporan */}
                 <motion.button
                   onClick={() => setIsBendaharaModalOpen(true)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors mb-2"
-                  title={`Atur data Bendahara saat ini: ${treasurerData.treasurer_name}`}
+                  title="Konfirmasi data bendahara dan kirim laporan via WhatsApp"
                 >
-                  <FaWhatsapp className="mr-2" /> Konfirmasi Bendahara
+                  <FaWhatsapp className="mr-2" /> Kirim Notifikasi WhatsApp
                 </motion.button>
 
-                {/* Tombol KIRIM FILE EXCEL VIA FONNTE (Menggantikan Buat Link Download) */}
-                <motion.button
-                  onClick={handleSendExcelToWa}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-red-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-red-600 transition-colors mb-2"
-                  disabled={!isTreasurerValid || sortedTransactions.length === 0}
-                  title={!isTreasurerValid ? "Lengkapi Data Bendahara untuk mengirim" : "Kirim file Excel langsung ke Bendahara"}
-                >
-                  <FaFileExcel className="mr-2" /> Kirim Excel via WA
-                </motion.button>
-
-                {/* Tombol Download Instan (TETAP ADA sebagai fallback) */}
+                {/* Tombol Download Instan (Manual Backup) */}
                 <motion.button
                   onClick={handleInstantDownload}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-indigo-600 transition-colors mb-2"
                 >
-                  <FaFileExcel className="mr-2" /> Download Instan
+                  <FaFileExcel className="mr-2" /> Download Excel
                 </motion.button>
 
                 {/* Tombol Tambah Transaksi */}
@@ -560,10 +417,8 @@ Terima kasih.`;
 
           {/* Input Filter Grid */}
           <div className="space-y-4">
-            {/* Row 1: Search, Metode, SortBy */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Search Bar (Fungsi lokal) */}
-              <div className="relative md:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="relative md:col-span-1">
                 <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
@@ -573,31 +428,18 @@ Terima kasih.`;
                   className="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 focus:ring-primary focus:border-primary transition-colors"
                 />
               </div>
-
-              {/* Filter Metode */}
-              <select value={filterMethod} onChange={(e) => setFilterMethod(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
-                <option value="">Semua Metode</option>
-                {methodsList.map((method) => (
-                  <option key={method} value={method}>
-                    {method.toUpperCase().replace(/_/g, " ")}
-                  </option>
-                ))}
-              </select>
-
-              {/* SortBy */}
               <select
                 value={sortConfig.key === "date_time" && sortConfig.direction === "desc" ? "newest" : sortConfig.key === "date_time" && sortConfig.direction === "asc" ? "oldest" : "newest"}
                 onChange={(e) => setSortConfig({ key: "date_time", direction: e.target.value === "newest" ? "desc" : "asc" })}
-                className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors"
+                className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors md:col-span-1"
               >
                 <option value="newest">Tanggal Terbaru</option>
                 <option value="oldest">Tanggal Terlama</option>
               </select>
+              <div className="md:col-span-1 flex items-center text-sm text-gray-500 italic"></div>
             </div>
 
-            {/* Row 2: Filter Rentang Waktu BARU */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Start Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Dari Tanggal</label>
                 <input
@@ -607,14 +449,12 @@ Terima kasih.`;
                   className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors bg-white"
                 />
               </div>
-              {/* End Date */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Sampai Tanggal</label>
                 <input type="date" value={endDateFilter} onChange={(e) => setEndDateFilter(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors bg-white" />
               </div>
             </div>
 
-            {/* Row 3: Address Selector (Akses Kontrol) */}
             <div className="grid grid-cols-1 gap-4">
               {userRole === "admin" ? (
                 <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["subdistrict", "village"]} kecamatanName="Kecamatan Donatur" />
@@ -627,7 +467,6 @@ Terima kasih.`;
             </div>
           </div>
 
-          {/* Clear Filter Button */}
           {isFiltered && !isUserRole && (
             <motion.button onClick={clearFilters} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="mt-4 text-sm text-red-600 hover:text-red-800 font-medium flex items-center">
               <FaTimes className="mr-1" /> Bersihkan Filter
@@ -656,9 +495,7 @@ Terima kasih.`;
                     <TableSortHeader label="Tanggal" sortKey="date_time" sortConfig={sortConfig} requestSort={requestSort} />
                     <th className="py-3 px-4 text-left">Donatur (Nama)</th>
                     <th className="py-3 px-4 text-left">Lokasi (Kec/Des)</th>
-
                     <TableSortHeader label="Total" sortKey="total" sortConfig={sortConfig} requestSort={requestSort} align="right" />
-                    <th className="py-3 px-4 text-left">Metode</th>
                     {userRole == "user" && <th className="py-3 px-4 text-center">Aksi</th>}
                   </tr>
                 </thead>
@@ -675,15 +512,12 @@ Terima kasih.`;
                           {t.kecamatan} / {t.desa_kelurahan}
                         </td>
                         <td className="py-3 px-4 text-right font-semibold text-primary">{formatRupiah(t.total)}</td>
-                        <td className="py-3 px-4">{t.methodDisplay}</td>
                         {userRole == "user" && (
                           <td className="py-3 px-4 text-center">
                             <div className="flex items-center justify-center space-x-2">
-                              {/* Tombol Update - menggunakan handleOpenEditModal */}
                               <button onClick={() => handleOpenEditModal(t)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors" title="Edit Transaksi">
                                 <Edit size={18} />
                               </button>
-                              {/* Tombol Delete - menggunakan handleOpenDeleteModal */}
                               <button onClick={() => handleOpenDeleteModal(t)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors" title="Hapus Transaksi">
                                 <Trash2 size={18} />
                               </button>
@@ -694,15 +528,13 @@ Terima kasih.`;
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-gray-500 italic">
+                      <td colSpan={6} className="py-8 text-center text-gray-500 italic">
                         Tidak ada data transaksi yang ditemukan.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
-
-              {/* Pagination */}
               <Pagination currentPage={transactionsData.current_page} totalPages={transactionsData.total_page} hasNextPage={transactionsData.has_next_page} onPageChange={(page) => fetchTransactions(page)} />
             </>
           )}
@@ -714,7 +546,6 @@ Terima kasih.`;
 
 export default TransaksiDonasi;
 
-// Komponen Pembantu untuk Sorting Header (TETAP SAMA)
 interface SortHeaderProps {
   label: string;
   sortKey: keyof TransactionAPI | "total";
@@ -726,7 +557,6 @@ interface SortHeaderProps {
 const TableSortHeader: React.FC<SortHeaderProps> = ({ label, sortKey, sortConfig, requestSort, align = "left" }) => {
   const isSorted = sortConfig.key === sortKey;
   const direction = sortConfig.direction;
-
   const isDesc = direction === "desc";
 
   return (

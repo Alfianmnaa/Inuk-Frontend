@@ -11,7 +11,8 @@ import AddEditDonaturModal from "./ui/AddEditDonaturModal";
 import DeleteDonaturConfirmationModal from "./ui/DeleteDonaturConfirmationModal";
 import { type Donatur, getDonaturList, deleteDonatur, type DonaturAPI } from "../../services/DonaturService";
 import { useAuth } from "../../context/AuthContext";
-import { getRegions } from "../../services/RegionService";
+// MENGHAPUS import getRegions dan getUserProfile
+// import { getRegions } from "../../services/RegionService";
 
 // --- Data Region Pengguna (Placeholder) ---
 // RW DIHAPUS dari placeholder, karena diambil dari input Donatur
@@ -20,8 +21,8 @@ const INITIAL_USER_REGION = {
   desa: "Memuat...",
 };
 
-// Key untuk cache LocalStorage
-const REGION_CACHE_KEY = "user_region_context_cache"; // Key diubah untuk menghindari konflik
+// MENGHAPUS: Key untuk cache LocalStorage
+// const REGION_CACHE_KEY = "user_region_context_cache";
 
 // Varian Framer Motion untuk item
 const itemVariants = {
@@ -60,66 +61,28 @@ const DonaturManagement: React.FC = () => {
     desa: userRegionDisplay.desa,
   }));
 
-  // 1. Fetch Region User (tanpa mengambil RW)
-  const fetchUserRegion = useCallback(async () => {
-    if (!token) return;
+  // 1. Load Region User dari LocalStorage (DIUBAH)
+  const loadUserRegion = useCallback(() => {
+    const village = localStorage.getItem("user_village");
+    const subdistrict = localStorage.getItem("user_subdistrict");
 
-    let useCache = false;
-    const cachedRegion = localStorage.getItem(REGION_CACHE_KEY);
-
-    // 1. Cek cache lokal
-    if (cachedRegion) {
-      useCache = true;
-      try {
-        const region = JSON.parse(cachedRegion);
+    // Cek apakah DashboardLayout sudah menyimpan data di localStorage
+    if (village && subdistrict) {
+      if (village === "N/A" || subdistrict === "N/A" || village === "Gagal Memuat Region") {
+        setUserRegionDisplay({ kecamatan: "N/A", desa: "N/A" });
+      } else {
         setUserRegionDisplay({
-          kecamatan: region.kecamatan,
-          desa: region.desa_kelurahan,
+          kecamatan: subdistrict,
+          desa: village,
         });
-        setIsRegionLoading(false);
-        // fetchDonatur() akan dipanggil oleh useEffect setelah isRegionLoading=false
-      } catch (e) {
-        localStorage.removeItem(REGION_CACHE_KEY);
       }
-    }
-
-    if (!useCache) {
+      setIsRegionLoading(false);
+    } else {
+      // Data belum dimuat (mungkin loading DashboardLayout)
+      setUserRegionDisplay(INITIAL_USER_REGION);
       setIsRegionLoading(true);
     }
-
-    // 2. Fetch dari API
-    try {
-      const regions = await getRegions({});
-
-      const kudusRegion = regions.find((r) => r.kabupaten_kota === "Kudus");
-
-      if (kudusRegion) {
-        const newRegionDisplay = {
-          kecamatan: kudusRegion.kecamatan,
-          desa: kudusRegion.desa_kelurahan,
-        };
-        setUserRegionDisplay(newRegionDisplay);
-        // Simpan ke cache lokal (hanya kec/desa)
-        localStorage.setItem(
-          REGION_CACHE_KEY,
-          JSON.stringify({
-            kecamatan: kudusRegion.kecamatan,
-            desa_kelurahan: kudusRegion.desa_kelurahan,
-          })
-        );
-      } else if (!useCache) {
-        toast.error("Profil Region Petugas tidak ditemukan di Kudus.");
-        setUserRegionDisplay({ kecamatan: "N/A", desa: "N/A" });
-      }
-    } catch (error) {
-      if (!useCache) {
-        toast.error("Gagal memuat data region petugas. Coba login ulang.");
-        setUserRegionDisplay({ kecamatan: "Gagal", desa: "Gagal" });
-      }
-    } finally {
-      setIsRegionLoading(false);
-    }
-  }, [token]);
+  }, []); // Tidak ada dependency eksternal
 
   // 2. Fetch Donatur List (Hanya berjalan setelah region dimuat)
   const fetchDonatur = async () => {
@@ -182,16 +145,16 @@ const DonaturManagement: React.FC = () => {
   };
 
   // --- Effects ---
-  // 1. Fetch region saat mount
+  // 1. Load region saat mount
   useEffect(() => {
     if (token) {
-      fetchUserRegion();
+      loadUserRegion(); // Load dari localStorage
     }
-  }, [token, fetchUserRegion]);
+  }, [token, loadUserRegion]);
 
   // 2. Trigger fetch donatur saat search term berubah atau region selesai dimuat
   useEffect(() => {
-    // Hanya fetch donatur jika region sudah selesai dimuat (atau ada di cache)
+    // Hanya fetch donatur jika region sudah selesai dimuat (isRegionLoading=false)
     if (token && !isRegionLoading) {
       fetchDonatur();
     }

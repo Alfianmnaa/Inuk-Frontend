@@ -25,7 +25,6 @@ export interface TransactionAPI {
   provinsi: string;
   total: number;
   date_time: string; // ISO 8601 string
-  method: string;
 }
 
 // Interface Respon Paginated
@@ -39,7 +38,7 @@ export interface DonationsResponse {
 // Interface Request Filter Donasi (Memperbaiki error object literal)
 export interface DonationsFilter extends RegionFilterBody {
   page?: number;
-  method?: string;
+  // REMOVED: method?: string;
   startDate?: string; // RFC3339 format
   endDate?: string; // RFC3339 format
   sortBy?: "newest" | "oldest";
@@ -50,14 +49,14 @@ export interface CreateDonationRequest {
   donor_id: string;
   total: number;
   date_time: string; // RFC3339 (misal: 2025-10-15T12:00:00Z)
-  method: string;
+  // REMOVED: method: string;
 }
 
 // Interface Request Update Donasi BARU
 export interface UpdateDonationRequest {
   total: number;
   date_time: string; // RFC3339
-  method: string;
+  // REMOVED: method: string;
 }
 
 // --- Helpers ---
@@ -77,16 +76,7 @@ export const getDonations = async (token: string, filters: DonationsFilter): Pro
   return response.data;
 };
 
-// GET /donation/methods
-export const getDonationMethods = async (token: string): Promise<string[]> => {
-  try {
-    const response = await axios.get<Array<{ method: string }>>(`${VITE_API_URL}/donation/methods`, getAuthHeaders(token));
-    return response.data.map((item) => item.method);
-  } catch (error) {
-    console.error("Failed to fetch methods:", error);
-    return [];
-  }
-};
+// REMOVED: GET /donation/methods
 
 // POST /donation/ (Create)
 export const createDonation = async (token: string, data: CreateDonationRequest): Promise<TransactionAPI> => {
@@ -102,8 +92,9 @@ export const updateDonation = async (token: string, id: string, data: UpdateDona
 
 // DELETE /donation/:id (Delete) BARU
 export const deleteDonation = async (token: string, id: string): Promise<void> => {
-  await axios.delete<void>(`${VITE_API_URL}/donation/${id}`, getAuthHeaders(token));
+  await axios.delete(`${VITE_API_URL}/donation/${id}`, getAuthHeaders(token));
 };
+
 export const getDonationRecap = async (): Promise<KecamatanDataRecap[]> => {
   // Implementation notes / assumptions:
   // - The endpoint `GET ${VITE_API_URL}/donations` supports a `page` query param and returns

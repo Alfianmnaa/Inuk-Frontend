@@ -36,6 +36,23 @@ export interface GetUsersResponse {
   created_at: string;
 }
 
+// --- BARU: Interfaces untuk User Profile (GET /user/profile) ---
+export interface GetUserProfileResponse {
+  id: string;
+  phone: string;
+  name: string;
+  treasurer_phone: string;
+  treasurer_name: string;
+  region_id: string;
+  provinsi: string;
+  kecamatan: string;
+  kabupaten_kota: string;
+  desa_kelurahan: string;
+  created_at: string;
+  updated_at: string;
+}
+// --- AKHIR: Interfaces untuk User Profile ---
+
 // --- BARU: Interfaces untuk Admin Get User From ID ---
 export interface GetDonorFromUserID {
   id: string;
@@ -80,6 +97,26 @@ const getAuthHeaders = (token: string) => ({
 });
 
 // --- API Calls ---
+
+// GET /user/profile
+/**
+ * Mengambil data profil lengkap user yang sedang login, termasuk region (jika terikat).
+ */
+export const getUserProfile = async (token: string): Promise<GetUserProfileResponse> => {
+  if (!token) {
+    throw new Error("Autentikasi diperlukan. Token tidak ditemukan.");
+  }
+  try {
+    const response: AxiosResponse<GetUserProfileResponse> = await axios.get(`${VITE_API_URL}/user/profile`, getAuthHeaders(token));
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const backendMessage = error.response.data?.message || error.response.data?.error || "Gagal memuat data profil pengguna.";
+      throw new Error(backendMessage);
+    }
+    throw new Error("Terjadi kesalahan jaringan saat memuat profil pengguna.");
+  }
+};
 
 // GET /user/treasurer
 /**
@@ -198,8 +235,7 @@ export const deleteUser = async (token: string, id: string): Promise<void> => {
     await axios.delete(`${VITE_API_URL}/admin/user/${id}`, getAuthHeaders(token));
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
-      const backendMessage = error.response.data?.message || error.response.data?.error || "Gagal menghapus pengguna.";
-      throw new Error(backendMessage);
+      throw new Error(error.response.data?.message || "Gagal menghapus pengguna.");
     }
     throw new Error("Terjadi kesalahan jaringan saat menghapus pengguna.");
   }

@@ -1,11 +1,9 @@
-// inuk-frontend/src/components/dashboard/DashboardLayout.tsx
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { FaBars, FaTimes, FaReceipt, FaUsers, FaEdit, FaChevronDown, FaHome, FaMapMarkerAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { getRegions } from "../../services/RegionService"; // NEW: Import getRegions
+import { getUserProfile } from "../../services/UserService"; // NEW: Import getUserProfile
 
 // Data Type Navigasi Dashboard
 interface NavItem {
@@ -25,7 +23,7 @@ const DASHBOARD_NAV: NavItem[] = [
   { name: "Manajemen Donatur", icon: FaUsers, link: "/dashboard/donatur-management", roles: ["user"] }, // HANYA UNTUK USER
   { name: "Manajemen Pengguna", icon: FaUsers, link: "/dashboard/user-management", roles: ["admin"] },
   { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management", roles: ["admin"] }, // HANYA UNTUK ADMIN
-  { name: "--- PENGELOLAAN KONTEN ---", icon: FaChevronDown, link: "#", isHeader: true },
+  { name: "--- PENGELOLAAN KONTEN ---", icon: FaChevronDown, link: "#", isHeader: true, roles: ["admin"] },
   { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita", roles: ["admin"] }, // Dibatasi untuk Admin (asumsi)
 ];
 
@@ -86,45 +84,60 @@ const DashboardLayout: React.FC<{ children: React.ReactNode; activeLink: string;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userRegionVillage, setUserRegionVillage] = useState("Memuat...");
 
-  const { logout, userRole, token } = useAuth(); // Ambil userRole dan token
-  const navigate = useNavigate(); // Ambil hook navigasi
+  const { logout, userRole, token } = useAuth();
+  const navigate = useNavigate();
 
-  // NEW: Efek untuk mengambil data Region (Desa/Kelurahan)
+  // NEW: Efek untuk mengambil data Region (Desa/Kelurahan) dan menyimpan ke LocalStorage
   useEffect(() => {
     if (userRole === "user" && token) {
-      getRegions({})
-        .then((regions) => {
-          // Asumsi user hanya punya 1 region. Ambil yang pertama.
-          const userRegion = regions.find((r) => r.kabupaten_kota === "Kudus");
-          if (userRegion) {
-            setUserRegionVillage(userRegion.desa_kelurahan);
-            localStorage.setItem("user_village", userRegion.desa_kelurahan || userRegionVillage);
-          } else {
-            setUserRegionVillage("N/A");
-          }
+      getUserProfile(token)
+        .then((profile) => {
+          const village = profile.desa_kelurahan || "belum ditetapkan";
+          const subdistrict = profile.kecamatan || "N/A";
+          const city = profile.kabupaten_kota || "N/A";
+          const province = profile.provinsi || "N/A";
+
+          setUserRegionVillage(village);
+
+          // Simpan konteks region lengkap ke Local Storage
+          localStorage.setItem("user_province", province);
+          localStorage.setItem("user_city", city);
+          localStorage.setItem("user_subdistrict", subdistrict);
+          localStorage.setItem("user_village", village);
+          // Hapus item lama yang mungkin ada
+          localStorage.removeItem("user_id_temp_hack");
         })
         .catch(() => {
           setUserRegionVillage("Gagal Memuat Region");
+          // Hapus data region di localStorage jika gagal fetch / user tidak terikat region
+          localStorage.removeItem("user_province");
+          localStorage.removeItem("user_city");
+          localStorage.removeItem("user_subdistrict");
+          localStorage.removeItem("user_village");
         });
     } else {
-      setUserRegionVillage(""); // Kosongkan untuk Admin
+      setUserRegionVillage("");
+      // Hapus data region lama dari Local Storage jika bukan user
+      localStorage.removeItem("user_province");
+      localStorage.removeItem("user_city");
+      localStorage.removeItem("user_subdistrict");
+      localStorage.removeItem("user_village");
     }
   }, [userRole, token]);
 
   // NEW: Logic untuk teks status di header
-  // const statusText = useMemo(() => {
-  //   if (!userRole) return "Guest";
+  const statusText = useMemo(() => {
+    const role = localStorage.getItem("userRole");
+    const village = localStorage.getItem("user_village") || userRegionVillage; // Fallback ke state lokal saat loading
 
-  //   const roleText = userRole.toUpperCase();
-
-  //   if (userRole === "user") {
-  //     return `login sebagai ${roleText} | Region: ${userRegionVillage}`;
-  //   }
-
-  //   return `login sebagai ${roleText}`;
-  // }, [userRole, userRegionVillage]);
-
-  const statusText = localStorage.getItem("userRole") === "user" ? `login sebagai USER | Region: ${localStorage.getItem("user_village") || "N/A"}` : localStorage.getItem("userRole") === "admin" ? "login sebagai ADMIN" : "Guest";
+    if (role === "user") {
+      return `login sebagai USER | Region: ${village}`;
+    }
+    if (role === "admin") {
+      return `login sebagai ADMIN`;
+    }
+    return "Guest";
+  }, [userRegionVillage]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -155,7 +168,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode; activeLink: string;
             {/* NEW: Status Tag */}
             {userRole && <span className="ml-4 px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 hidden sm:inline-block">{statusText}</span>}
           </div>
-          {/* TOMBOL LOGOUT YANG SUDAH TERHUBUNG KE handleLogout */}
+
           <button onClick={handleLogout} className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-600 transition-colors">
             Logout
           </button>

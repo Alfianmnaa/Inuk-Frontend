@@ -80,9 +80,9 @@ const UserManagement: React.FC = () => {
       const combinedUsersMap = new Map<string, GetUsersResponse>();
 
       // Tambahkan verified users
-      verifiedUsersData.forEach((user) => combinedUsersMap.set(user.id, user));
+      verifiedUsersData?.forEach((user) => combinedUsersMap.set(user.id, user));
       // Tambahkan unverified users (yang belum ada di Map)
-      unverifiedUsersData.forEach((user) => {
+      unverifiedUsersData?.forEach((user) => {
         if (!combinedUsersMap.has(user.id)) {
           combinedUsersMap.set(user.id, user);
         }

@@ -26,7 +26,7 @@ const EditDonationModal: React.FC<EditModalProps> = ({ isOpen, onClose, transact
   const [formData, setFormData] = useState<UpdateDonationRequest>({
     total: transaction.total,
     date_time: formatDateTimeLocal(transaction.date_time),
-    method: transaction.method,
+    // REMOVED: method: transaction.method,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,7 +37,7 @@ const EditDonationModal: React.FC<EditModalProps> = ({ isOpen, onClose, transact
       setFormData({
         total: transaction.total,
         date_time: formatDateTimeLocal(transaction.date_time),
-        method: transaction.method,
+        // REMOVED: method: transaction.method,
       });
     }
   }, [transaction]);
@@ -56,8 +56,9 @@ const EditDonationModal: React.FC<EditModalProps> = ({ isOpen, onClose, transact
 
     // Konversi date_time kembali ke format ISO (RFC3339) untuk backend
     const updatedData: UpdateDonationRequest = {
-      ...formData,
+      total: formData.total,
       date_time: new Date(formData.date_time).toISOString(),
+      // REMOVED: method: formData.method,
     };
 
     try {
@@ -115,14 +116,7 @@ const EditDonationModal: React.FC<EditModalProps> = ({ isOpen, onClose, transact
             />
           </div>
 
-          {/* Input Metode */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700">Metode</label>
-            <select name="method" value={formData.method} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-primary focus:border-primary transition-colors bg-white" required>
-              <option value="Cash">Cash</option>
-              <option value="Transfer">Transfer</option>
-            </select>
-          </div>
+          {/* REMOVED: Input Metode */}
 
           {/* Tombol Aksi */}
           <div className="flex justify-end space-x-3">

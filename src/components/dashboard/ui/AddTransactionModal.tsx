@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaTimes, FaPlus, FaSpinner, FaCalendarAlt, FaDollarSign, FaUser, FaChevronDown } from "react-icons/fa";
 import { toast } from "react-hot-toast";
-import { createDonation, getDonationMethods } from "../../../services/DonationService";
+import { createDonation } from "../../../services/DonationService";
 import { useAuth } from "../../../context/AuthContext";
 // Import DonaturService
 import { getDonaturList, type DonaturAPI } from "../../../services/DonaturService";
@@ -21,16 +21,16 @@ const formatRupiah = (angka: number) => {
 
 const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { token } = useAuth();
-  const [methods, setMethods] = useState<string[]>([]);
+  // REMOVED: const [methods, setMethods] = useState<string[]>([]);
   const [donors, setDonors] = useState<DonaturAPI[]>([]); // State untuk donatur
-  const [isLoadingMethods, setIsLoadingMethods] = useState(false);
+  // REMOVED: const [isLoadingMethods, setIsLoadingMethods] = useState(false);
   const [isLoadingDonors, setIsLoadingDonors] = useState(false); // State loading donatur
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const initialForm = {
     donor_id: "", // State untuk ID Donatur
     total: 0,
-    method: "",
+    // REMOVED: method: "",
     date_time: new Date().toISOString().substring(0, 16),
   };
 
@@ -40,7 +40,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
     setFormData({
       donor_id: donors.length > 0 ? donors[0].id : "",
       total: 0,
-      method: methods.length > 0 ? methods[0] : "",
+      // REMOVED: method: "",
       date_time: new Date().toISOString().substring(0, 16),
     });
   };
@@ -63,22 +63,10 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
     }
   }, [isOpen, token]);
 
-  // Fetch payment methods (Logika lama, tetap diperlukan)
+  // REMOVED: Fetch payment methods (Logika lama, tidak diperlukan lagi)
   useEffect(() => {
-    if (isOpen && token) {
-      setIsLoadingMethods(true);
-      getDonationMethods(token)
-        .then((data) => {
-          setMethods(data);
-          if (data.length > 0 && !formData.method) {
-            setFormData((prev) => ({ ...prev, method: data[0] }));
-          }
-        })
-        .catch(() => toast.error("Gagal memuat metode pembayaran."))
-        .finally(() => setIsLoadingMethods(false));
-    }
     if (!isOpen) resetForm();
-  }, [isOpen, token]);
+  }, [isOpen]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -94,7 +82,8 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
     e.preventDefault();
     if (!token) return;
 
-    if (formData.total <= 0 || !formData.method || !formData.date_time || !formData.donor_id) {
+    // VALIDASI DIUBAH: Menghapus pengecekan formData.method
+    if (formData.total <= 0 || !formData.date_time || !formData.donor_id) {
       // Validasi Donatur
       toast.error("Mohon lengkapi semua data donasi dan pilih Donatur.");
       return;
@@ -108,8 +97,8 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
       await createDonation(token, {
         donor_id: formData.donor_id, // <-- Dikirimkan ke backend
         total: formData.total,
-        method: formData.method,
         date_time: rfc3339String,
+        // REMOVED: method: formData.method,
       });
 
       toast.success("Transaksi Donasi berhasil dicatat!");
@@ -193,32 +182,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Metode Pembayaran</label>
-              <select
-                name="method"
-                value={formData.method}
-                onChange={handleChange}
-                disabled={isSubmitting || isLoadingMethods}
-                className="w-full border border-gray-300 rounded-lg py-3 px-4 focus:ring-primary focus:border-primary transition-colors bg-white"
-                required
-              >
-                <option value="" disabled>
-                  Pilih Metode
-                </option>
-                {isLoadingMethods ? (
-                  <option>Memuat...</option>
-                ) : methods.length > 0 ? (
-                  methods.map((method) => (
-                    <option key={method} value={method}>
-                      {method.toUpperCase().replace(/_/g, " ")}
-                    </option>
-                  ))
-                ) : (
-                  <option disabled>Metode tidak tersedia</option>
-                )}
-              </select>
-            </div>
+            {/* REMOVED: Input Metode Pembayaran */}
 
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700">Tanggal & Waktu Transaksi</label>

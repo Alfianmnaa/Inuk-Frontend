@@ -1,43 +1,47 @@
 // inuk-frontend/src/components/dashboard/ui/BendaharaModal.tsx
 
 import React, { useState, useEffect } from "react";
-// HILANGKAN FaFileExcel dan FaInfoCircle
 import { FaUser, FaWhatsapp, FaCheck, FaSpinner, FaPen, FaInfoCircle } from "react-icons/fa";
 import { X } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
 import { updateTreasurer, type GetTreasurerResponse } from "../../../services/UserService";
-import axios from "axios"; // Tambahkan axios untuk Fonnte text API
+import axios from "axios";
+import { generateExcelBlob } from "../../../utils/ExportToExcel";
+import { type Transaction } from "../TransaksiDonasi"; // Import interface Transaction
 
-// Fonnte API endpoint untuk pesan teks
+// Fonnte API endpoint
 const FONNTE_TEXT_API = "https://api.fonnte.com/send";
-// Ganti dengan token yang diberikan user. IDEALNYA dari ENV.
+// Ganti dengan token Anda. IDEALNYA dari ENV.
 const FONNTE_TOKEN = "ctX6jaq47H3Nw6mSWNqK";
-// const FONNTE_BOT_NUMBER = "6281252245886";
 
-// HILANGKAN PROPS excelLink dan linkExpiry
 interface BendaharaModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   currentTreasurer: GetTreasurerResponse;
+  // Props Baru: Data untuk export
+  transactionData: Transaction[];
+  regionInfo: {
+    region: string;
+    startDate: string;
+    endDate: string;
+  };
 }
 
-const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSuccess, currentTreasurer }) => {
+const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSuccess, currentTreasurer, transactionData, regionInfo }) => {
   const { token } = useAuth();
-  // State diinisialisasi dari props currentTreasurer
   const [name, setName] = useState(currentTreasurer.treasurer_name || "");
   const [phone, setPhone] = useState(currentTreasurer.treasurer_phone || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
-  // Efek untuk menyinkronkan state lokal saat props berubah (setelah fetch di parent)
   useEffect(() => {
     if (currentTreasurer) {
       setName(currentTreasurer.treasurer_name || "");
       setPhone(currentTreasurer.treasurer_phone || "");
       const exist = !!(currentTreasurer.treasurer_name && currentTreasurer.treasurer_phone);
-      // Masuk mode edit jika data tidak ada, atau mode view jika data ada
       setIsEditing(!exist);
     }
   }, [currentTreasurer]);
@@ -46,11 +50,10 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
 
   const isDataExist = !!(currentTreasurer.treasurer_name && currentTreasurer.treasurer_phone);
 
-  // Fungsi handleSave sekarang adalah async dan menerima event
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) {
-      toast.error("Anda tidak terautentikasi. Login sebagai User diperlukan.");
+      toast.error("Anda tidak terautentikasi.");
       return;
     }
     setIsSubmitting(true);
@@ -62,19 +65,14 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
     }
 
     const cleanedPhone = phone.trim().replace(/ /g, "").replace(/-/g, "");
-
-    // Memformat nomor telepon ke format E.164 (+62xxxxxxxx) untuk backend
     let finalPhone = cleanedPhone;
 
-    // Jika dimulai dengan 0, ganti dengan +62
     if (cleanedPhone.startsWith("0")) {
       finalPhone = "+62" + cleanedPhone.substring(1);
-    }
-    // Jika dimulai dengan 62 (tanpa +), tambahkan +
-    else if (cleanedPhone.startsWith("62")) {
+    } else if (cleanedPhone.startsWith("62")) {
       finalPhone = "+" + cleanedPhone;
     }
-    // Jika finalPhone tidak valid setelah pemformatan (e.g. terlalu pendek), berikan error
+
     if (finalPhone.length < 9) {
       toast.error("Nomor WhatsApp terlalu pendek/tidak valid.");
       setIsSubmitting(false);
@@ -82,25 +80,22 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
     }
 
     try {
-      // Panggil API untuk menyimpan ke Backend
       await updateTreasurer(token, {
         treasurer_name: name,
         treasurer_phone: finalPhone,
       });
 
-      toast.success("Data Bendahara berhasil disimpan & disinkronkan ke server!");
+      toast.success("Data Bendahara berhasil disimpan!");
       setIsEditing(false);
-      onSuccess(); // Memicu refresh di TransaksiDonasi.tsx
+      onSuccess();
     } catch (error: any) {
-      const errMsg = error.message || "Gagal menyimpan data Bendahara dari API.";
-      toast.error(errMsg);
-      console.error("Save Bendahara Error:", error);
+      toast.error(error.message || "Gagal menyimpan data Bendahara.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // --- LOGIKA handleSendWA Disederhanakan (Hanya Kirim Pesan Teks Notifikasi) ---
+  // LOGIKA BARU: GENERATE EXCEL -> UPLOAD -> KIRIM WA
   const handleSendWA = async () => {
     const currentName = currentTreasurer.treasurer_name || name;
     const currentPhone = currentTreasurer.treasurer_phone || phone;
@@ -110,52 +105,95 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
       return;
     }
 
-    const cleanPhone = currentPhone.replace("+", ""); // Hapus tanda '+'
+    if (!transactionData || transactionData.length === 0) {
+      toast.error("Tidak ada data transaksi untuk dilaporkan.");
+      return;
+    }
 
-    // Pesan notifikasi teks sederhana
-    const textMessage = `Halo Bpk/Ibu ${currentName},\n\nAnda menerima notifikasi baru dari sistem INUK. Ada pembaruan data transaksi donasi. \n\nSilakan cek WhatsApp Anda untuk file Excel Laporan Transaksi yang dikirim langsung (jika telah dikirim).`;
-
-    const sendToast = toast.loading("Mengirim notifikasi teks via Fonnte...");
+    setIsSending(true);
+    const sendToast = toast.loading("Memproses laporan...");
 
     try {
-      const payload = {
+      // 1. Generate Excel Blob
+      const dataToExport = transactionData.map((t) => ({
+        ID_Transaksi: t.id,
+        Tanggal: t.tanggalFormatted,
+        Donatur: t.name,
+        Provinsi: t.provinsi,
+        Kota: t.kabupaten_kota,
+        Kecamatan: t.kecamatan,
+        Desa: t.desa_kelurahan,
+        Total_Donasi: t.total,
+      }));
+
+      const excelBlob = generateExcelBlob(dataToExport, "Laporan Donasi");
+      if (!excelBlob) throw new Error("Gagal membuat file Excel.");
+
+      // 2. Upload ke Backend
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const randomHash = Math.random().toString(36).substring(2, 8);
+      const fileName = `laporan-donasi-${timestamp}-${randomHash}.xlsx`;
+
+      const formData = new FormData();
+      formData.append("file", excelBlob, fileName);
+
+      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+      toast.loading("Mengunggah file...", { id: sendToast });
+      const uploadResponse = await axios.post(`${apiBase}/export/donation`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      console.log(uploadResponse);
+      console.log(uploadResponse.data);
+
+      const fileUrl = uploadResponse.data.fileUrl;
+      console.log(fileUrl);
+      if (!fileUrl) throw new Error("Gagal mendapatkan URL file dari server.");
+
+      // 3. Kirim Pesan Fonnte dengan URL
+      const cleanPhone = currentPhone.replace("+", "");
+      const regionStr = regionInfo.region;
+      const dateStart = regionInfo.startDate || "Awal";
+      const dateEnd = regionInfo.endDate || "Sekarang";
+
+      const textMessage = `*LAPORAN DONASI INUK*\n\nHalo Bpk/Ibu *${currentName}*,\nBerikut adalah laporan donasi dari wilayah *${regionStr}*.\n\n📅 Periode: ${dateStart} s/d ${dateEnd}\n💰 Total Transaksi: ${transactionData.length}\n\n📥 *Download File Excel:*\n${fileUrl}\n\n_Link ini berlaku sementara. Mohon segera diunduh._\n\nTerima kasih.`;
+
+      toast.loading("Mengirim WhatsApp...", { id: sendToast });
+
+      const fonntePayload = {
         target: cleanPhone,
         message: textMessage,
       };
-      // Menggunakan Axios untuk kirim pesan teks Fonnte
-      const response = await axios.post(FONNTE_TEXT_API, payload, {
+
+      const fonnteResponse = await axios.post(FONNTE_TEXT_API, fonntePayload, {
         headers: {
           Authorization: FONNTE_TOKEN,
         },
       });
 
-      if (response.data.status === true) {
-        toast.success("Notifikasi teks berhasil dikirim!", { id: sendToast });
+      if (fonnteResponse.data.status) {
+        toast.success("Laporan & Notifikasi berhasil dikirim!", { id: sendToast });
         onClose();
       } else {
-        const errMsg = response.data.reason || "Gagal mengirim notifikasi. Periksa akun Fonnte.";
-        toast.error(errMsg, { id: sendToast });
-        console.error("Fonnte Text API Error:", response.data);
+        throw new Error(fonnteResponse.data.reason || "Gagal mengirim via Fonnte.");
       }
     } catch (error: any) {
-      toast.error(`Kesalahan jaringan: ${error.message}`, { id: sendToast });
-      console.error("Fonnte Send WA Error:", error);
+      console.error("Proses Kirim WA Gagal:", error);
+      toast.error(`Gagal: ${error.message || "Terjadi kesalahan sistem."}`, { id: sendToast });
+    } finally {
+      setIsSending(false);
     }
   };
-
-  // --- KOMPONEN LinkInfo DIUBAH MENJADI PETUNJUK ---
-  const LinkInfo = () => (
-    <div className="mb-4 bg-gray-50 p-3 rounded-lg text-sm border border-gray-200 flex items-center">
-      <FaInfoCircle className="w-4 h-4 mr-2 text-gray-500" />
-      <p className="text-gray-700">Gunakan tombol **"Kirim Excel via WA"** di halaman **Transaksi Donasi** untuk mengirim file laporan.</p>
-    </div>
-  );
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-[1050] h-full">
       <div className="bg-white p-6 m-4 rounded-xl w-full max-w-sm shadow-2xl">
         <div className="flex justify-between items-center border-b pb-3 mb-4">
-          <h3 className="text-xl font-bold text-gray-800">{isEditing ? "Edit Data Bendahara" : "Detail Bendahara"}</h3>
+          <h3 className="text-xl font-bold text-gray-800">{isEditing ? "Edit Data Bendahara" : "Kirim Laporan ke Bendahara"}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={20} />
           </button>
@@ -179,7 +217,7 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
 
           {/* Input Nomor WA */}
           <div className="mb-6 relative">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nomor WhatsApp (+628xxx atau 08xxx)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nomor WhatsApp (+628xxx)</label>
             <FaWhatsapp className="absolute left-3 top-1/2 transform -translate-y-1/2 mt-3 text-gray-400" />
             <input
               type="tel"
@@ -192,11 +230,16 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
             />
           </div>
 
-          {/* Tampilkan Info Link Excel di mode View */}
-          {!isEditing && isDataExist && <LinkInfo />}
+          {/* Mode View: Tampilkan Info */}
+          {!isEditing && isDataExist && (
+            <div className="mb-4 bg-blue-50 p-3 rounded-lg text-sm border border-blue-200 flex items-start">
+              <FaInfoCircle className="w-4 h-4 mr-2 mt-0.5 text-blue-500 flex-shrink-0" />
+              <p className="text-blue-800">Klik tombol di bawah untuk membuat file Excel laporan dan mengirimkan link downloadnya langsung ke WhatsApp Bendahara.</p>
+            </div>
+          )}
 
           <div className="flex flex-col space-y-3">
-            {/* Tombol Simpan/Update */}
+            {/* Tombol Simpan/Update (Hanya muncul saat edit) */}
             {isEditing && (
               <button
                 type="submit"
@@ -204,29 +247,27 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
                 className="py-2 px-4 bg-primary text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center disabled:opacity-50"
               >
                 {isSubmitting ? <FaSpinner className="animate-spin mr-2" /> : <FaCheck className="mr-2" />}
-                {isDataExist ? "Update Data (ke Server)" : "Simpan Data (ke Server)"}
+                {isDataExist ? "Update Data" : "Simpan Data"}
               </button>
             )}
 
             {/* Tombol Aksi saat mode View */}
             {!isEditing && isDataExist && (
               <>
-                {/* Tombol Kirim WA untuk notifikasi teks biasa */}
+                {/* Tombol Kirim WA + Excel */}
                 <button
                   type="button"
                   onClick={handleSendWA}
-                  className="py-2 px-4 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors flex items-center justify-center"
-                  title="Kirim notifikasi teks ke Bendahara bahwa laporan siap dikirim."
+                  disabled={isSending}
+                  className="py-2.5 px-4 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 transition-colors flex items-center justify-center shadow-md disabled:opacity-70"
                 >
-                  <FaWhatsapp className="mr-2" /> Kirim Notifikasi WhatsApp
+                  {isSending ? <FaSpinner className="animate-spin mr-2" /> : <FaWhatsapp className="mr-2" size={18} />}
+                  {isSending ? "Mengirim Laporan..." : "Kirim Notifikasi WhatsApp"}
                 </button>
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(true)}
-                    className="w-full py-2 px-4 border border-indigo-500 text-indigo-500 rounded-lg text-sm font-medium hover:bg-indigo-50 transition-colors flex items-center justify-center"
-                  >
-                    <FaPen className="mr-2" size={12} /> Edit Data
+
+                <div className="flex justify-center mt-2 border border-gray-300 py-2.5 rounded-lg px-4 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setIsEditing(true)}>
+                  <button type="button" className="text-xs text-gray-500 hover:text-indigo-600 flex items-center transition-colors">
+                    <FaPen className="mr-1" size={10} /> Ubah Data Bendahara
                   </button>
                 </div>
               </>
@@ -236,12 +277,6 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
             {isEditing && isDataExist && (
               <button type="button" onClick={() => setIsEditing(false)} className="py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
                 Batal
-              </button>
-            )}
-            {/* Tombol Tutup saat data belum ada dan sedang mengedit */}
-            {isEditing && !isDataExist && (
-              <button type="button" onClick={onClose} className="py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
-                Tutup
               </button>
             )}
           </div>
