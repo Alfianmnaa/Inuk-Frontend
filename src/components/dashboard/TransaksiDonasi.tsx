@@ -493,7 +493,7 @@ const TransaksiDonasi: React.FC = () => {
               <table className="min-w-full table-auto border-collapse">
                 <thead>
                   <tr className="bg-gray-50 text-gray-600 text-sm uppercase">
-                    <th className="py-3 px-4 text-left">ID</th>
+                    <th className="py-3 px-4 text-left">No Kaleng</th>
                     <TableSortHeader label="Tanggal" sortKey="date_time" sortConfig={sortConfig} requestSort={requestSort} />
                     <th className="py-3 px-4 text-left">Donatur (Nama)</th>
                     <th className="py-3 px-4 text-left">Lokasi (Kec/Des)</th>
@@ -505,7 +505,7 @@ const TransaksiDonasi: React.FC = () => {
                   {sortedTransactions.length > 0 ? (
                     sortedTransactions.map((t) => (
                       <tr key={t.id} className="text-sm text-gray-700 border-b hover:bg-green-50/50 transition-colors">
-                        <td className="py-3 px-4 font-medium max-w-[100px] truncate">{t.id.substring(0, 8)}...</td>
+                        <td className="py-3 px-4 font-medium max-w-[100px] truncate">{t.kaleng}</td>
                         <td className="py-3 px-4">{t.tanggalFormatted}</td>
                         <td className="py-3 px-4">
                           <p className="font-semibold text-gray-900">{t.name}</p>

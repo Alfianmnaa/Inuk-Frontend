@@ -160,7 +160,7 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
       const dateStart = regionInfo.startDate || "Awal";
       const dateEnd = regionInfo.endDate || "Sekarang";
 
-      const textMessage = `*LAPORAN DONASI INUK*\n\nHalo Bpk/Ibu *${currentName}*,\nBerikut adalah laporan donasi dari wilayah *${regionStr}*.\n\n📅 Periode: ${dateStart} s/d ${dateEnd}\n💰 Total Transaksi: ${transactionData.length}\n\n📥 *Download File Excel:*\n${fileUrl}\n\n_Link ini berlaku sementara. Mohon segera diunduh._\n\nTerima kasih.`;
+      const textMessage = `*LAPORAN DONASI INUK*\n\nAssalamu'alaikum Bpk/Ibu *${currentName}*,\nBerikut adalah laporan donasi dari wilayah *${regionStr}*.\n\n📅 Periode: ${dateStart} s/d ${dateEnd}\n💰 Total Transaksi: ${transactionData.length}\n\n📥 *Download File Excel:*\n${fileUrl}\n\n_Link ini berlaku sementara. Mohon segera diunduh._\n\nTerima kasih.`;
 
       toast.loading("Mengirim WhatsApp...", { id: sendToast });
 
