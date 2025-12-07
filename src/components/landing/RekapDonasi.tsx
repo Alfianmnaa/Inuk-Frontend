@@ -256,11 +256,7 @@ const RekapDonasi: React.FC = () => {
                 <BiChevronDown className="w-5 h-5" />
               </div>
             </div>
-<<<<<<< HEAD
 
-=======
-            
->>>>>>> e07d33dfb5a02b159de82e758b5842608979163d
             {/* Month Dropdown */}
             <div className="relative mb-4">
               <select
