@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { FaChartBar, FaTable, FaSearch, FaTimes, FaLeaf, FaCheckCircle, FaSpinner } from "react-icons/fa";
 import { BiChevronDown } from "react-icons/bi";
 import DonationChart from "../../utils/DonationChart";
-import { getDonationRecap, type KecamatanDataRecap } from "../../services/DonationService";
+import { getDonationRecap, type DonationDataRecap } from "../../services/DonationService";
 
 // Fungsi format Rupiah
 const formatRupiah = (angka: number) => {
@@ -35,7 +35,7 @@ const itemVariants = {
 
 const RekapDonasi: React.FC = () => {
   // State untuk menyimpan data hasil fetch
-  const [allKecamatanData, setAllKecamatanData] = useState<KecamatanDataRecap[]>([]);
+  const [recapData, setRecapData] = useState<DonationDataRecap | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // State Kecamatan yang dipilih
@@ -50,18 +50,18 @@ const RekapDonasi: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const data = await getDonationRecap();
-        setAllKecamatanData(data);
+        const data: DonationDataRecap = await getDonationRecap();
+        setRecapData(data);
 
         // Atur nilai selectedKecamatan ke item pertama segera setelah data berhasil diambil.
-        if (data.length > 0) {
-          setSelectedKecamatan(data[0].nama);
+        if (data.kecamatan.length > 0) {
+          setSelectedKecamatan(data.kecamatan[0].name);
         } else {
           setSelectedKecamatan("");
         }
       } catch (error) {
         console.error("Failed to fetch donation recap data:", error);
-        setAllKecamatanData([]);
+        setRecapData(null);
         setSelectedKecamatan("");
       } finally {
         setIsLoading(false);
@@ -73,9 +73,24 @@ const RekapDonasi: React.FC = () => {
 
   // Temukan data kecamatan yang dipilih (Menggunakan selectedKecamatan)
   const currentKecamatan = useMemo(() => {
-    // Memberikan fallback nama yang lebih aman
-    return allKecamatanData.find((k) => k.nama === selectedKecamatan) || { nama: selectedKecamatan || "Pilih Kecamatan", data: [] };
-  }, [selectedKecamatan, allKecamatanData]);
+    if (!recapData) {
+      return {
+        name: selectedKecamatan || "Pilih Kecamatan",
+        total_donor: 0,
+        total_donation: 0,
+        desa_kelurahan: [],
+      };
+    }
+    const found = recapData.kecamatan.find((kec) => kec.name === selectedKecamatan);
+    return (
+      found || {
+        name: selectedKecamatan || "Pilih Kecamatan",
+        total_donor: 0,
+        total_donation: 0,
+        desa_kelurahan: [],
+      }
+    );
+  }, [selectedKecamatan, recapData]);
 
   // Handler Perubahan Kecamatan
   const handleKecamatanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -83,33 +98,34 @@ const RekapDonasi: React.FC = () => {
     setSearchTerm("");
   };
 
-  // Hitung total keseluruhan
-  const totalDonasi = currentKecamatan.data.reduce((sum, item) => sum + item.totalDonasi, 0);
-  const totalDonatur = currentKecamatan.data.reduce((sum, item) => sum + item.jumlahDonatur, 0);
+  // Hitung total keseluruhan untuk kecamatan yang dipilih
+  const totalDonasi = currentKecamatan.total_donation;
+  const totalDonatur = currentKecamatan.total_donor;
 
   // Total donatur di semua kecamatan
-  const totalGlobalDonatur = useMemo(() => {
-    return allKecamatanData.reduce((sum, kec) => sum + kec.data.reduce((s, d) => s + d.jumlahDonatur, 0), 0);
-  }, [allKecamatanData]);
+  const totalGlobalDonatur = recapData?.total_donation || 0
 
   // Hitung persentase donatur
-  const persentaseDonatur = totalGlobalDonatur > 0 ? ((totalDonatur / totalGlobalDonatur) * 100).toFixed(2) : 0;
+  const persentaseDonatur =
+    totalGlobalDonatur > 0 ? ((totalDonatur / totalGlobalDonatur) * 100).toFixed(2) : "0";
 
   // Data yang sudah difilter
   const filteredData = useMemo(() => {
     const lowerSearchTerm = searchTerm.toLowerCase();
 
     // Filter desa berdasarkan searchTerm
-    const filteredDesa = currentKecamatan.data.filter((item) => item.desa.toLowerCase().includes(lowerSearchTerm));
-
-    return filteredDesa;
+    return currentKecamatan.desa_kelurahan.filter((item) =>
+      item.name.toLowerCase().includes(lowerSearchTerm)
+    );
   }, [currentKecamatan, searchTerm]);
 
   // Logic untuk Autocomplete Dropdown
   const desaRekomendasi = useMemo(() => {
     if (!searchTerm) return [];
     const lowerSearchTerm = searchTerm.toLowerCase();
-    return currentKecamatan.data.filter((item) => item.desa.toLowerCase().includes(lowerSearchTerm)).map((item) => item.desa);
+    return currentKecamatan.desa_kelurahan
+      .filter((item) => item.name.toLowerCase().includes(lowerSearchTerm))
+      .map((item) => item.name);
   }, [currentKecamatan, searchTerm]);
 
   // Handler untuk memilih desa dari rekomendasi
@@ -134,7 +150,13 @@ const RekapDonasi: React.FC = () => {
 
   if (isLoading) {
     return (
-      <motion.section className="py-24 px-4 flex justify-center items-center h-screen" variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
+      <motion.section
+        className="py-24 px-4 flex justify-center items-center h-screen"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.1 }}
+      >
         <FaSpinner className="animate-spin text-primary mr-3" size={32} />
         <span className="text-xl text-gray-700">Memuat data rekap donasi...</span>
       </motion.section>
@@ -142,28 +164,46 @@ const RekapDonasi: React.FC = () => {
   }
 
   // Jika data kosong setelah loading
-  if (allKecamatanData.length === 0) {
+  if (!recapData || recapData.kecamatan.length === 0) {
     return (
-      <motion.section className="py-24 px-4 text-center" variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
+      <motion.section
+        className="py-24 px-4 text-center"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.1 }}
+      >
         <h2 className="text-3xl font-bold text-red-600">Gagal Memuat Data Rekap Donasi</h2>
-        <p className="text-gray-600 mt-3">Silakan cek koneksi API atau pastikan data rekapitulasi tersedia di backend.</p>
+        <p className="text-gray-600 mt-3">
+          Silakan cek koneksi API atau pastikan data rekapitulasi tersedia di backend.
+        </p>
       </motion.section>
     );
   }
 
   // Render utama
   return (
-    <motion.section className="py-16 md:py-24 px-4 sm:px-6 md:px-12 lg:px-20 xl:px-32 " variants={containerVariants} initial="hidden" animate="visible">
+    <motion.section
+      className="py-16 md:py-24 px-4 sm:px-6 md:px-12 lg:px-20 xl:px-32 "
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       <div className="container mx-auto max-w-7xl mt-20">
         {/* Header Section */}
         <motion.div variants={itemVariants} className="text-center mb-12">
           <p className="text-primary font-bold text-lg">Rekap Donasi</p>
           <h2 className="text-4xl font-bold text-gray-800">Per Wilayah</h2>
-          <p className="text-gray-600 mt-3 max-w-xl mx-auto">Pilih kecamatan untuk melihat rekap donasi dari masing-masing desa. Gunakan fitur pencarian untuk memfilter desa.</p>
+          <p className="text-gray-600 mt-3 max-w-xl mx-auto">
+            Pilih kecamatan untuk melihat rekap donasi dari masing-masing desa. Gunakan fitur pencarian untuk memfilter desa.
+          </p>
         </motion.div>
 
         {/* Filter and Search Section */}
-        <motion.div variants={itemVariants} className="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-200 mb-10">
+        <motion.div
+          variants={itemVariants}
+          className="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-200 mb-10"
+        >
           <div className="max-w-xl mx-auto">
             <label className="block text-gray-700 font-semibold mb-2">Pilih Kecamatan</label>
             <div className="relative mb-4">
@@ -172,9 +212,9 @@ const RekapDonasi: React.FC = () => {
                 value={selectedKecamatan}
                 onChange={handleKecamatanChange}
               >
-                {allKecamatanData.map((kec) => (
-                  <option key={kec.nama} value={kec.nama}>
-                    {kec.nama}
+                {recapData.kecamatan.map((kec) => (
+                  <option key={kec.name} value={kec.name}>
+                    {kec.name}
                   </option>
                 ))}
               </select>
@@ -206,16 +246,27 @@ const RekapDonasi: React.FC = () => {
                     className="absolute z-10 w-full bg-white border border-gray-300 mt-1 rounded-lg shadow-xl max-h-40 overflow-y-auto"
                   >
                     {desaRekomendasi.map((desa) => (
-                      <li key={desa} onClick={() => handleSelectDesa(desa)} className="px-4 py-2 cursor-pointer hover:bg-green-50 flex justify-between items-center text-gray-800">
+                      <li
+                        key={desa}
+                        onClick={() => handleSelectDesa(desa)}
+                        className="px-4 py-2 cursor-pointer hover:bg-green-50 flex justify-between items-center text-gray-800"
+                      >
                         {desa}
-                        {searchTerm.toLowerCase() === desa.toLowerCase() && <FaCheckCircle className="text-primary w-4 h-4" />}
+                        {searchTerm.toLowerCase() === desa.toLowerCase() && (
+                          <FaCheckCircle className="text-primary w-4 h-4" />
+                        )}
                       </li>
                     ))}
                   </motion.ul>
                 )}
               </div>
 
-              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setSearchTerm("")} className="flex items-center bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSearchTerm("")}
+                className="flex items-center bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition-colors"
+              >
                 <FaTimes className="mr-1 w-3 h-3" />
                 Clear
               </motion.button>
@@ -225,14 +276,17 @@ const RekapDonasi: React.FC = () => {
 
         {/* Main Content Area */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <motion.div variants={itemVariants} className="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border-t-4 border-primary">
+          <motion.div
+            variants={itemVariants}
+            className="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border-t-4 border-primary"
+          >
             <h3 className="text-lg font-bold text-primary mb-4 flex items-center">
               <FaLeaf className="mr-2" /> Ringkasan Kecamatan
             </h3>
             <div className="space-y-3 text-sm text-gray-700">
               <div className="flex justify-between">
                 <span className="font-semibold">Kecamatan</span>
-                <span className="font-bold text-gray-900">: {currentKecamatan.nama}</span>
+                <span className="font-bold text-gray-900">: {currentKecamatan.name}</span>
               </div>
               <div className="flex justify-between border-t pt-3">
                 <span className="font-semibold">Total Donasi</span>
@@ -250,16 +304,29 @@ const RekapDonasi: React.FC = () => {
           </motion.div>
 
           {/* Grafik Donasi */}
-          <motion.div variants={itemVariants} className="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg flex flex-col">
+          <motion.div
+            variants={itemVariants}
+            className="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg flex flex-col"
+          >
             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
               <FaChartBar className="mr-2 text-primary" /> Grafik Donasi
             </h3>
             <div className="flex-grow">
               {filteredData.length > 0 ? (
-                <DonationChart data={filteredData} kecamatanName={currentKecamatan.nama} />
+                // Pass data in the same shape as before, but mapped from new API
+                <DonationChart
+                  data={filteredData.map((item) => ({
+                    desa: item.name,
+                    jumlahDonatur: item.total_donor,
+                    totalDonasi: item.total_donation,
+                  }))}
+                  kecamatanName={currentKecamatan.name}
+                />
               ) : (
                 <div className="flex items-center justify-center bg-gray-100 rounded-lg h-64 md:h-96">
-                  <p className="text-gray-500 italic">Tidak ada data desa untuk ditampilkan di grafik.</p>
+                  <p className="text-gray-500 italic">
+                    Tidak ada data desa untuk ditampilkan di grafik.
+                  </p>
                 </div>
               )}
             </div>
@@ -267,7 +334,10 @@ const RekapDonasi: React.FC = () => {
         </div>
 
         {/* Tabel Donasi */}
-        <motion.div variants={itemVariants} className="mt-8 bg-white p-6 rounded-xl shadow-lg overflow-x-auto">
+        <motion.div
+          variants={itemVariants}
+          className="mt-8 bg-white p-6 rounded-xl shadow-lg overflow-x-auto"
+        >
           <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
             <FaTable className="mr-2 text-primary" /> Tabel Donasi
           </h3>
@@ -284,21 +354,39 @@ const RekapDonasi: React.FC = () => {
             <tbody>
               {filteredData.length > 0 ? (
                 filteredData.map((item, index) => {
-                  const percentage = totalDonasi > 0 ? ((item.totalDonasi / totalDonasi) * 100).toFixed(2) : 0;
+                  const percentage =
+                    totalDonasi > 0
+                      ? ((item.total_donation / totalDonasi) * 100).toFixed(2)
+                      : "0";
                   return (
-                    <tr key={item.desa} className="text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                      <td className="py-3 px-4 border border-gray-200 text-center">{index + 1}</td>
-                      <td className="py-3 px-4 border border-gray-200 font-medium">{item.desa}</td>
-                      <td className="py-3 px-4 border border-gray-200 text-center">{item.jumlahDonatur}</td>
-                      <td className="py-3 px-4 border border-gray-200 text-right font-semibold">{formatRupiah(item.totalDonasi)}</td>
-                      <td className="py-3 px-4 border border-gray-200 text-center">{percentage}%</td>
+                    <tr
+                      key={item.name}
+                      className="text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="py-3 px-4 border border-gray-200 text-center">
+                        {index + 1}
+                      </td>
+                      <td className="py-3 px-4 border border-gray-200 font-medium">
+                        {item.name}
+                      </td>
+                      <td className="py-3 px-4 border border-gray-200 text-center">
+                        {item.total_donor}
+                      </td>
+                      <td className="py-3 px-4 border border-gray-200 text-right font-semibold">
+                        {formatRupiah(item.total_donation)}
+                      </td>
+                      <td className="py-3 px-4 border border-gray-200 text-center">
+                        {percentage}%
+                      </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
                   <td colSpan={5} className="py-4 text-center text-gray-500">
-                    {searchTerm ? `Tidak ada desa yang cocok dengan "${searchTerm}" di ${currentKecamatan.nama}` : `Pilih kecamatan untuk melihat rekap data.`}
+                    {searchTerm
+                      ? `Tidak ada desa yang cocok dengan "${searchTerm}" di ${currentKecamatan.name}`
+                      : `Pilih kecamatan untuk melihat rekap data.`}
                   </td>
                 </tr>
               )}
@@ -307,8 +395,12 @@ const RekapDonasi: React.FC = () => {
                 <td colSpan={2} className="py-3 px-4 border border-gray-300 text-center">
                   Total Keseluruhan
                 </td>
-                <td className="py-3 px-4 border border-gray-300 text-center">{totalDonatur}</td>
-                <td className="py-3 px-4 border border-gray-300 text-right">{formatRupiah(totalDonasi)}</td>
+                <td className="py-3 px-4 border border-gray-300 text-center">
+                  {totalDonatur}
+                </td>
+                <td className="py-3 px-4 border border-gray-300 text-right">
+                  {formatRupiah(totalDonasi)}
+                </td>
                 <td className="py-3 px-4 border border-gray-300 text-center">100%</td>
               </tr>
             </tbody>
