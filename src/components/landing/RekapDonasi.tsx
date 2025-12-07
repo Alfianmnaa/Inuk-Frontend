@@ -44,13 +44,36 @@ const RekapDonasi: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  
+  const months = [
+    { name: "Januari", value: 1 },
+    { name: "Februari", value: 2 },
+    { name: "Maret", value: 3 },
+    { name: "April", value: 4 },
+    { name: "Mei", value: 5 },
+    { name: "Juni", value: 6 },
+    { name: "Juli", value: 7 },
+    { name: "Agustus", value: 8 },
+    { name: "September", value: 9 },
+    { name: "Oktober", value: 10 },
+    { name: "November", value: 11 },
+    { name: "Desember", value: 12 },
+  ];
+  
+  const [selectedMonth, setSelectedMonth] = useState<number>(1); // Januari
+  const [selectedYear, setSelectedYear] = useState<number>(2025); // Static
 
   // --- Data Fetching Effect ---
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const data: DonationDataRecap = await getDonationRecap();
+        const data: DonationDataRecap = await getDonationRecap(
+          undefined,
+          undefined,
+          selectedYear,
+          selectedMonth,
+        );
         setRecapData(data);
 
         // Atur nilai selectedKecamatan ke item pertama segera setelah data berhasil diambil.
@@ -69,7 +92,7 @@ const RekapDonasi: React.FC = () => {
     };
 
     fetchData();
-  }, []);
+  }, [selectedMonth, selectedYear]);
 
   // Temukan data kecamatan yang dipilih (Menggunakan selectedKecamatan)
   const currentKecamatan = useMemo(() => {
@@ -103,7 +126,7 @@ const RekapDonasi: React.FC = () => {
   const totalDonatur = currentKecamatan.total_donor;
 
   // Total donatur di semua kecamatan
-  const totalGlobalDonatur = recapData?.total_donation || 0
+  const totalGlobalDonatur = recapData?.total_donor || 0
 
   // Hitung persentase donatur
   const persentaseDonatur =
@@ -217,6 +240,38 @@ const RekapDonasi: React.FC = () => {
                     {kec.name}
                   </option>
                 ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <BiChevronDown className="w-5 h-5" />
+              </div>
+            </div>
+            
+            {/* Month Dropdown */}
+            <div className="relative mb-4">
+              <select
+                className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              >
+                {months.map((month) => (
+                  <option key={month.value} value={month.value}>
+                    {month.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <BiChevronDown className="w-5 h-5" />
+              </div>
+            </div>
+            
+            {/* Year Dropdown */}
+            <div className="relative mb-4">
+              <select
+                className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+              >
+                <option value={2025}>2025</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                 <BiChevronDown className="w-5 h-5" />
