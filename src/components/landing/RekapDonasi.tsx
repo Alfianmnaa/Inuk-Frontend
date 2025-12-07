@@ -1,9 +1,20 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FaChartBar, FaTable, FaSearch, FaTimes, FaLeaf, FaCheckCircle, FaSpinner } from "react-icons/fa";
+import {
+  FaChartBar,
+  FaTable,
+  FaSearch,
+  FaTimes,
+  FaLeaf,
+  FaCheckCircle,
+  FaSpinner,
+} from "react-icons/fa";
 import { BiChevronDown } from "react-icons/bi";
 import DonationChart from "../../utils/DonationChart";
-import { getDonationRecap, type DonationDataRecap } from "../../services/DonationService";
+import {
+  getDonationRecap,
+  type DonationDataRecap,
+} from "../../services/DonationService";
 
 // Fungsi format Rupiah
 const formatRupiah = (angka: number) => {
@@ -44,23 +55,23 @@ const RekapDonasi: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const searchRef = useRef<HTMLDivElement>(null);
-  
-  // const months = [
-  //   { name: "Januari", value: 1 },
-  //   { name: "Februari", value: 2 },
-  //   { name: "Maret", value: 3 },
-  //   { name: "April", value: 4 },
-  //   { name: "Mei", value: 5 },
-  //   { name: "Juni", value: 6 },
-  //   { name: "Juli", value: 7 },
-  //   { name: "Agustus", value: 8 },
-  //   { name: "September", value: 9 },
-  //   { name: "Oktober", value: 10 },
-  //   { name: "November", value: 11 },
-  //   { name: "Desember", value: 12 },
-  // ];
-  
-  // const [selectedMonth, setSelectedMonth] = useState<number>(1); // Januari
+
+  const months = [
+    { name: "Januari", value: 1 },
+    { name: "Februari", value: 2 },
+    { name: "Maret", value: 3 },
+    { name: "April", value: 4 },
+    { name: "Mei", value: 5 },
+    { name: "Juni", value: 6 },
+    { name: "Juli", value: 7 },
+    { name: "Agustus", value: 8 },
+    { name: "September", value: 9 },
+    { name: "Oktober", value: 10 },
+    { name: "November", value: 11 },
+    { name: "Desember", value: 12 },
+  ];
+
+  const [selectedMonth, setSelectedMonth] = useState<number>(1); // Januari
   const [selectedYear, setSelectedYear] = useState<number>(2025); // Static
 
   // --- Data Fetching Effect ---
@@ -72,7 +83,7 @@ const RekapDonasi: React.FC = () => {
           undefined,
           undefined,
           selectedYear,
-          // selectedMonth,
+          selectedMonth,
         );
         setRecapData(data);
 
@@ -92,7 +103,7 @@ const RekapDonasi: React.FC = () => {
     };
 
     fetchData();
-  }, [selectedYear]);
+  }, [selectedYear, selectedMonth]);
 
   // Temukan data kecamatan yang dipilih (Menggunakan selectedKecamatan)
   const currentKecamatan = useMemo(() => {
@@ -104,7 +115,9 @@ const RekapDonasi: React.FC = () => {
         desa_kelurahan: [],
       };
     }
-    const found = recapData.kecamatan.find((kec) => kec.name === selectedKecamatan);
+    const found = recapData.kecamatan.find(
+      (kec) => kec.name === selectedKecamatan,
+    );
     return (
       found || {
         name: selectedKecamatan || "Pilih Kecamatan",
@@ -126,11 +139,13 @@ const RekapDonasi: React.FC = () => {
   const totalDonatur = currentKecamatan.total_donor;
 
   // Total donatur di semua kecamatan
-  const totalGlobalDonatur = recapData?.total_donor || 0
+  const totalGlobalDonatur = recapData?.total_donor || 0;
 
   // Hitung persentase donatur
   const persentaseDonatur =
-    totalGlobalDonatur > 0 ? ((totalDonatur / totalGlobalDonatur) * 100).toFixed(2) : "0";
+    totalGlobalDonatur > 0
+      ? ((totalDonatur / totalGlobalDonatur) * 100).toFixed(2)
+      : "0";
 
   // Data yang sudah difilter
   const filteredData = useMemo(() => {
@@ -138,7 +153,7 @@ const RekapDonasi: React.FC = () => {
 
     // Filter desa berdasarkan searchTerm
     return currentKecamatan.desa_kelurahan.filter((item) =>
-      item.name.toLowerCase().includes(lowerSearchTerm)
+      item.name.toLowerCase().includes(lowerSearchTerm),
     );
   }, [currentKecamatan, searchTerm]);
 
@@ -160,7 +175,10 @@ const RekapDonasi: React.FC = () => {
   // Sembunyikan dropdown saat klik di luar area pencarian
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
         setShowDropdown(false);
       }
     };
@@ -181,13 +199,15 @@ const RekapDonasi: React.FC = () => {
         viewport={{ once: true, amount: 0.1 }}
       >
         <FaSpinner className="animate-spin text-primary mr-3" size={32} />
-        <span className="text-xl text-gray-700">Memuat data rekap donasi...</span>
+        <span className="text-xl text-gray-700">
+          Memuat data rekap donasi...
+        </span>
       </motion.section>
     );
   }
 
   // Jika data kosong setelah loading
-  if (!recapData || recapData.kecamatan.length === 0) {
+  if (!recapData) {
     return (
       <motion.section
         className="py-24 px-4 text-center"
@@ -196,9 +216,12 @@ const RekapDonasi: React.FC = () => {
         whileInView="visible"
         viewport={{ once: true, amount: 0.1 }}
       >
-        <h2 className="text-3xl font-bold text-red-600">Gagal Memuat Data Rekap Donasi</h2>
+        <h2 className="text-3xl font-bold text-red-600">
+          Gagal Memuat Data Rekap Donasi
+        </h2>
         <p className="text-gray-600 mt-3">
-          Silakan cek koneksi API atau pastikan data rekapitulasi tersedia di backend.
+          Silakan cek koneksi API atau pastikan data rekapitulasi tersedia di
+          backend.
         </p>
       </motion.section>
     );
@@ -218,7 +241,8 @@ const RekapDonasi: React.FC = () => {
           <p className="text-primary font-bold text-lg">Rekap Donasi</p>
           <h2 className="text-4xl font-bold text-gray-800">Per Wilayah</h2>
           <p className="text-gray-600 mt-3 max-w-xl mx-auto">
-            Pilih kecamatan untuk melihat rekap donasi dari masing-masing desa. Gunakan fitur pencarian untuk memfilter desa.
+            Pilih kecamatan untuk melihat rekap donasi dari masing-masing desa.
+            Gunakan fitur pencarian untuk memfilter desa.
           </p>
         </motion.div>
 
@@ -228,7 +252,9 @@ const RekapDonasi: React.FC = () => {
           className="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-200 mb-10"
         >
           <div className="max-w-xl mx-auto">
-            <label className="block text-gray-700 font-semibold mb-2">Pilih Kecamatan</label>
+            <label className="block text-gray-700 font-semibold mb-2">
+              Pilih Kecamatan
+            </label>
             <div className="relative mb-4">
               <select
                 className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
@@ -246,6 +272,24 @@ const RekapDonasi: React.FC = () => {
               </div>
             </div>
             
+            {/* Month Dropdown */}
+            <div className="relative mb-4">
+              <select
+                className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              >
+                {months.map((month) => (
+                  <option key={month.value} value={month.value}>
+                    {month.name}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <BiChevronDown className="w-5 h-5" />
+              </div>
+            </div>
+
             {/* Year Dropdown */}
             <div className="relative mb-4">
               <select
@@ -323,19 +367,27 @@ const RekapDonasi: React.FC = () => {
             <div className="space-y-3 text-sm text-gray-700">
               <div className="flex justify-between">
                 <span className="font-semibold">Kecamatan</span>
-                <span className="font-bold text-gray-900">: {currentKecamatan.name}</span>
+                <span className="font-bold text-gray-900">
+                  : {currentKecamatan.name}
+                </span>
               </div>
               <div className="flex justify-between border-t pt-3">
                 <span className="font-semibold">Total Donasi</span>
-                <span className="font-bold text-gray-900">: {formatRupiah(totalDonasi)}</span>
+                <span className="font-bold text-gray-900">
+                  : {formatRupiah(totalDonasi)}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="font-semibold">Jumlah Donatur</span>
-                <span className="font-bold text-gray-900">: {totalDonatur}</span>
+                <span className="font-bold text-gray-900">
+                  : {totalDonatur}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="font-semibold">Persentase Donatur</span>
-                <span className="font-bold text-gray-900">: {persentaseDonatur}%</span>
+                <span className="font-bold text-gray-900">
+                  : {persentaseDonatur}%
+                </span>
               </div>
             </div>
           </motion.div>
@@ -382,10 +434,18 @@ const RekapDonasi: React.FC = () => {
             <thead>
               <tr className="bg-yellow-50 text-gray-800 text-sm font-semibold">
                 <th className="py-3 px-4 border border-yellow-200">No</th>
-                <th className="py-3 px-4 border border-yellow-200 text-left">Desa</th>
-                <th className="py-3 px-4 border border-yellow-200">Jumlah Donatur</th>
-                <th className="py-3 px-4 border border-yellow-200">Total Donasi</th>
-                <th className="py-3 px-4 border border-yellow-200">Persentase</th>
+                <th className="py-3 px-4 border border-yellow-200 text-left">
+                  Desa
+                </th>
+                <th className="py-3 px-4 border border-yellow-200">
+                  Jumlah Donatur
+                </th>
+                <th className="py-3 px-4 border border-yellow-200">
+                  Total Donasi
+                </th>
+                <th className="py-3 px-4 border border-yellow-200">
+                  Persentase
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -429,7 +489,10 @@ const RekapDonasi: React.FC = () => {
               )}
 
               <tr className="bg-yellow-100 text-gray-800 font-bold text-base">
-                <td colSpan={2} className="py-3 px-4 border border-gray-300 text-center">
+                <td
+                  colSpan={2}
+                  className="py-3 px-4 border border-gray-300 text-center"
+                >
                   Total Keseluruhan
                 </td>
                 <td className="py-3 px-4 border border-gray-300 text-center">
@@ -438,7 +501,9 @@ const RekapDonasi: React.FC = () => {
                 <td className="py-3 px-4 border border-gray-300 text-right">
                   {formatRupiah(totalDonasi)}
                 </td>
-                <td className="py-3 px-4 border border-gray-300 text-center">100%</td>
+                <td className="py-3 px-4 border border-gray-300 text-center">
+                  100%
+                </td>
               </tr>
             </tbody>
           </table>
