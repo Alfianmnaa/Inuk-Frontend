@@ -54,6 +54,7 @@ const DonaturManagement: React.FC = () => {
   const mappedDonaturList: Donatur[] = donaturListAPI.map((d) => ({
     id: d.id,
     noKaleng: d.kaleng,
+    phone: d.phone,
     namaDonatur: d.name,
     rw: d.rw.toString().padStart(3, "0"), // RW tetap diambil dari data Donatur (d.rw)
     rt: d.rt.toString().padStart(3, "0"),
