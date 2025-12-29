@@ -1,5 +1,3 @@
-// inuk-frontend/src/components/dashboard/ui/CreateRegionModal.tsx
-
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";

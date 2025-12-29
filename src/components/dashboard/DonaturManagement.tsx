@@ -1,5 +1,3 @@
-// inuk-frontend/src/components/dashboard/DonaturManagement.tsx
-
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { FaSearch, FaTimes, FaPlus, FaUsers, FaMapMarkerAlt, FaSpinner, FaHandHoldingHeart, FaInfoCircle } from "react-icons/fa";

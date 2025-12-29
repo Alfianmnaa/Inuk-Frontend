@@ -1,5 +1,3 @@
-// inuk-frontend/src/components/dashboard/ui/AddTransactionModal.tsx
-
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaTimes, FaPlus, FaSpinner, FaCalendarAlt, FaDollarSign, FaUser, FaChevronDown } from "react-icons/fa";

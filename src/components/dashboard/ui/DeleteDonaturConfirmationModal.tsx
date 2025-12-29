@@ -1,5 +1,3 @@
-// inuk-frontend/src/components/dashboard/ui/DeleteDonaturConfirmationModal.tsx
-
 import React from "react";
 import { FaTrash, FaTimes } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";

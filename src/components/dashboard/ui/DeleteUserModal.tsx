@@ -1,5 +1,3 @@
-// inuk-frontend/src/components/dashboard/ui/DeleteUserModal.tsx
-
 import React, { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { FaSpinner } from "react-icons/fa";

@@ -10,6 +10,7 @@ services:
     restart: unless-stopped
     volumes:
       - ../storage/exports/donations:/usr/share/nginx/exports/donations:ro
+      - ../storage/uploads:/usr/share/nginx/uploads:ro
     networks:
       - inuk-network
     labels:
@@ -19,7 +20,7 @@ services:
       - "traefik.http.routers.frontend-http.entrypoints=web"
       - "traefik.http.routers.frontend-http.middlewares=redirect-to-https@file"
       # HTTPS Router for main
-      - "traefik.http.routers.frontend-https.rule=Host(`${CLIENT_DOMAIN}`) && !PathPrefix(`/exports/donations`)"
+      - "traefik.http.routers.frontend-https.rule=Host(`${CLIENT_DOMAIN}`) && !PathPrefix(`/exports/donations`) && !PathPrefix(`/uploads`)"
       - "traefik.http.routers.frontend-https.entrypoints=websecure"
       - "traefik.http.routers.frontend-https.tls=true"
       - "traefik.http.routers.frontend-https.tls.certresolver=letsencrypt"
@@ -34,8 +35,19 @@ services:
       - "traefik.http.routers.exports-https.entrypoints=websecure"
       - "traefik.http.routers.exports-https.tls=true"
       - "traefik.http.routers.exports-https.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.exports-https.middlewares=default-security@file,rate-limit-exports@file"
+      - "traefik.http.routers.exports-https.middlewares=default-security@file,rate-limit-files@file"
       - "traefik.http.routers.exports-https.priority=2"
+      # HTTP Router for uploads (redirects to HTTPS)
+      - "traefik.http.routers.uploads-http.rule=Host(`${CLIENT_DOMAIN}`) && PathPrefix(`/uploads`)"
+      - "traefik.http.routers.uploads-http.entrypoints=web"
+      - "traefik.http.routers.uploads-http.middlewares=redirect-to-https@file"
+      # HTTPS Router for uploads (with rate limiting)
+      - "traefik.http.routers.uploads-https.rule=Host(`${CLIENT_DOMAIN}`) && PathPrefix(`/uploads`)"
+      - "traefik.http.routers.uploads-https.entrypoints=websecure"
+      - "traefik.http.routers.uploads-https.tls=true"
+      - "traefik.http.routers.uploads-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.uploads-https.middlewares=default-security@file,rate-limit-files@file"
+      - "traefik.http.routers.uploads-https.priority=2"
       # Service Definition (tells Traefik which port)
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
 

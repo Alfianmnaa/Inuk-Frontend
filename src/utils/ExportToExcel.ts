@@ -1,5 +1,3 @@
-// inuk-frontend/src/utils/ExportToExcel.ts
-
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 

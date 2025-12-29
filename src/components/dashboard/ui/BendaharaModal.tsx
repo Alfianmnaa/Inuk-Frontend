@@ -1,5 +1,3 @@
-// inuk-frontend/src/components/dashboard/ui/BendaharaModal.tsx
-
 import React, { useState, useEffect } from "react";
 import { FaUser, FaWhatsapp, FaCheck, FaSpinner, FaPen, FaInfoCircle } from "react-icons/fa";
 import { X } from "lucide-react";

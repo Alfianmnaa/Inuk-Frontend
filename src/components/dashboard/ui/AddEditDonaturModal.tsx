@@ -1,5 +1,3 @@
-// inuk-frontend/src/components/dashboard/ui/AddEditDonaturModal.tsx
-
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { FaSave, FaPhoneAlt, FaSpinner } from "react-icons/fa";

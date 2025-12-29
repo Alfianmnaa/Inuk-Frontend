@@ -1,5 +1,3 @@
-// inuk-frontend/src/components/dashboard/ui/AddEditUserModal.tsx
-
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { FaSave, FaSpinner, FaUser, FaPhoneAlt, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";

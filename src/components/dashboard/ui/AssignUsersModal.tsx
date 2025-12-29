@@ -1,5 +1,3 @@
-// inuk-frontend/src/components/dashboard/ui/AssignUsersModal.tsx
-
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";

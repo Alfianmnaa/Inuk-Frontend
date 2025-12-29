@@ -10,6 +10,7 @@ import RegionManagement from "../components/dashboard/RegionManagement";
 import TransaksiDonasi from "../components/dashboard/TransaksiDonasi";
 import DonaturManagement from "../components/dashboard/DonaturManagement";
 import UserManagement from "../components/dashboard/UserManagement";
+import ArticleEditor from "../components/dashboard/ArticleEditor";
 
 // Halaman Dummy Dashboard Utama
 const DashboardUtama = () => (
@@ -82,6 +83,15 @@ const DashboardRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <CMSBerita />
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/cms-berita/editor"
+        element={
+          <ProtectedRoute>
+            <ArticleEditor />
           </ProtectedRoute>
         }
       />

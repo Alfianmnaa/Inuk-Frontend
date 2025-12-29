@@ -1,5 +1,3 @@
-// inuk-frontend/src/components/dashboard/RegionManagement.tsx
-
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { FaPlus, FaSpinner, FaMapMarkedAlt, FaUserPlus, FaUsers, FaTrash, FaEdit, FaSearch, FaFilter } from "react-icons/fa";

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { FaSearch, FaTimes, FaPlus, FaNewspaper, FaEdit, FaTrash, FaSortUp, FaSortDown, FaCheckCircle, FaHourglassHalf, FaFilter } from "react-icons/fa";
 import DashboardLayout from "./DashboardLayout";
+import { useNavigate } from "react-router-dom";
 
 // type data
 interface BlogPost {
@@ -121,7 +122,9 @@ const CMSBerita: React.FC = () => {
     setFilterCategory("");
     setFilterStatus("");
   };
-
+  
+  const navigate = useNavigate();
+  
   return (
     <DashboardLayout activeLink="/dashboard/cms-berita" pageTitle="Manajemen Berita & Blog">
       <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
@@ -151,7 +154,12 @@ const CMSBerita: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
               <FaFilter className="mr-2 text-primary" /> Filter & Aksi Cepat
             </h3>
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors">
+            <motion.button 
+              whileHover={{ scale: 1.05 }} 
+              whileTap={{ scale: 0.95 }} 
+              className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors"
+              onClick={() => navigate("cms-berita/article")}
+            >
               <FaPlus className="mr-2" /> Buat Postingan Baru
             </motion.button>
           </div>
