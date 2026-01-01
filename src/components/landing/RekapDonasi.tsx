@@ -238,24 +238,8 @@ const RekapDonasi: React.FC = () => {
         >
           <div className="max-w-xl mx-auto">
             <label className="block text-gray-700 font-semibold mb-2">
-              Pilih Kecamatan
+              Pilih Data Wilayah
             </label>
-            <div className="relative mb-4">
-              <select
-                className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                value={selectedKecamatan}
-                onChange={handleKecamatanChange}
-              >
-                {kecamatanList.map((kec) => (
-                  <option key={kec.name} value={kec.name}>
-                    {kec.name}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <BiChevronDown className="w-5 h-5" />
-              </div>
-            </div>
 
             {/* Month Dropdown */}
             <div className="relative mb-4">
@@ -283,6 +267,24 @@ const RekapDonasi: React.FC = () => {
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
               >
                 <option value={2025}>2025</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <BiChevronDown className="w-5 h-5" />
+              </div>
+            </div>
+            
+            {/* Kecamatan Dropdown */}
+            <div className="relative mb-4">
+              <select
+                className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                value={selectedKecamatan}
+                onChange={handleKecamatanChange}
+              >
+                {kecamatanList.map((kec) => (
+                  <option key={kec.name} value={kec.name}>
+                    {kec.name}
+                  </option>
+                ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                 <BiChevronDown className="w-5 h-5" />
