@@ -158,7 +158,7 @@ const CMSBerita: React.FC = () => {
               whileHover={{ scale: 1.05 }} 
               whileTap={{ scale: 0.95 }} 
               className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors"
-              onClick={() => navigate("/editor")}
+              onClick={() => navigate("cms-berita/editor")}
             >
               <FaPlus className="mr-2" /> Buat Postingan Baru
             </motion.button>
