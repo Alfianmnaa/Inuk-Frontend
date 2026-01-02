@@ -32,19 +32,27 @@ const ArticleEditor: React.FC = () => {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
       Underline,
       Link.configure({
         openOnClick: false,
         autolink: true,
         linkOnPaste: true,
       }),
-      Image,
+      Image.configure({
+        inline: true,
+        allowBase64: true,
+      }),
       Youtube.configure({
         controls: true,
         nocookie: true,
         width: 640,
         height: 360,
+        inline: false,
       }),
     ],
     content: "",
@@ -53,49 +61,67 @@ const ArticleEditor: React.FC = () => {
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[300px]',
+        class: "prose prose-sm max-w-none focus:outline-none min-h-[300px]",
       },
     },
   });
 
   const youtubeToEmbed = (input: string) => {
     if (!input) return input;
+
+    // Remove any whitespace
+    input = input.trim();
+
     try {
+      // If it's just an ID (11 characters)
+      if (/^[A-Za-z0-9_-]{11}$/.test(input)) {
+        return `https://www.youtube-nocookie.com/embed/${input}`;
+      }
+
       const maybeUrl = input.startsWith("http") ? input : `https://${input}`;
       const u = new URL(maybeUrl);
+
+      // youtu.be short link
       if (u.hostname.includes("youtu.be")) {
-        const id = u.pathname.slice(1);
+        const id = u.pathname.slice(1).split("?")[0];
         if (id) return `https://www.youtube-nocookie.com/embed/${id}`;
       }
-      if (
-        u.hostname.includes("youtube.com") ||
-        u.hostname.includes("www.youtube.com")
-      ) {
+
+      // youtube.com
+      if (u.hostname.includes("youtube.com")) {
         const v = u.searchParams.get("v");
         if (v) return `https://www.youtube-nocookie.com/embed/${v}`;
+
+        // already an embed path?
         if (u.pathname.includes("/embed/")) {
-          return `https://www.youtube-nocookie.com${u.pathname}`;
+          const id = u.pathname.split("/embed/")[1].split("?")[0];
+          return `https://www.youtube-nocookie.com/embed/${id}`;
         }
       }
     } catch (e) {
-      // not a URL
+      console.error("YouTube URL parsing error:", e);
     }
+
+    // Last resort - try to extract any 11-char ID
     const idMatch = input.match(/[A-Za-z0-9_-]{11}/);
     if (idMatch) return `https://www.youtube-nocookie.com/embed/${idMatch[0]}`;
+
     return input;
   };
 
   const setYoutube = () => {
+    if (!editor) return;
+
     const url = window.prompt(
-      "Enter YouTube URL or ID (e.g. https://youtu.be/ID or ID)",
+      "Enter YouTube URL or ID:\n\nExamples:\n- dQw4w9WgXcQ\n- https://youtu.be/dQw4w9WgXcQ\n- https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     );
-    if (!url || !editor) return;
-    const embedSrc = youtubeToEmbed(url.trim());
-    editor
-      .chain()
-      .focus()
-      .insertContent({ type: "youtube", attrs: { src: embedSrc } })
-      .run();
+
+    if (!url) return;
+
+    const embedSrc = youtubeToEmbed(url);
+    console.log("Inserting YouTube with src:", embedSrc);
+
+    editor.chain().focus().setYoutubeVideo({ src: embedSrc }).run();
   };
 
   const setLink = () => {
@@ -120,7 +146,7 @@ const ArticleEditor: React.FC = () => {
         .chain()
         .focus()
         .insertContent(
-          `<a href="${url}" target="_blank" rel="noopener noreferrer">${safe}</a>`,
+          `<a href="${url}" target="_blank" rel="noopener noreferrer">${safe}</a> `,
         )
         .run();
     }
@@ -192,6 +218,8 @@ const ArticleEditor: React.FC = () => {
       setHeaderImage(null);
       editor?.commands.clearContent(true);
       setTags([]);
+      setError("");
+      alert("Article created successfully!");
     } catch (errorCaught: unknown) {
       console.error("Create article error:", errorCaught);
       const message =

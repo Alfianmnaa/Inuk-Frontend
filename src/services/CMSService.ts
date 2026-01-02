@@ -38,9 +38,6 @@ const getAuthHeaders = (token: string) => ({
 
 // --- API Calls ---
 
-/**
- * Create a new article.
- */
 export const createArticle = async (
   token: string,
   data: CreateArticleRequest
@@ -59,9 +56,6 @@ export const createArticle = async (
   return response.data;
 };
 
-/**
- * Upload an image and get its URL.
- */
 export const uploadImage = async (
   token: string,
   file: File
@@ -72,13 +66,8 @@ export const uploadImage = async (
   const response = await axios.post<UploadImageResponse>(
     `${VITE_API_URL}/upload/image`,
     formData,
-    {
-      ...getAuthHeaders(token),
-      headers: {
-        ...getAuthHeaders(token).headers,
-        "Content-Type": "multipart/form-data",
-      },
-    }
+    getAuthHeaders(token)
   );
+  
   return response.data;
 };
