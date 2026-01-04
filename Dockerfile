@@ -31,8 +31,16 @@ RUN npm run build
 FROM nginx:1.29-bookworm AS prod
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /app/dist /usr/share/nginx/html
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl gettext-base && rm -rf /var/lib/apt/lists/*
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=2 \
   CMD curl -f http://localhost:80/healthz || exit 1
-CMD ["nginx", "-g", "daemon off;"]
+  
+CMD sh -c "
+  envsubst '\$CLIENT_DOMAIN' \
+    < /etc/nginx/nginx.conf \
+    > /etc/nginx/nginx.conf.tmp \
+  && mv /etc/nginx/nginx.conf.tmp /etc/nginx/nginx.conf \
+  && nginx -g 'daemon off;'
+"
+# CMD ["nginx", "-g", "daemon off;"]
