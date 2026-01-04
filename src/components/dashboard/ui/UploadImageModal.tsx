@@ -68,7 +68,6 @@ export default function UploadImageModal({
       if (err instanceof Error) {
         msg = err.message;
       } else if (typeof err === "object" && err !== null) {
-        // Check for HTTP error response
         if ("response" in err) {
           const response = (err as any).response;
           if (response?.data?.error) {
@@ -97,20 +96,27 @@ export default function UploadImageModal({
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-[1050] h-full"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-lg shadow-2xl max-w-md w-full"
+        className="bg-white p-6 m-4 rounded-xl w-full max-w-md shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-800">Upload Image</h2>
+        <div className="flex justify-between items-center border-b pb-3 mb-4">
+          <h3 className="text-xl font-bold text-gray-800">Upload Image</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            disabled={uploading}
+          >
+            ×
+          </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="space-y-4">
           {/* File Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -135,39 +141,31 @@ export default function UploadImageModal({
 
           {/* Alt Text */}
           <div>
-            <label
-              htmlFor="alt-text"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Alt Text
             </label>
             <input
-              id="alt-text"
               type="text"
               placeholder="Describe the image"
               value={alt}
               onChange={(e) => setAlt(e.target.value)}
               disabled={uploading}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-green-500 focus:border-green-500 disabled:opacity-50"
             />
           </div>
 
           {/* Caption */}
           <div>
-            <label
-              htmlFor="caption"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Caption (optional)
             </label>
             <input
-              id="caption"
               type="text"
               placeholder="Image caption"
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               disabled={uploading}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-green-500 focus:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-green-500 focus:border-green-500 disabled:opacity-50"
             />
           </div>
 
@@ -180,18 +178,18 @@ export default function UploadImageModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 flex justify-end gap-2">
+        <div className="flex justify-end gap-3 mt-6">
           <button
             onClick={onClose}
             disabled={uploading}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="py-2 px-4 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleUpload}
             disabled={uploading || !file}
-            className="px-4 py-2 text-sm font-medium text-white bg-green-500 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="py-2 px-4 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
           >
             {uploading ? "Uploading..." : "Upload"}
           </button>

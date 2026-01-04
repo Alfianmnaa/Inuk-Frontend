@@ -11,6 +11,7 @@ import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import Youtube from "@tiptap/extension-youtube";
 import { useAuth } from "../../context/AuthContext";
+import DashboardLayout from "./DashboardLayout";
 
 const ArticleEditor: React.FC = () => {
   const [title, setTitle] = useState("");
@@ -44,8 +45,11 @@ const ArticleEditor: React.FC = () => {
         linkOnPaste: true,
       }),
       Image.configure({
-        inline: true,
-        allowBase64: true,
+        inline: false,
+        allowBase64: false,
+        HTMLAttributes: {
+          class: 'max-w-full h-auto rounded-lg',
+        },
       }),
       Youtube.configure({
         controls: true,
@@ -53,6 +57,9 @@ const ArticleEditor: React.FC = () => {
         width: 640,
         height: 360,
         inline: false,
+        HTMLAttributes: {
+          class: 'rounded-lg my-4',
+        },
       }),
     ],
     content: "",
@@ -61,50 +68,48 @@ const ArticleEditor: React.FC = () => {
     },
     editorProps: {
       attributes: {
-        class: "prose prose-sm max-w-none focus:outline-none min-h-[300px]",
+        class: "prose prose-sm max-w-none focus:outline-none min-h-[300px] p-4",
       },
     },
   });
 
   const youtubeToEmbed = (input: string) => {
     if (!input) return input;
-
-    // Remove any whitespace
     input = input.trim();
 
     try {
-      // If it's just an ID (11 characters)
+      // Just ID (11 characters)
       if (/^[A-Za-z0-9_-]{11}$/.test(input)) {
-        return `https://www.youtube-nocookie.com/embed/${input}`;
+        return `https://www.youtube.com/embed/${input}`;
       }
 
       const maybeUrl = input.startsWith("http") ? input : `https://${input}`;
       const u = new URL(maybeUrl);
 
-      // youtu.be short link
+      // youtu.be
       if (u.hostname.includes("youtu.be")) {
         const id = u.pathname.slice(1).split("?")[0];
-        if (id) return `https://www.youtube-nocookie.com/embed/${id}`;
+        if (id) return `https://www.youtube.com/embed/${id}`;
       }
 
       // youtube.com
       if (u.hostname.includes("youtube.com")) {
         const v = u.searchParams.get("v");
-        if (v) return `https://www.youtube-nocookie.com/embed/${v}`;
+        if (v) return `https://www.youtube.com/embed/${v}`;
 
-        // already an embed path?
+        // embed path
         if (u.pathname.includes("/embed/")) {
           const id = u.pathname.split("/embed/")[1].split("?")[0];
-          return `https://www.youtube-nocookie.com/embed/${id}`;
+          return `https://www.youtube.com/embed/${id}`;
         }
       }
     } catch (e) {
-      console.error("YouTube URL parsing error:", e);
+      console.error("YouTube URL error:", e);
     }
 
-    // Last resort - try to extract any 11-char ID
+    // Extract ID
     const idMatch = input.match(/[A-Za-z0-9_-]{11}/);
-    if (idMatch) return `https://www.youtube-nocookie.com/embed/${idMatch[0]}`;
+    if (idMatch) return `https://www.youtube.com/embed/${idMatch[0]}`;
 
     return input;
   };
@@ -113,14 +118,15 @@ const ArticleEditor: React.FC = () => {
     if (!editor) return;
 
     const url = window.prompt(
-      "Enter YouTube URL or ID:\n\nExamples:\n- dQw4w9WgXcQ\n- https://youtu.be/dQw4w9WgXcQ\n- https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "Enter YouTube URL or ID:\n\nExamples:\n- dQw4w9WgXcQ\n- https://youtu.be/dQw4w9WgXcQ\n- https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     );
 
     if (!url) return;
 
     const embedSrc = youtubeToEmbed(url);
-    console.log("Inserting YouTube with src:", embedSrc);
+    console.log("YouTube embed URL:", embedSrc);
 
+    // FIX: Gunakan method yang benar untuk YouTube
     editor.chain().focus().setYoutubeVideo({ src: embedSrc }).run();
   };
 
@@ -141,13 +147,10 @@ const ArticleEditor: React.FC = () => {
         .run();
     } else {
       const text = window.prompt("Enter link text", url) || url;
-      const safe = text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
       editor
         .chain()
         .focus()
-        .insertContent(
-          `<a href="${url}" target="_blank" rel="noopener noreferrer">${safe}</a> `,
-        )
+        .insertContent(`<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a> `)
         .run();
     }
   };
@@ -161,10 +164,16 @@ const ArticleEditor: React.FC = () => {
   }) => {
     setShowBodyImageModal(false);
     if (editor && img?.url) {
+      console.log("Inserting image:", img.url);
+      // FIX: Pastikan image di-insert dengan benar
       editor
         .chain()
         .focus()
-        .setImage({ src: img.url, alt: img.alt, title: img.caption })
+        .setImage({ 
+          src: img.url, 
+          alt: img.alt, 
+          title: img.caption 
+        })
         .run();
     }
   };
@@ -225,11 +234,7 @@ const ArticleEditor: React.FC = () => {
       const message =
         errorCaught instanceof Error
           ? errorCaught.message
-          : typeof errorCaught === "object" &&
-              errorCaught !== null &&
-              "message" in errorCaught
-            ? String((errorCaught as { message: unknown }).message)
-            : "Failed to create article.";
+          : "Failed to create article.";
       setError(message);
     } finally {
       setSubmitting(false);
@@ -237,300 +242,280 @@ const ArticleEditor: React.FC = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-4">
-      <h1 className="text-2xl font-bold text-gray-800">Create Article</h1>
+    <DashboardLayout activeLink="/dashboard/cms-berita" pageTitle="Create Article">
+      <div className="max-w-5xl mx-auto space-y-4">
+        <h1 className="text-2xl font-bold text-gray-800">Create Article</h1>
 
-      {/* Header Inputs - Compact */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <input
-          type="text"
-          placeholder="Title"
-          value={title}
-          maxLength={300}
-          onChange={(e) => setTitle(e.target.value)}
-          className="col-span-1 md:col-span-2 border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-green-500 focus:border-green-500"
-        />
-        <input
-          type="text"
-          placeholder="Author"
-          value={author}
-          maxLength={150}
-          onChange={(e) => setAuthor(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-green-500 focus:border-green-500"
-        />
-      </div>
+        {/* Header Inputs */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input
+            type="text"
+            placeholder="Title"
+            value={title}
+            maxLength={300}
+            onChange={(e) => setTitle(e.target.value)}
+            className="col-span-1 md:col-span-2 border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-green-500 focus:border-green-500"
+          />
+          <input
+            type="text"
+            placeholder="Author"
+            value={author}
+            maxLength={150}
+            onChange={(e) => setAuthor(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-2 text-sm focus:ring-1 focus:ring-green-500 focus:border-green-500"
+          />
+        </div>
 
-      {/* Header Image - Compact */}
-      <div className="bg-white border border-gray-200 rounded p-3">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setShowHeaderImageModal(true)}
-              className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600 transition-colors"
-            >
-              {headerImage ? "Change Header Image" : "Upload Header Image"}
-            </button>
-            <span className="text-xs text-gray-500">Recommended: 1200x600</span>
-          </div>
-          {headerImage && (
+        {/* Header Image */}
+        <div className="bg-white border border-gray-200 rounded p-3">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <img
-                src={headerImage.url}
-                alt={headerImage.alt}
-                className="w-32 h-20 object-cover rounded border border-gray-200"
-              />
-              <div className="text-xs text-gray-700">
-                <div className="font-medium">
-                  {headerImage.alt || "Header image"}
-                </div>
-                <div className="text-gray-500">{headerImage.caption}</div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <UploadImageModal
-        open={showHeaderImageModal}
-        onClose={() => setShowHeaderImageModal(false)}
-        onUploaded={handleHeaderImageUpload}
-        token={token}
-      />
-
-      {/* Editor & Toolbar - Single Box, Proper Padding */}
-      <div className="bg-white border border-gray-200 rounded overflow-hidden">
-        {/* Toolbar */}
-        <div className="border-b border-gray-200 p-2 bg-gray-50">
-          <div
-            className="flex flex-wrap items-center gap-1"
-            role="toolbar"
-            aria-label="Editor toolbar"
-          >
-            <button
-              onClick={() => editor?.chain().focus().toggleBold().run()}
-              disabled={!editor}
-              aria-label="Bold"
-              className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
-                editor?.isActive("bold")
-                  ? "bg-green-500 text-white border-green-500"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-              }`}
-            >
-              Bold
-            </button>
-            <button
-              onClick={() => editor?.chain().focus().toggleItalic().run()}
-              disabled={!editor}
-              aria-label="Italic"
-              className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
-                editor?.isActive("italic")
-                  ? "bg-green-500 text-white border-green-500"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-              }`}
-            >
-              Italic
-            </button>
-            <button
-              onClick={() => editor?.chain().focus().toggleUnderline().run()}
-              disabled={!editor}
-              aria-label="Underline"
-              className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
-                editor?.isActive("underline")
-                  ? "bg-green-500 text-white border-green-500"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-              }`}
-            >
-              Underline
-            </button>
-            <button
-              onClick={() => editor?.chain().focus().toggleStrike().run()}
-              disabled={!editor}
-              aria-label="Strike"
-              className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
-                editor?.isActive("strike")
-                  ? "bg-green-500 text-white border-green-500"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-              }`}
-            >
-              Strike
-            </button>
-
-            <div className="w-px h-6 bg-gray-300 mx-1"></div>
-
-            <button
-              onClick={() =>
-                editor?.chain().focus().toggleHeading({ level: 1 }).run()
-              }
-              disabled={!editor}
-              aria-label="Heading 1"
-              className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
-                editor?.isActive("heading", { level: 1 })
-                  ? "bg-green-500 text-white border-green-500"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-              }`}
-            >
-              H1
-            </button>
-            <button
-              onClick={() =>
-                editor?.chain().focus().toggleHeading({ level: 2 }).run()
-              }
-              disabled={!editor}
-              aria-label="Heading 2"
-              className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
-                editor?.isActive("heading", { level: 2 })
-                  ? "bg-green-500 text-white border-green-500"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-              }`}
-            >
-              H2
-            </button>
-            <button
-              onClick={() =>
-                editor?.chain().focus().toggleHeading({ level: 3 }).run()
-              }
-              disabled={!editor}
-              aria-label="Heading 3"
-              className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
-                editor?.isActive("heading", { level: 3 })
-                  ? "bg-green-500 text-white border-green-500"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-              }`}
-            >
-              H3
-            </button>
-
-            <div className="w-px h-6 bg-gray-300 mx-1"></div>
-
-            <button
-              onClick={setLink}
-              disabled={!editor}
-              aria-label="Insert link"
-              className="px-2.5 py-1 rounded text-xs font-medium border bg-white text-gray-700 border-gray-300 hover:bg-gray-100 transition-colors"
-            >
-              Link
-            </button>
-            <button
-              onClick={setYoutube}
-              disabled={!editor}
-              aria-label="Insert YouTube"
-              className="px-2.5 py-1 rounded text-xs font-medium border bg-white text-gray-700 border-gray-300 hover:bg-gray-100 transition-colors"
-            >
-              YouTube
-            </button>
-            <button
-              onClick={openBodyImageModal}
-              disabled={!editor}
-              aria-label="Insert image"
-              className="px-2.5 py-1 rounded text-xs font-medium border bg-white text-gray-700 border-gray-300 hover:bg-gray-100 transition-colors"
-            >
-              Image
-            </button>
-          </div>
-        </div>
-
-        {/* Editor Content - Single box with proper padding */}
-        <div className="p-4 bg-white">
-          <EditorContent editor={editor} />
-        </div>
-      </div>
-
-      <UploadImageModal
-        open={showBodyImageModal}
-        onClose={() => setShowBodyImageModal(false)}
-        onUploaded={handleBodyImageUpload}
-        token={token}
-      />
-
-      {/* Tags - Compact */}
-      <div className="bg-white border border-gray-200 rounded p-3">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="flex gap-2 flex-1">
-            <input
-              type="text"
-              placeholder="Add tag"
-              value={tagInput}
-              maxLength={35}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddTag();
-                }
-              }}
-              className="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm focus:ring-1 focus:ring-green-500 focus:border-green-500"
-            />
-            <button
-              type="button"
-              onClick={handleAddTag}
-              className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600 transition-colors"
-            >
-              Add
-            </button>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="flex items-center gap-1.5 bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full text-xs"
+              <button
+                type="button"
+                onClick={() => setShowHeaderImageModal(true)}
+                className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600 transition-colors"
               >
-                {tag}
-                <button
-                  onClick={() => handleRemoveTag(tag)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
+                {headerImage ? "Change Header Image" : "Upload Header Image"}
+              </button>
+              <span className="text-xs text-gray-500">Recommended: 1200x600</span>
+            </div>
+            {headerImage && (
+              <div className="flex items-center gap-3">
+                <img
+                  src={headerImage.url}
+                  alt={headerImage.alt}
+                  className="w-32 h-20 object-cover rounded border border-gray-200"
+                />
+                <div className="text-xs text-gray-700">
+                  <div className="font-medium">{headerImage.alt || "Header image"}</div>
+                  <div className="text-gray-500">{headerImage.caption}</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Status - Compact */}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setStatus("published")}
-          className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-            status === "published"
-              ? "bg-green-500 text-white"
-              : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-          }`}
-        >
-          Publish
-        </button>
-        <button
-          type="button"
-          onClick={() => setStatus("drafted")}
-          className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-            status === "drafted"
-              ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
-              : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-          }`}
-        >
-          Draft
-        </button>
-      </div>
+        <UploadImageModal
+          open={showHeaderImageModal}
+          onClose={() => setShowHeaderImageModal(false)}
+          onUploaded={handleHeaderImageUpload}
+          token={token}
+        />
 
-      {error && (
-        <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded p-2">
-          {error}
+        {/* Editor */}
+        <div className="bg-white border border-gray-200 rounded overflow-hidden">
+          {/* Toolbar */}
+          <div className="border-b border-gray-200 p-2 bg-gray-50">
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                onClick={() => editor?.chain().focus().toggleBold().run()}
+                disabled={!editor}
+                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  editor?.isActive("bold")
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                Bold
+              </button>
+              <button
+                onClick={() => editor?.chain().focus().toggleItalic().run()}
+                disabled={!editor}
+                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  editor?.isActive("italic")
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                Italic
+              </button>
+              <button
+                onClick={() => editor?.chain().focus().toggleUnderline().run()}
+                disabled={!editor}
+                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  editor?.isActive("underline")
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                Underline
+              </button>
+              <button
+                onClick={() => editor?.chain().focus().toggleStrike().run()}
+                disabled={!editor}
+                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  editor?.isActive("strike")
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                Strike
+              </button>
+
+              <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+              <button
+                onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+                disabled={!editor}
+                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  editor?.isActive("heading", { level: 1 })
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                H1
+              </button>
+              <button
+                onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+                disabled={!editor}
+                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  editor?.isActive("heading", { level: 2 })
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                H2
+              </button>
+              <button
+                onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}
+                disabled={!editor}
+                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  editor?.isActive("heading", { level: 3 })
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                H3
+              </button>
+
+              <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+              <button
+                onClick={setLink}
+                disabled={!editor}
+                className="px-2.5 py-1 rounded text-xs font-medium border bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+              >
+                Link
+              </button>
+              <button
+                onClick={setYoutube}
+                disabled={!editor}
+                className="px-2.5 py-1 rounded text-xs font-medium border bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+              >
+                YouTube
+              </button>
+              <button
+                onClick={openBodyImageModal}
+                disabled={!editor}
+                className="px-2.5 py-1 rounded text-xs font-medium border bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+              >
+                Image
+              </button>
+            </div>
+          </div>
+
+          {/* Editor Content */}
+          <div className="bg-white">
+            <EditorContent editor={editor} />
+          </div>
         </div>
-      )}
 
-      <div>
-        <button
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="bg-green-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {submitting ? "Submitting..." : "Create Article"}
-        </button>
+        <UploadImageModal
+          open={showBodyImageModal}
+          onClose={() => setShowBodyImageModal(false)}
+          onUploaded={handleBodyImageUpload}
+          token={token}
+        />
+
+        {/* Tags */}
+        <div className="bg-white border border-gray-200 rounded p-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex gap-2 flex-1">
+              <input
+                type="text"
+                placeholder="Add tag"
+                value={tagInput}
+                maxLength={35}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddTag();
+                  }
+                }}
+                className="flex-1 border border-gray-300 rounded px-3 py-1.5 text-sm focus:ring-1 focus:ring-green-500 focus:border-green-500"
+              />
+              <button
+                type="button"
+                onClick={handleAddTag}
+                className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600"
+              >
+                Add
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="flex items-center gap-1.5 bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full text-xs"
+                >
+                  {tag}
+                  <button
+                    onClick={() => handleRemoveTag(tag)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setStatus("published")}
+            className={`px-3 py-1.5 rounded text-sm font-medium ${
+              status === "published"
+                ? "bg-green-500 text-white"
+                : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            Publish
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatus("drafted")}
+            className={`px-3 py-1.5 rounded text-sm font-medium ${
+              status === "drafted"
+                ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            Draft
+          </button>
+        </div>
+
+        {error && (
+          <div className="text-red-600 text-sm bg-red-50 border border-red-200 rounded p-2">
+            {error}
+          </div>
+        )}
+
+        <div>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="bg-green-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-600 disabled:opacity-50"
+          >
+            {submitting ? "Submitting..." : "Create Article"}
+          </button>
+        </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 };
 
