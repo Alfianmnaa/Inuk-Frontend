@@ -33,24 +33,31 @@ const ArticleEditor: React.FC = () => {
 
   const editor = useEditor({
     extensions: [
+      // FIX: Remove Link and Strike from StarterKit to avoid duplicates
       StarterKit.configure({
         heading: {
           levels: [1, 2, 3],
         },
+        strike: false, // Disable strike in StarterKit
       }),
       Underline,
       Link.configure({
         openOnClick: false,
         autolink: true,
         linkOnPaste: true,
+        HTMLAttributes: {
+          target: '_blank',
+          rel: 'noopener noreferrer',
+        },
       }),
       Image.configure({
         inline: false,
         allowBase64: false,
         HTMLAttributes: {
-          class: 'max-w-full h-auto rounded-lg',
+          class: 'max-w-full h-auto rounded-lg my-2',
         },
       }),
+      // FIX: Use youtube-nocookie for better compatibility
       Youtube.configure({
         controls: true,
         nocookie: true,
@@ -80,7 +87,7 @@ const ArticleEditor: React.FC = () => {
     try {
       // Just ID (11 characters)
       if (/^[A-Za-z0-9_-]{11}$/.test(input)) {
-        return `https://www.youtube.com/embed/${input}`;
+        return `https://www.youtube-nocookie.com/embed/${input}`;
       }
 
       const maybeUrl = input.startsWith("http") ? input : `https://${input}`;
@@ -89,18 +96,18 @@ const ArticleEditor: React.FC = () => {
       // youtu.be
       if (u.hostname.includes("youtu.be")) {
         const id = u.pathname.slice(1).split("?")[0];
-        if (id) return `https://www.youtube.com/embed/${id}`;
+        if (id) return `https://www.youtube-nocookie.com/embed/${id}`;
       }
 
       // youtube.com
       if (u.hostname.includes("youtube.com")) {
         const v = u.searchParams.get("v");
-        if (v) return `https://www.youtube.com/embed/${v}`;
+        if (v) return `https://www.youtube-nocookie.com/embed/${v}`;
 
         // embed path
         if (u.pathname.includes("/embed/")) {
           const id = u.pathname.split("/embed/")[1].split("?")[0];
-          return `https://www.youtube.com/embed/${id}`;
+          return `https://www.youtube-nocookie.com/embed/${id}`;
         }
       }
     } catch (e) {
@@ -109,7 +116,7 @@ const ArticleEditor: React.FC = () => {
 
     // Extract ID
     const idMatch = input.match(/[A-Za-z0-9_-]{11}/);
-    if (idMatch) return `https://www.youtube.com/embed/${idMatch[0]}`;
+    if (idMatch) return `https://www.youtube-nocookie.com/embed/${idMatch[0]}`;
 
     return input;
   };
@@ -126,7 +133,7 @@ const ArticleEditor: React.FC = () => {
     const embedSrc = youtubeToEmbed(url);
     console.log("YouTube embed URL:", embedSrc);
 
-    // FIX: Gunakan method yang benar untuk YouTube
+    // Use setYoutubeVideo command
     editor.chain().focus().setYoutubeVideo({ src: embedSrc }).run();
   };
 
@@ -143,7 +150,7 @@ const ArticleEditor: React.FC = () => {
         .chain()
         .focus()
         .extendMarkRange("link")
-        .setLink({ href: url, target: "_blank" })
+        .setLink({ href: url })
         .run();
     } else {
       const text = window.prompt("Enter link text", url) || url;
@@ -155,6 +162,11 @@ const ArticleEditor: React.FC = () => {
     }
   };
 
+  const toggleStrike = () => {
+    if (!editor) return;
+    editor.chain().focus().toggleStrike().run();
+  };
+
   const openBodyImageModal = () => setShowBodyImageModal(true);
 
   const handleBodyImageUpload = (img: {
@@ -163,9 +175,8 @@ const ArticleEditor: React.FC = () => {
     caption: string;
   }) => {
     setShowBodyImageModal(false);
+    console.log("Inserting image:", img);
     if (editor && img?.url) {
-      console.log("Inserting image:", img.url);
-      // FIX: Pastikan image di-insert dengan benar
       editor
         .chain()
         .focus()
@@ -341,7 +352,7 @@ const ArticleEditor: React.FC = () => {
                 Underline
               </button>
               <button
-                onClick={() => editor?.chain().focus().toggleStrike().run()}
+                onClick={toggleStrike}
                 disabled={!editor}
                 className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
                   editor?.isActive("strike")
