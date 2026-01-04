@@ -7,6 +7,9 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL}
     container_name: inuk-client
+    env_file: .env.staging
+    environment:
+      - CLIENT_DOMAIN=${CLIENT_DOMAIN}
     restart: unless-stopped
     networks:
       - inuk-network

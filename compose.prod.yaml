@@ -5,12 +5,15 @@ services:
       dockerfile: Dockerfile
       target: prod
       args:
-        VITE_API_URL: ${VITE_API_URL} 
+        VITE_API_URL: ${VITE_API_URL}
     container_name: inuk-client
-    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      - CLIENT_DOMAIN=${CLIENT_DOMAIN}
     volumes:
       - ../storage/exports/donations:/usr/share/nginx/exports/donations:ro
       - ../storage/uploads:/usr/share/nginx/uploads:ro
+    restart: unless-stopped
     networks:
       - inuk-network
     labels:

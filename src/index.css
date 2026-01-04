@@ -1,6 +1,11 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme {
   --color-primary: rgb(0, 208, 132);
   --color-secondary: #9333ea;
+}
+
+.ProseMirror:focus {
+  outline: none;
 }

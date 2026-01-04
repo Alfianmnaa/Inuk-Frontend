@@ -10,6 +10,7 @@ import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import Youtube from "@tiptap/extension-youtube";
+import TextAlign from "@tiptap/extension-text-align";
 import { useAuth } from "../../context/AuthContext";
 import DashboardLayout from "./DashboardLayout";
 
@@ -33,12 +34,10 @@ const ArticleEditor: React.FC = () => {
 
   const editor = useEditor({
     extensions: [
-      // FIX: Remove Link and Strike from StarterKit to avoid duplicates
       StarterKit.configure({
         heading: {
           levels: [1, 2, 3],
         },
-        strike: false, // Disable strike in StarterKit
       }),
       Underline,
       Link.configure({
@@ -48,25 +47,23 @@ const ArticleEditor: React.FC = () => {
         HTMLAttributes: {
           target: '_blank',
           rel: 'noopener noreferrer',
+          class: 'text-blue-600 underline hover:text-blue-800 transition-colors',
         },
       }),
       Image.configure({
         inline: false,
         allowBase64: false,
-        HTMLAttributes: {
-          class: 'max-w-full h-auto rounded-lg my-2',
-        },
       }),
-      // FIX: Use youtube-nocookie for better compatibility
       Youtube.configure({
         controls: true,
         nocookie: true,
         width: 640,
         height: 360,
         inline: false,
-        HTMLAttributes: {
-          class: 'rounded-lg my-4',
-        },
+        modestBranding: true,
+      }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
       }),
     ],
     content: "",
@@ -75,7 +72,7 @@ const ArticleEditor: React.FC = () => {
     },
     editorProps: {
       attributes: {
-        class: "prose prose-sm max-w-none focus:outline-none min-h-[300px] p-4",
+        class: "prose prose-sm sm:prose-base lg:prose-lg max-w-none focus:outline-none min-h-[300px] p-4",
       },
     },
   });
@@ -133,7 +130,6 @@ const ArticleEditor: React.FC = () => {
     const embedSrc = youtubeToEmbed(url);
     console.log("YouTube embed URL:", embedSrc);
 
-    // Use setYoutubeVideo command
     editor.chain().focus().setYoutubeVideo({ src: embedSrc }).run();
   };
 
@@ -157,14 +153,9 @@ const ArticleEditor: React.FC = () => {
       editor
         .chain()
         .focus()
-        .insertContent(`<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a> `)
+        .insertContent(`<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline hover:text-blue-800 transition-colors">${text}</a> `)
         .run();
     }
-  };
-
-  const toggleStrike = () => {
-    if (!editor) return;
-    editor.chain().focus().toggleStrike().run();
   };
 
   const openBodyImageModal = () => setShowBodyImageModal(true);
@@ -257,7 +248,6 @@ const ArticleEditor: React.FC = () => {
       <div className="max-w-5xl mx-auto space-y-4">
         <h1 className="text-2xl font-bold text-gray-800">Create Article</h1>
 
-        {/* Header Inputs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <input
             type="text"
@@ -277,7 +267,6 @@ const ArticleEditor: React.FC = () => {
           />
         </div>
 
-        {/* Header Image */}
         <div className="bg-white border border-gray-200 rounded p-3">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -313,11 +302,10 @@ const ArticleEditor: React.FC = () => {
           token={token}
         />
 
-        {/* Editor */}
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
-          {/* Toolbar */}
           <div className="border-b border-gray-200 p-2 bg-gray-50">
             <div className="flex flex-wrap items-center gap-1">
+              {/* Text Formatting */}
               <button
                 onClick={() => editor?.chain().focus().toggleBold().run()}
                 disabled={!editor}
@@ -352,7 +340,7 @@ const ArticleEditor: React.FC = () => {
                 Underline
               </button>
               <button
-                onClick={toggleStrike}
+                onClick={() => editor?.chain().focus().toggleStrike().run()}
                 disabled={!editor}
                 className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
                   editor?.isActive("strike")
@@ -365,6 +353,7 @@ const ArticleEditor: React.FC = () => {
 
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
+              {/* Headings */}
               <button
                 onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
                 disabled={!editor}
@@ -401,6 +390,70 @@ const ArticleEditor: React.FC = () => {
 
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
+              {/* Text Alignment */}
+              <button
+                onClick={() => editor?.chain().focus().setTextAlign('left').run()}
+                disabled={!editor}
+                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  editor?.isActive({ textAlign: 'left' })
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                Left
+              </button>
+              <button
+                onClick={() => editor?.chain().focus().setTextAlign('center').run()}
+                disabled={!editor}
+                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  editor?.isActive({ textAlign: 'center' })
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                Center
+              </button>
+              <button
+                onClick={() => editor?.chain().focus().setTextAlign('right').run()}
+                disabled={!editor}
+                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  editor?.isActive({ textAlign: 'right' })
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                Right
+              </button>
+
+              <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+              {/* Lists */}
+              <button
+                onClick={() => editor?.chain().focus().toggleBulletList().run()}
+                disabled={!editor}
+                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  editor?.isActive('bulletList')
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                • List
+              </button>
+              <button
+                onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+                disabled={!editor}
+                className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  editor?.isActive('orderedList')
+                    ? "bg-green-500 text-white border-green-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                1. List
+              </button>
+
+              <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+              {/* Media */}
               <button
                 onClick={setLink}
                 disabled={!editor}
@@ -425,7 +478,6 @@ const ArticleEditor: React.FC = () => {
             </div>
           </div>
 
-          {/* Editor Content */}
           <div className="bg-white">
             <EditorContent editor={editor} />
           </div>
@@ -438,7 +490,6 @@ const ArticleEditor: React.FC = () => {
           token={token}
         />
 
-        {/* Tags */}
         <div className="bg-white border border-gray-200 rounded p-3">
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="flex gap-2 flex-1">
@@ -484,7 +535,6 @@ const ArticleEditor: React.FC = () => {
           </div>
         </div>
 
-        {/* Status */}
         <div className="flex items-center gap-2">
           <button
             type="button"
