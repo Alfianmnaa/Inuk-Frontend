@@ -11,6 +11,7 @@ import "./App.css";
 import ScrollToTopButton from "./utils/ScrollToTopButton";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
+import ArticleDetail from "./components/landing/ArticleDetail";
 import DashboardRoutes from "./pages/Dashboard";
 
 // Halaman Dummy untuk Router
@@ -38,6 +39,7 @@ const App = () => {
         {/* Rute tanpa Navbar & Footer */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/artikel/:slug" element={< ArticleDetail />} />
 
         {/* Rute dengan Navbar & Footer */}
         <Route

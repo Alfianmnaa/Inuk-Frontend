@@ -5,7 +5,7 @@ import RekapDonasi from "../components/landing/RekapDonasi";
 // import Program from "../components/landing/Program";
 // import Layanan from "../components/landing/Layanan";
 // import Keunggulan from "../components/landing/Keunggulan";
-// import Blog from "../components/landing/Blog";
+import Blog from "../components/landing/Blog";
 // import FAQ from "../components/landing/FAQ";
 import TimKami from "../components/landing/TimKami";
 // import Testimoni from "../components/landing/Testimoni";
@@ -20,7 +20,7 @@ const Landing = () => {
       <Program />
       <Layanan />
       <Keunggulan /> */}
-      {/* <Blog /> */}
+       <Blog /> 
       {/* <FAQ /> */}
       <TimKami />
       {/* <Testimoni /> */}

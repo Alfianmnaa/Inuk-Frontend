@@ -17,8 +17,13 @@ const DashboardUtama = () => (
   <ProtectedRoute>
     <DashboardLayout activeLink="/dashboard" pageTitle="Dashboard Utama">
       <div className="p-6 bg-white rounded-xl shadow-lg">
-        <h3 className="text-xl font-bold text-gray-800">Selamat Datang di Admin INUK!</h3>
-        <p className="mt-2 text-gray-600">Gunakan menu di samping untuk mengelola data donasi, penyaluran, dan konten website.</p>
+        <h3 className="text-xl font-bold text-gray-800">
+          Selamat Datang di Admin INUK!
+        </h3>
+        <p className="mt-2 text-gray-600">
+          Gunakan menu di samping untuk mengelola data donasi, penyaluran, dan
+          konten website.
+        </p>
       </div>
     </DashboardLayout>
   </ProtectedRoute>
@@ -86,9 +91,18 @@ const DashboardRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
-      
+
       <Route
         path="/cms-berita/editor"
+        element={
+          <ProtectedRoute>
+            <ArticleEditor />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/dashboard/cms-berita/editor/:id?"
         element={
           <ProtectedRoute>
             <ArticleEditor />
@@ -110,7 +124,9 @@ const DashboardRoutes: React.FC = () => {
         path="*"
         element={
           <DashboardLayout activeLink="" pageTitle="404 Not Found">
-            <p className="text-center text-red-500">Halaman Dashboard tidak ditemukan.</p>
+            <p className="text-center text-red-500">
+              Halaman Dashboard tidak ditemukan.
+            </p>
           </DashboardLayout>
         }
       />

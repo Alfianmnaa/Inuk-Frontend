@@ -1,7 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   createArticle,
+  replaceArticle,
+  getArticleFromSlug,
   type CreateArticleRequest,
+  type ReplaceArticleRequest,
 } from "../../services/CMSService";
 import UploadImageModal from "./ui/UploadImageModal";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -15,6 +19,11 @@ import { useAuth } from "../../context/AuthContext";
 import DashboardLayout from "./DashboardLayout";
 
 const ArticleEditor: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { token } = useAuth();
+  
+  const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [headerImage, setHeaderImage] = useState<{
@@ -30,7 +39,6 @@ const ArticleEditor: React.FC = () => {
   const [status, setStatus] = useState<"drafted" | "published">("drafted");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const { token } = useAuth();
 
   const editor = useEditor({
     extensions: [
@@ -77,12 +85,44 @@ const ArticleEditor: React.FC = () => {
     },
   });
 
+  useEffect(() => {
+    if (id && token) {
+      loadArticle(id);
+    }
+  }, [id, token]);
+
+  const loadArticle = async (articleId: string) => {
+    try {
+      setLoading(true);
+      const article = await getArticleFromSlug(articleId);
+      
+      setTitle(article.title);
+      setAuthor(article.author);
+      setHeaderImage({
+        url: article.header_image_url,
+        alt: article.header_image_alt,
+        caption: article.header_image_caption,
+      });
+      setTags(article.tags);
+      setStatus(article.status as "drafted" | "published");
+      
+      if (editor && article.body) {
+        editor.commands.setContent(article.body);
+        setBody(article.body);
+      }
+    } catch (error) {
+      console.error("Failed to load article:", error);
+      setError("Gagal memuat artikel. Silakan coba lagi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const youtubeToEmbed = (input: string) => {
     if (!input) return input;
     input = input.trim();
 
     try {
-      // Just ID (11 characters)
       if (/^[A-Za-z0-9_-]{11}$/.test(input)) {
         return `https://www.youtube-nocookie.com/embed/${input}`;
       }
@@ -90,28 +130,24 @@ const ArticleEditor: React.FC = () => {
       const maybeUrl = input.startsWith("http") ? input : `https://${input}`;
       const u = new URL(maybeUrl);
 
-      // youtu.be
       if (u.hostname.includes("youtu.be")) {
-        const id = u.pathname.slice(1).split("?")[0];
-        if (id) return `https://www.youtube-nocookie.com/embed/${id}`;
+        const videoId = u.pathname.slice(1).split("?")[0];
+        if (videoId) return `https://www.youtube-nocookie.com/embed/${videoId}`;
       }
 
-      // youtube.com
       if (u.hostname.includes("youtube.com")) {
         const v = u.searchParams.get("v");
         if (v) return `https://www.youtube-nocookie.com/embed/${v}`;
 
-        // embed path
         if (u.pathname.includes("/embed/")) {
-          const id = u.pathname.split("/embed/")[1].split("?")[0];
-          return `https://www.youtube-nocookie.com/embed/${id}`;
+          const videoId = u.pathname.split("/embed/")[1].split("?")[0];
+          return `https://www.youtube-nocookie.com/embed/${videoId}`;
         }
       }
     } catch (e) {
       console.error("YouTube URL error:", e);
     }
 
-    // Extract ID
     const idMatch = input.match(/[A-Za-z0-9_-]{11}/);
     if (idMatch) return `https://www.youtube-nocookie.com/embed/${idMatch[0]}`;
 
@@ -128,8 +164,6 @@ const ArticleEditor: React.FC = () => {
     if (!url) return;
 
     const embedSrc = youtubeToEmbed(url);
-    console.log("YouTube embed URL:", embedSrc);
-
     editor.chain().focus().setYoutubeVideo({ src: embedSrc }).run();
   };
 
@@ -166,7 +200,6 @@ const ArticleEditor: React.FC = () => {
     caption: string;
   }) => {
     setShowBodyImageModal(false);
-    console.log("Inserting image:", img);
     if (editor && img?.url) {
       editor
         .chain()
@@ -211,47 +244,74 @@ const ArticleEditor: React.FC = () => {
       return;
     }
 
+    if (!title || !author || !headerImage) {
+      setError("Judul, penulis, dan gambar header wajib diisi.");
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      const payload: CreateArticleRequest = {
+      const payload: CreateArticleRequest | ReplaceArticleRequest = {
         title,
         author,
-        header_image_url: headerImage?.url || "",
-        header_image_alt: headerImage?.alt || "",
-        header_image_caption: headerImage?.caption || "",
+        header_image_url: headerImage.url,
+        header_image_alt: headerImage.alt,
+        header_image_caption: headerImage.caption,
         status,
         body,
         tags,
       };
-      await createArticle(token, payload);
 
-      setTitle("");
-      setAuthor("");
-      setHeaderImage(null);
-      editor?.commands.clearContent(true);
-      setTags([]);
-      setError("");
-      alert("Article created successfully!");
+      if (id) {
+        await replaceArticle(token, id, payload);
+        alert("Artikel berhasil diperbarui!");
+      } else {
+        await createArticle(token, payload);
+        alert("Artikel berhasil dibuat!");
+      }
+
+      navigate("/dashboard/cms-berita");
     } catch (errorCaught: unknown) {
-      console.error("Create article error:", errorCaught);
+      console.error("Submit article error:", errorCaught);
       const message =
         errorCaught instanceof Error
           ? errorCaught.message
-          : "Failed to create article.";
+          : "Gagal menyimpan artikel.";
       setError(message);
     } finally {
       setSubmitting(false);
     }
   };
 
+  if (loading) {
+    return (
+      <DashboardLayout activeLink="/dashboard/cms-berita" pageTitle={id ? "Edit Article" : "Create Article"}>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
-    <DashboardLayout activeLink="/dashboard/cms-berita" pageTitle="Create Article">
+    <DashboardLayout activeLink="/dashboard/cms-berita" pageTitle={id ? "Edit Article" : "Create Article"}>
       <div className="max-w-5xl mx-auto space-y-4">
-        <h1 className="text-2xl font-bold text-gray-800">Create Article</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-800">
+            {id ? "Edit Article" : "Create Article"}
+          </h1>
+          <button
+            onClick={() => navigate("/dashboard/cms-berita")}
+            className="text-gray-600 hover:text-gray-800 text-sm"
+          >
+            ← Kembali
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <input
             type="text"
-            placeholder="Title"
+            placeholder="Title *"
             value={title}
             maxLength={300}
             onChange={(e) => setTitle(e.target.value)}
@@ -259,7 +319,7 @@ const ArticleEditor: React.FC = () => {
           />
           <input
             type="text"
-            placeholder="Author"
+            placeholder="Author *"
             value={author}
             maxLength={150}
             onChange={(e) => setAuthor(e.target.value)}
@@ -275,7 +335,7 @@ const ArticleEditor: React.FC = () => {
                 onClick={() => setShowHeaderImageModal(true)}
                 className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600 transition-colors"
               >
-                {headerImage ? "Change Header Image" : "Upload Header Image"}
+                {headerImage ? "Change Header Image" : "Upload Header Image *"}
               </button>
               <span className="text-xs text-gray-500">Recommended: 1200x600</span>
             </div>
@@ -305,7 +365,6 @@ const ArticleEditor: React.FC = () => {
         <div className="bg-white border border-gray-200 rounded overflow-hidden">
           <div className="border-b border-gray-200 p-2 bg-gray-50">
             <div className="flex flex-wrap items-center gap-1">
-              {/* Text Formatting */}
               <button
                 onClick={() => editor?.chain().focus().toggleBold().run()}
                 disabled={!editor}
@@ -353,7 +412,6 @@ const ArticleEditor: React.FC = () => {
 
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
-              {/* Headings */}
               <button
                 onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
                 disabled={!editor}
@@ -390,7 +448,6 @@ const ArticleEditor: React.FC = () => {
 
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
-              {/* Text Alignment */}
               <button
                 onClick={() => editor?.chain().focus().setTextAlign('left').run()}
                 disabled={!editor}
@@ -427,7 +484,6 @@ const ArticleEditor: React.FC = () => {
 
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
-              {/* Lists */}
               <button
                 onClick={() => editor?.chain().focus().toggleBulletList().run()}
                 disabled={!editor}
@@ -453,7 +509,6 @@ const ArticleEditor: React.FC = () => {
 
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
-              {/* Media */}
               <button
                 onClick={setLink}
                 disabled={!editor}
@@ -566,13 +621,19 @@ const ArticleEditor: React.FC = () => {
           </div>
         )}
 
-        <div>
+        <div className="flex gap-3">
           <button
             onClick={handleSubmit}
             disabled={submitting}
             className="bg-green-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-600 disabled:opacity-50"
           >
-            {submitting ? "Submitting..." : "Create Article"}
+            {submitting ? "Menyimpan..." : id ? "Update Article" : "Create Article"}
+          </button>
+          <button
+            onClick={() => navigate("/dashboard/cms-berita")}
+            className="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm font-semibold hover:bg-gray-300"
+          >
+            Batal
           </button>
         </div>
       </div>
