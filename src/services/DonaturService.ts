@@ -97,7 +97,7 @@ export const createDonatur = async (
 
   try {
     const response: AxiosResponse<DonaturAPI> = await axios.post(
-      `${VITE_API_URL}/donor/`,
+      `${VITE_API_URL}/donor`,
       payload,
       getAuthHeaders(token),
     );

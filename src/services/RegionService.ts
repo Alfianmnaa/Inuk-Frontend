@@ -79,7 +79,7 @@ export const getRegions = async (filters?: RegionFilterBody): Promise<RegionDeta
 // Endpoint: POST /region/ (Create HANYA Region, text only)
 export const createRegion = async (data: CreateRegionPayload, token: string): Promise<RegionDetail> => {
   try {
-    const response = await axios.post<RegionDetail>(`${VITE_API_URL}/region/`, data, getAdminHeaders(token));
+    const response = await axios.post<RegionDetail>(`${VITE_API_URL}/region`, data, getAdminHeaders(token));
     return response.data;
   } catch (error) {
     handleError(error, "Gagal membuat region.");

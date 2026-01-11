@@ -100,7 +100,7 @@ export const createRegion = async (data: CreateRegionPayload, token: string): Pr
     desa_kelurahan: data.desa_kelurahan,
   };
   try {
-    const response = await axios.post<CreateUpdateRegionResponse>(`${VITE_API_URL}/region/`, payload, getAdminHeaders(token));
+    const response = await axios.post<CreateUpdateRegionResponse>(`${VITE_API_URL}/region`, payload, getAdminHeaders(token));
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {

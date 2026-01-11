@@ -151,6 +151,11 @@ const CMSBerita: React.FC = () => {
         const aValue = a[sortConfig.key!];
         const bValue = b[sortConfig.key!];
 
+        // Handle null values - put them at the end
+        if (aValue === null && bValue === null) return 0;
+        if (aValue === null) return 1;
+        if (bValue === null) return -1;
+
         if (aValue < bValue) {
           return sortConfig.direction === "ascending" ? -1 : 1;
         }

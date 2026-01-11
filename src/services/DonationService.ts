@@ -90,7 +90,7 @@ export const getDonations = async (token: string, filters: DonationsFilter): Pro
 
 // POST /donation/ (Create)
 export const createDonation = async (token: string, data: CreateDonationRequest): Promise<TransactionAPI> => {
-  const response = await axios.post<TransactionAPI>(`${VITE_API_URL}/donation/`, data, getAuthHeaders(token));
+  const response = await axios.post<TransactionAPI>(`${VITE_API_URL}/donation`, data, getAuthHeaders(token));
   return response.data;
 };
 
