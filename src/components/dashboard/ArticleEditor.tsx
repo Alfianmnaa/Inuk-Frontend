@@ -19,7 +19,7 @@ import { useAuth } from "../../context/AuthContext";
 import DashboardLayout from "./DashboardLayout";
 
 const ArticleEditor: React.FC = () => {
-  const { id } = useParams<{ id: string }>(); // This is actually the slug when editing
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { token } = useAuth();
   
@@ -87,10 +87,10 @@ const ArticleEditor: React.FC = () => {
   });
 
   useEffect(() => {
-    if (id && token) {
-      loadArticle(id);
+    if (slug && token) {
+      loadArticle(slug);
     }
-  }, [id, token]);
+  }, [slug, token]);
 
   const loadArticle = async (slug: string) => {
     try {

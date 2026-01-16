@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FaArrowLeft, FaCalendarAlt, FaUser, FaTag } from "react-icons/fa";
+import { FaArrowLeft, FaCalendarAlt, FaUser, FaTag, FaHome, FaArrowUp, FaShare, FaLink } from "react-icons/fa";
 import { getArticleFromSlug, type GetArticleFromSlugResponse } from "../../services/CMSService";
-import { generateHTML } from "@tiptap/html";
+import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TiptapLink from "@tiptap/extension-link";
@@ -13,10 +13,55 @@ import TextAlign from "@tiptap/extension-text-align";
 
 const ArticleDetail: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const [article, setArticle] = useState<GetArticleFromSlugResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [htmlContent, setHtmlContent] = useState("");
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+      Underline,
+      TiptapLink.configure({
+        openOnClick: true,
+        autolink: true,
+        linkOnPaste: true,
+        HTMLAttributes: {
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          class: 'text-blue-600 underline hover:text-blue-800 transition-colors',
+        },
+      }),
+      Image.configure({
+        inline: false,
+        allowBase64: false,
+      }),
+      Youtube.configure({
+        controls: true,
+        nocookie: true,
+        width: 640,
+        height: 360,
+        inline: false,
+        modestBranding: true,
+      }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+    ],
+    editable: false,
+    content: "",
+    editorProps: {
+      attributes: {
+        class: "prose prose-sm sm:prose-base lg:prose-lg max-w-none focus:outline-none",
+      },
+    },
+  });
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -27,42 +72,10 @@ const ArticleDetail: React.FC = () => {
         const data = await getArticleFromSlug(slug);
         setArticle(data);
 
-        // Generate HTML from Tiptap JSON
-        const html = generateHTML(data.body, [
-          StarterKit.configure({
-            heading: {
-              levels: [1, 2, 3],
-            },
-          }),
-          Underline,
-          TiptapLink.configure({
-            openOnClick: false,
-            autolink: true,
-            linkOnPaste: true,
-            HTMLAttributes: {
-              target: '_blank',
-              rel: 'noopener noreferrer',
-              class: 'text-blue-600 underline hover:text-blue-800 transition-colors',
-            },
-          }),
-          Image.configure({
-            inline: false,
-            allowBase64: false,
-          }),
-          Youtube.configure({
-            controls: true,
-            nocookie: true,
-            width: 640,
-            height: 360,
-            inline: false,
-            modestBranding: true,
-          }),
-          TextAlign.configure({
-            types: ['heading', 'paragraph'],
-          }),
-        ]);
-
-        setHtmlContent(html);
+        // Load content into read-only editor
+        if (editor && data.body) {
+          editor.commands.setContent(data.body);
+        }
       } catch (err) {
         console.error("Failed to fetch article:", err);
         setError("Artikel tidak ditemukan atau terjadi kesalahan.");
@@ -72,7 +85,7 @@ const ArticleDetail: React.FC = () => {
     };
 
     fetchArticle();
-  }, [slug]);
+  }, [slug, editor]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Tanggal tidak tersedia";
@@ -82,13 +95,40 @@ const ArticleDetail: React.FC = () => {
       day: "2-digit",
       month: "long",
       year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
     };
     
     return date.toLocaleString("id-ID", options);
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
+
+  const shareToSocial = (platform: string) => {
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent(article?.title || '');
+    
+    const shareUrls: { [key: string]: string } = {
+      facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+      twitter: `https://twitter.com/intent/tweet?url=${url}&text=${text}`,
+      whatsapp: `https://wa.me/?text=${text}%20${url}`,
+      telegram: `https://t.me/share/url?url=${url}&text=${text}`,
+    };
+
+    if (shareUrls[platform]) {
+      window.open(shareUrls[platform], '_blank', 'width=600,height=400');
+    }
+    setShowShareMenu(false);
   };
 
   if (loading) {
@@ -165,20 +205,20 @@ const ArticleDetail: React.FC = () => {
 
           {/* Content */}
           <div className="p-8 md:p-12">
-            {/* Title */}
-            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-              {article.title}
-            </h1>
-
             {/* Image Caption */}
             {article.header_image_caption && (
-              <p className="text-sm text-gray-500 italic mb-6 pb-6 border-b border-gray-200">
+              <p className="text-sm text-gray-500 italic text-center mb-8 pb-8 border-b border-gray-200">
                 {article.header_image_caption}
               </p>
             )}
 
+            {/* Title */}
+            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6">
+              {article.title}
+            </h1>
+
             {/* Meta Information */}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-8 pb-8 border-b border-gray-200">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-6 pb-6 border-b border-gray-200">
               <div className="flex items-center">
                 <FaUser className="mr-2 text-primary" />
                 <span className="font-medium">{article.author}</span>
@@ -206,22 +246,99 @@ const ArticleDetail: React.FC = () => {
             )}
 
             {/* Article Body */}
-            <div 
-              className="prose prose-sm sm:prose-base lg:prose-lg max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 prose-strong:text-gray-900 prose-img:rounded-lg prose-img:shadow-md"
-              dangerouslySetInnerHTML={{ __html: htmlContent }}
-            />
+            <div className="prose prose-sm sm:prose-base lg:prose-lg max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 prose-strong:text-gray-900 prose-img:rounded-lg prose-img:shadow-md mb-12">
+              <EditorContent editor={editor} />
+            </div>
           </div>
         </motion.article>
 
-        {/* Back Button */}
-        <div className="mt-8 text-center">
-          <Link 
-            to="/" 
-            className="inline-flex items-center text-primary font-semibold hover:text-green-700 transition-colors"
-          >
-            <FaArrowLeft className="mr-2" />
-            Kembali ke Beranda
-          </Link>
+        {/* Bottom Action Bar */}
+        <div className="mt-8 bg-white rounded-lg shadow-md p-4">
+          <div className="flex items-center justify-center gap-6">
+            {/* Home Button */}
+            <button
+              onClick={() => navigate('/')}
+              className="flex flex-col items-center gap-1 text-gray-600 hover:text-primary transition-colors group"
+              title="Kembali ke Beranda"
+            >
+              <div className="w-12 h-12 rounded-full bg-gray-100 group-hover:bg-green-50 flex items-center justify-center transition-colors">
+                <FaHome className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-medium">Beranda</span>
+            </button>
+
+            {/* Scroll to Top Button */}
+            <button
+              onClick={scrollToTop}
+              className="flex flex-col items-center gap-1 text-gray-600 hover:text-primary transition-colors group"
+              title="Ke Atas"
+            >
+              <div className="w-12 h-12 rounded-full bg-gray-100 group-hover:bg-green-50 flex items-center justify-center transition-colors">
+                <FaArrowUp className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-medium">Ke Atas</span>
+            </button>
+
+            {/* Copy Link Button */}
+            <button
+              onClick={copyLink}
+              className="flex flex-col items-center gap-1 text-gray-600 hover:text-primary transition-colors group relative"
+              title="Salin Link"
+            >
+              <div className="w-12 h-12 rounded-full bg-gray-100 group-hover:bg-green-50 flex items-center justify-center transition-colors">
+                <FaLink className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-medium">Salin Link</span>
+              {copySuccess && (
+                <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                  Link tersalin!
+                </span>
+              )}
+            </button>
+
+            {/* Share Button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowShareMenu(!showShareMenu)}
+                className="flex flex-col items-center gap-1 text-gray-600 hover:text-primary transition-colors group"
+                title="Bagikan"
+              >
+                <div className="w-12 h-12 rounded-full bg-gray-100 group-hover:bg-green-50 flex items-center justify-center transition-colors">
+                  <FaShare className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-medium">Bagikan</span>
+              </button>
+
+              {showShareMenu && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white rounded-lg shadow-xl border border-gray-200 p-2 flex gap-2 whitespace-nowrap">
+                  <button
+                    onClick={() => shareToSocial('whatsapp')}
+                    className="px-3 py-2 text-xs font-medium text-gray-700 hover:bg-green-50 rounded transition-colors"
+                  >
+                    WhatsApp
+                  </button>
+                  <button
+                    onClick={() => shareToSocial('facebook')}
+                    className="px-3 py-2 text-xs font-medium text-gray-700 hover:bg-blue-50 rounded transition-colors"
+                  >
+                    Facebook
+                  </button>
+                  <button
+                    onClick={() => shareToSocial('twitter')}
+                    className="px-3 py-2 text-xs font-medium text-gray-700 hover:bg-sky-50 rounded transition-colors"
+                  >
+                    Twitter
+                  </button>
+                  <button
+                    onClick={() => shareToSocial('telegram')}
+                    className="px-3 py-2 text-xs font-medium text-gray-700 hover:bg-blue-50 rounded transition-colors"
+                  >
+                    Telegram
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </motion.div>

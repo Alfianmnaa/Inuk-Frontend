@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, useMotionValue, useAnimation } from "framer-motion";
 import type { Variants } from "framer-motion";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaCalendarAlt } from "react-icons/fa";
 import { getArticles, type GetArticlesResponse } from "../../services/CMSService";
 import { Link } from "react-router-dom";
 
@@ -30,8 +30,11 @@ const Blog: React.FC = () => {
         // Fetch articles without token - API will return pinned and published by default
         const fetchedArticles = await getArticles();
         
+        // Limit to first 10 articles
+        const limitedArticles = fetchedArticles.slice(0, 10);
+        
         // Duplicate for infinite scroll effect
-        const duplicated = [...fetchedArticles, ...fetchedArticles, ...fetchedArticles];
+        const duplicated = [...limitedArticles, ...limitedArticles, ...limitedArticles];
         setArticles(duplicated);
       } catch (error) {
         console.error("Failed to fetch articles:", error);
@@ -117,13 +120,9 @@ const Blog: React.FC = () => {
       day: "2-digit",
       month: "long",
       year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
     };
     
-    return date.toLocaleString("id-ID", options).replace(",", " •");
+    return date.toLocaleString("id-ID", options);
   };
 
   if (loading) {
@@ -160,7 +159,18 @@ const Blog: React.FC = () => {
     <motion.section className="py-16 md:py-24 bg-white relative" variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
       <div className="container mx-auto max-w-7xl px-4">
         <div className="text-center mb-12">
-          <p className="text-primary font-semibold text-lg mb-2">Blog & Berita</p>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex-1"></div>
+            <p className="text-primary font-semibold text-lg">Blog & Berita</p>
+            <div className="flex-1 flex justify-end">
+              <Link 
+                to="/artikel" 
+                className="text-primary font-semibold text-sm hover:text-green-700 transition-colors"
+              >
+                Lainnya →
+              </Link>
+            </div>
+          </div>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">Cerita Inspiratif dan Info Terkini Seputar INUK</h2>
           <p className="text-gray-600 mt-3 max-w-3xl mx-auto">
             Dapatkan informasi terbaru mengenai kegiatan sosial, edukasi filantropi, serta kisah nyata dari para penerima manfaat infaq Anda. Bersama INUK, setiap infaq adalah jalan keberkahan.
@@ -195,7 +205,7 @@ const Blog: React.FC = () => {
               {articles.map((article, index) => (
                 <motion.div key={`${article.id}-${index}`} className="p-4 flex-shrink-0 w-full md:w-1/3">
                   <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden flex flex-col h-full">
-                    <div className="relative h-48 w-full overflow-hidden bg-gray-100">
+                    <div className="relative h-56 w-full overflow-hidden bg-gray-100">
                       <img 
                         src={article.header_image_url} 
                         alt={article.header_image_alt} 
@@ -204,27 +214,41 @@ const Blog: React.FC = () => {
                           e.currentTarget.src = "https://via.placeholder.com/400x300?text=No+Image";
                         }}
                       />
+                      {/* Tags */}
+                      <div className="absolute bottom-4 left-4 flex gap-2 max-w-[calc(100%-2rem)]">
+                        {article.tags.slice(0, 2).map((tag, idx) => (
+                          <span 
+                            key={idx}
+                            className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full shadow-md truncate"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="p-5 flex flex-col flex-grow">
-                      <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2 min-h-[3.5rem]">
+                      <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 min-h-[3.5rem]">
                         {article.title}
                       </h3>
-                      
-                      <p className="text-xs text-gray-500 mb-3">
-                        {formatDate(article.published_at)}
-                      </p>
 
                       <p className="text-sm text-gray-600 mb-4 line-clamp-3 flex-grow">
                         {article.header_image_caption}
                       </p>
 
-                      <Link 
-                        to={`/artikel/${article.slug}`}
-                        className="text-primary font-semibold text-sm hover:text-green-700 transition-colors inline-flex items-center mt-auto"
-                      >
-                        Selengkapnya →
-                      </Link>
+                      <div className="flex items-center justify-between mt-auto border-t pt-3">
+                        <div className="flex items-center text-xs text-gray-500">
+                          <FaCalendarAlt className="w-3 h-3 text-primary mr-1" />
+                          <span>{formatDate(article.published_at)}</span>
+                        </div>
+                        
+                        <Link 
+                          to={`/artikel/${article.slug}`}
+                          className="text-primary font-semibold text-sm hover:text-green-700 transition-colors"
+                        >
+                          Selengkapnya →
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
