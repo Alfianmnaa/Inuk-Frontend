@@ -19,11 +19,12 @@ import { useAuth } from "../../context/AuthContext";
 import DashboardLayout from "./DashboardLayout";
 
 const ArticleEditor: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id: string }>(); // This is actually the slug when editing
   const navigate = useNavigate();
   const { token } = useAuth();
   
   const [loading, setLoading] = useState(false);
+  const [articleId, setArticleId] = useState(""); // Store the actual article ID
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [headerImage, setHeaderImage] = useState<{
@@ -91,11 +92,14 @@ const ArticleEditor: React.FC = () => {
     }
   }, [id, token]);
 
-  const loadArticle = async (articleId: string) => {
+  const loadArticle = async (slug: string) => {
     try {
       setLoading(true);
-      const article = await getArticleFromSlug(articleId);
+      // Get article using slug
+      const article = await getArticleFromSlug(slug);
       
+      // Store the article ID for replacement
+      setArticleId(article.id);
       setTitle(article.title);
       setAuthor(article.author);
       setHeaderImage({
@@ -262,10 +266,12 @@ const ArticleEditor: React.FC = () => {
         tags,
       };
 
-      if (id) {
-        await replaceArticle(token, id, payload);
+      if (articleId) {
+        // Edit mode - use the stored article ID
+        await replaceArticle(token, articleId, payload);
         alert("Artikel berhasil diperbarui!");
       } else {
+        // Create mode
         await createArticle(token, payload);
         alert("Artikel berhasil dibuat!");
       }
@@ -285,7 +291,7 @@ const ArticleEditor: React.FC = () => {
 
   if (loading) {
     return (
-      <DashboardLayout activeLink="/dashboard/cms-berita" pageTitle={id ? "Edit Article" : "Create Article"}>
+      <DashboardLayout activeLink="/dashboard/cms-berita" pageTitle={articleId ? "Edit Article" : "Create Article"}>
         <div className="flex items-center justify-center h-96">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
@@ -294,11 +300,11 @@ const ArticleEditor: React.FC = () => {
   }
 
   return (
-    <DashboardLayout activeLink="/dashboard/cms-berita" pageTitle={id ? "Edit Article" : "Create Article"}>
+    <DashboardLayout activeLink="/dashboard/cms-berita" pageTitle={articleId ? "Edit Article" : "Create Article"}>
       <div className="max-w-5xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-800">
-            {id ? "Edit Article" : "Create Article"}
+            {articleId ? "Edit Article" : "Create Article"}
           </h1>
           <button
             onClick={() => navigate("/dashboard/cms-berita")}
@@ -627,7 +633,7 @@ const ArticleEditor: React.FC = () => {
             disabled={submitting}
             className="bg-green-500 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-600 disabled:opacity-50"
           >
-            {submitting ? "Menyimpan..." : id ? "Update Article" : "Create Article"}
+            {submitting ? "Menyimpan..." : articleId ? "Update Article" : "Create Article"}
           </button>
           <button
             onClick={() => navigate("/dashboard/cms-berita")}

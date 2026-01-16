@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { FaSearch, FaTimes, FaPlus, FaNewspaper, FaEdit, FaTrash, FaSortUp, FaSortDown, FaCheckCircle, FaHourglassHalf, FaFilter, FaArchive, FaThumbtack } from "react-icons/fa";
 import DashboardLayout from "./DashboardLayout";
@@ -53,7 +53,7 @@ const CMSBerita: React.FC = () => {
   const [articles, setArticles] = useState<GetArticlesResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string[]>([]);
   const [filterMonth, setFilterMonth] = useState("");
   const [filterYear, setFilterYear] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: keyof GetArticlesResponse | null; direction: "ascending" | "descending" }>({
@@ -70,15 +70,31 @@ const CMSBerita: React.FC = () => {
     article: null,
   });
   const [selectedStatus, setSelectedStatus] = useState("");
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchArticles();
   }, []);
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setShowStatusDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const fetchArticles = async () => {
+    if (!token) return;
+    
     try {
       setLoading(true);
-      const data = await getArticles();
+      // Pass token to get all articles for admin
+      const data = await getArticles(undefined, token);
       setArticles(data);
     } catch (error) {
       console.error("Failed to fetch articles:", error);
@@ -123,8 +139,10 @@ const CMSBerita: React.FC = () => {
       filtered = filtered.filter((p) => p.title.toLowerCase().includes(lowerCaseSearch));
     }
     
-    if (filterStatus) {
-      filtered = filtered.filter((p) => p.status.toLowerCase() === filterStatus.toLowerCase());
+    if (filterStatus.length > 0) {
+      filtered = filtered.filter((p) => 
+        filterStatus.some(status => p.status.toLowerCase() === status.toLowerCase())
+      );
     }
     
     if (filterMonth && filterYear) {
@@ -176,11 +194,11 @@ const CMSBerita: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  const isFiltered = filterStatus || filterMonth || filterYear || searchTerm;
+  const isFiltered = filterStatus.length > 0 || filterMonth || filterYear || searchTerm;
 
   const clearFilters = () => {
     setSearchTerm("");
-    setFilterStatus("");
+    setFilterStatus([]);
     setFilterMonth("");
     setFilterYear("");
   };
@@ -277,14 +295,61 @@ const CMSBerita: React.FC = () => {
               />
             </div>
 
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
-              <option value="">Semua Status</option>
-              {STATUS_LIST.map((status) => (
-                <option key={status} value={status}>
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                </option>
-              ))}
-            </select>
+            {/* Multi-select Status Filter */}
+            <div className="relative" ref={statusDropdownRef}>
+              <div 
+                onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                className="w-full border border-gray-300 rounded-lg py-2 px-4 bg-white min-h-[38px] cursor-pointer hover:border-primary transition-colors"
+              >
+                <div className="flex flex-wrap gap-1">
+                  {filterStatus.length === 0 ? (
+                    <span className="text-gray-500 text-sm">Semua Status</span>
+                  ) : (
+                    filterStatus.map((status) => (
+                      <span
+                        key={status}
+                        className="inline-flex items-center bg-primary text-white px-2 py-0.5 rounded-full text-xs"
+                      >
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFilterStatus(filterStatus.filter(s => s !== status));
+                          }}
+                          className="ml-1 hover:text-gray-200"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+              {showStatusDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                  {STATUS_LIST.map((status) => (
+                    <label
+                      key={status}
+                      className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={filterStatus.includes(status)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFilterStatus([...filterStatus, status]);
+                          } else {
+                            setFilterStatus(filterStatus.filter(s => s !== status));
+                          }
+                        }}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">{status.charAt(0).toUpperCase() + status.slice(1)}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary transition-colors">
               <option value="">Semua Tahun</option>
@@ -353,7 +418,7 @@ const CMSBerita: React.FC = () => {
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button 
-                            onClick={() => navigate(`editor/${p.id}`)}
+                            onClick={() => navigate(`editor/${p.slug}`)}
                             className="text-blue-500 hover:text-blue-700 font-semibold text-xs flex items-center"
                           >
                             <FaEdit className="mr-1" /> Edit

@@ -3,12 +3,42 @@ import axios from "axios";
 const VITE_API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 // --- Models ---
-export interface GetArticlesQuery {
-  title?: string;
-  status?: string;
-  tags?: string[];
-  year?: number;
-  month?: number;
+
+export interface CreateArticleRequest {
+  title: string;
+  author: string;
+  header_image_url: string;
+  header_image_alt: string;
+  header_image_caption: string;
+  status: "drafted" | "published";
+  body: any;
+  tags: string[];
+}
+
+export interface ReplaceArticleRequest {
+  title: string;
+  author: string;
+  header_image_url: string;
+  header_image_alt: string;
+  header_image_caption: string;
+  status: "drafted" | "published";
+  body: any;
+  tags: string[];
+}
+
+export interface UpdateArticleStatusRequest {
+  status: "drafted" | "published" | "archived" | "pinned";
+}
+
+export interface CreateReplaceArticleResponse {
+  id: string;
+  slug: string;
+  title: string;
+  author: string;
+  status: string;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface GetArticlesResponse {
@@ -40,41 +70,12 @@ export interface GetArticleFromSlugResponse {
   updated_at: string;
 }
 
-export interface CreateArticleRequest {
-  title: string;
-  author: string;
-  header_image_url: string;
-  header_image_alt: string;
-  header_image_caption: string;
-  status: "drafted" | "published";
-  body: any; // Tiptap JSON
-  tags: string[];
-}
-
-export interface ReplaceArticleRequest {
-  title: string;
-  author: string;
-  header_image_url: string;
-  header_image_alt: string;
-  header_image_caption: string;
-  status: "drafted" | "published";
-  body: any;
-  tags: string[];
-}
-
-export interface CreateReplaceArticleResponse {
-  id: string;
-  slug: string;
-  title: string;
-  author: string;
-  status: "drafted" | "published";
-  published_at: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface UpdateArticleStatusRequest {
-  status: "drafted" | "published" | "archived" | "pinned";
+export interface GetArticlesQuery {
+  title?: string;
+  status?: string | string[];
+  tags?: string[];
+  year?: number;
+  month?: number;
 }
 
 export interface UpdateArticleStatusResponse {
@@ -104,20 +105,31 @@ const getAuthHeaders = (token: string) => ({
 // --- API Calls ---
 
 export const getArticles = async (
-  query?: GetArticlesQuery
+  query?: GetArticlesQuery,
+  token?: string
 ): Promise<GetArticlesResponse[]> => {
   const params = new URLSearchParams();
   
   if (query?.title) params.append("title", query.title);
-  if (query?.status) params.append("status", query.status);
+  if (query?.status) {
+    // Support multiple status with comma delimiter
+    if (Array.isArray(query.status)) {
+      params.append("status", query.status.join(","));
+    } else {
+      params.append("status", query.status);
+    }
+  }
   if (query?.tags && query.tags.length > 0) {
-    query.tags.forEach(tag => params.append("tags", tag));
+    params.append("tags", query.tags.join(","));
   }
   if (query?.year) params.append("year", query.year.toString());
   if (query?.month) params.append("month", query.month.toString());
 
+  const config = token ? getAuthHeaders(token) : {};
+
   const response = await axios.get<GetArticlesResponse[]>(
     `${VITE_API_URL}/articles${params.toString() ? `?${params.toString()}` : ""}`,
+    config
   );
   return response.data;
 };

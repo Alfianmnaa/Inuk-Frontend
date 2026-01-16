@@ -102,7 +102,7 @@ const DashboardRoutes: React.FC = () => {
       />
 
       <Route
-        path="/dashboard/cms-berita/editor/:id?"
+        path="/dashboard/cms-berita/editor/:slug?"
         element={
           <ProtectedRoute>
             <ArticleEditor />
