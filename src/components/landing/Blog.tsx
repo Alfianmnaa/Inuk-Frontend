@@ -33,9 +33,13 @@ const Blog: React.FC = () => {
         // Limit to first 10 articles
         const limitedArticles = fetchedArticles.slice(0, 10);
         
-        // Duplicate for infinite scroll effect
-        const duplicated = [...limitedArticles, ...limitedArticles, ...limitedArticles];
-        setArticles(duplicated);
+        // Only duplicate for infinite scroll if there are more than 3 articles
+        if (limitedArticles.length > 3) {
+          const duplicated = [...limitedArticles, ...limitedArticles, ...limitedArticles];
+          setArticles(duplicated);
+        } else {
+          setArticles(limitedArticles);
+        }
       } catch (error) {
         console.error("Failed to fetch articles:", error);
         setArticles([]);
@@ -53,7 +57,8 @@ const Blog: React.FC = () => {
     return carouselRef.current.offsetWidth / getVisibleCards();
   };
 
-  const originalDataLength = Math.floor(articles.length / 3);
+  // Calculate original data length based on whether we duplicated or not
+  const originalDataLength = articles.length > 10 ? Math.floor(articles.length / 3) : articles.length;
 
   useEffect(() => {
     const updateBounds = () => {
@@ -94,7 +99,8 @@ const Blog: React.FC = () => {
   const handlePrev = () => scroll(-1);
 
   useEffect(() => {
-    if (originalDataLength <= 3) return;
+    // Only auto-slide if there are enough articles to scroll
+    if (originalDataLength <= getVisibleCards()) return;
 
     const autoSlide = setInterval(handleNext, 6000);
     return () => clearInterval(autoSlide);
@@ -158,27 +164,24 @@ const Blog: React.FC = () => {
   return (
     <motion.section className="py-16 md:py-24 bg-white relative" variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
       <div className="container mx-auto max-w-7xl px-4">
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex-1"></div>
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-3">
             <p className="text-primary font-semibold text-lg">Blog & Berita</p>
-            <div className="flex-1 flex justify-end">
-              <Link 
-                to="/artikel" 
-                className="text-primary font-semibold text-sm hover:text-green-700 transition-colors"
-              >
-                Lainnya →
-              </Link>
-            </div>
+            <Link 
+              to="/artikel" 
+              className="text-primary font-semibold text-sm hover:text-green-700 transition-colors"
+            >
+              Lainnya →
+            </Link>
           </div>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">Cerita Inspiratif dan Info Terkini Seputar INUK</h2>
-          <p className="text-gray-600 mt-3 max-w-3xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 text-center">Cerita Inspiratif dan Info Terkini Seputar INUK</h2>
+          <p className="text-gray-600 mt-3 max-w-3xl mx-auto text-center">
             Dapatkan informasi terbaru mengenai kegiatan sosial, edukasi filantropi, serta kisah nyata dari para penerima manfaat infaq Anda. Bersama INUK, setiap infaq adalah jalan keberkahan.
           </p>
         </div>
 
         <div className="relative">
-          {originalDataLength > 1 && (
+          {originalDataLength > getVisibleCards() && (
             <>
               <motion.button
                 onClick={handlePrev}
@@ -201,7 +204,14 @@ const Blog: React.FC = () => {
           )}
 
           <div ref={carouselRef} className="overflow-hidden">
-            <motion.div drag="x" onDragEnd={handleDragEnd} animate={controls} style={{ x }} className="flex py-1" whileTap={{ cursor: "grabbing" }}>
+            <motion.div 
+              drag={originalDataLength > getVisibleCards() ? "x" : false}
+              onDragEnd={handleDragEnd} 
+              animate={controls} 
+              style={{ x }} 
+              className="flex py-1" 
+              whileTap={originalDataLength > getVisibleCards() ? { cursor: "grabbing" } : undefined}
+            >
               {articles.map((article, index) => (
                 <motion.div key={`${article.id}-${index}`} className="p-4 flex-shrink-0 w-full md:w-1/3">
                   <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden flex flex-col h-full">
