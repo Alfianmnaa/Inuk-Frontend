@@ -164,9 +164,16 @@ const Blog: React.FC = () => {
   return (
     <motion.section className="py-16 md:py-24 bg-white relative" variants={sectionVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.1 }}>
       <div className="container mx-auto max-w-7xl px-4">
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-primary font-semibold text-lg">Blog & Berita</p>
+        <div className="text-center mb-12">
+          <p className="text-primary font-semibold text-lg mb-2">Blog & Berita</p>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900">Cerita Inspiratif dan Info Terkini Seputar INUK</h2>
+          <p className="text-gray-600 mt-3 max-w-3xl mx-auto">
+            Dapatkan informasi terbaru mengenai kegiatan sosial, edukasi filantropi, serta kisah nyata dari para penerima manfaat infaq Anda. Bersama INUK, setiap infaq adalah jalan keberkahan.
+          </p>
+        </div>
+
+        {articles.length > 0 && (
+          <div className="flex justify-end mb-4">
             <Link 
               to="/artikel" 
               className="text-primary font-semibold text-sm hover:text-green-700 transition-colors"
@@ -174,11 +181,7 @@ const Blog: React.FC = () => {
               Lainnya →
             </Link>
           </div>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 text-center">Cerita Inspiratif dan Info Terkini Seputar INUK</h2>
-          <p className="text-gray-600 mt-3 max-w-3xl mx-auto text-center">
-            Dapatkan informasi terbaru mengenai kegiatan sosial, edukasi filantropi, serta kisah nyata dari para penerima manfaat infaq Anda. Bersama INUK, setiap infaq adalah jalan keberkahan.
-          </p>
-        </div>
+        )}
 
         <div className="relative">
           {originalDataLength > getVisibleCards() && (

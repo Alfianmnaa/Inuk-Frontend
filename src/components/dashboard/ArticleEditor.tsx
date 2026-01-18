@@ -25,6 +25,7 @@ const ArticleEditor: React.FC = () => {
   
   const [loading, setLoading] = useState(false);
   const [articleId, setArticleId] = useState(""); // Store the actual article ID
+  const [articleData, setArticleData] = useState<any>(null); // Store article data temporarily
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [headerImage, setHeaderImage] = useState<{
@@ -98,7 +99,8 @@ const ArticleEditor: React.FC = () => {
       // Get article using slug
       const article = await getArticleFromSlug(slug);
       
-      // Store the article ID for replacement
+      // Store the article data
+      setArticleData(article);
       setArticleId(article.id);
       setTitle(article.title);
       setAuthor(article.author);
@@ -109,11 +111,7 @@ const ArticleEditor: React.FC = () => {
       });
       setTags(article.tags);
       setStatus(article.status as "drafted" | "published");
-      
-      if (editor && article.body) {
-        editor.commands.setContent(article.body);
-        setBody(article.body);
-      }
+      setBody(article.body);
     } catch (error) {
       console.error("Failed to load article:", error);
       setError("Gagal memuat artikel. Silakan coba lagi.");
@@ -121,6 +119,13 @@ const ArticleEditor: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Separate effect to set editor content when both editor and article data are ready
+  useEffect(() => {
+    if (editor && articleData?.body) {
+      editor.commands.setContent(articleData.body);
+    }
+  }, [editor, articleData]);
 
   const youtubeToEmbed = (input: string) => {
     if (!input) return input;
@@ -302,16 +307,16 @@ const ArticleEditor: React.FC = () => {
   return (
     <DashboardLayout activeLink="/dashboard/cms-berita" pageTitle={articleId ? "Edit Article" : "Create Article"}>
       <div className="max-w-5xl mx-auto space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800">
-            {articleId ? "Edit Article" : "Create Article"}
-          </h1>
+        <div className="relative flex items-center justify-center">
           <button
             onClick={() => navigate("/dashboard/cms-berita")}
-            className="text-gray-600 hover:text-gray-800 text-sm"
+            className="absolute left-0 text-gray-600 hover:text-gray-800 text-sm font-medium flex items-center gap-1 transition-colors"
           >
             ← Kembali
           </button>
+          <h1 className="text-2xl font-bold text-gray-800">
+            {articleId ? "Edit Article" : "Create Article"}
+          </h1>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
