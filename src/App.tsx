@@ -7,6 +7,9 @@ import Landing from "./pages/Landing";
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
 
+// PWA Install Prompt Component
+import InstallPWA from "./components/InstallPWA";
+
 import "./App.css";
 import ScrollToTopButton from "./utils/ScrollToTopButton";
 import Register from "./pages/Register";
@@ -35,11 +38,14 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => {
 const App = () => {
   return (
     <BrowserRouter>
+      {/* PWA Install Prompt - shows when app is installable on Android */}
+      <InstallPWA />
+
       <Routes>
         {/* Rute tanpa Navbar & Footer */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/artikel/:slug" element={< ArticleDetail />} />
+        <Route path="/artikel/:slug" element={<ArticleDetail />} />
 
         {/* Rute dengan Navbar & Footer */}
         <Route
