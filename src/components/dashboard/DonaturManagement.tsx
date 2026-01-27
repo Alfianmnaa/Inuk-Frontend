@@ -226,9 +226,10 @@ const DonaturManagement: React.FC = () => {
             <thead>
               <tr className="bg-gray-50 text-gray-600 text-sm uppercase">
                 {/* Kolom Baru */}
-                <th className="py-3 px-4 text-left">No Kaleng</th>
+                <th className="py-3 px-4 text-left">No. Kaleng</th>
                 <th className="py-3 px-4 text-left">Donatur</th>
                 <th className="py-3 px-4 text-left">Kec/Desa</th>
+                <th className="py-3 px-4 text-left">No. Telepon</th>
                 <th className="py-3 px-4 text-left">RW</th>
                 <th className="py-3 px-4 text-left">RT</th>
                 <th className="py-3 px-4 text-center">Aksi</th>
@@ -243,6 +244,7 @@ const DonaturManagement: React.FC = () => {
                     <td className="py-3 px-4 flex items-center">
                       <FaMapMarkerAlt className="w-3 h-3 mr-1 text-red-500" /> {d.kecamatan} / {d.desa}
                     </td>
+                    <td className="py-3 px-4">{d.phone}</td>
                     <td className="py-3 px-4">{d.rw}</td>
                     <td className="py-3 px-4">{d.rt}</td>
                     <td className="py-3 px-4 text-center">
