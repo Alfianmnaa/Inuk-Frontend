@@ -9,34 +9,30 @@ export default defineConfig({
     tailwindcss(),
 
     VitePWA({
-      registerType: "autoUpdate",
+      // CHANGED: Use "prompt" instead of "autoUpdate" for better control
+      // This gives us control over when to reload the page
+      registerType: "prompt",
       outDir: "dist",
 
-      // Web App Manifest - the "identity card" for your PWA
       manifest: {
         name: "INUK LAZISNU",
         short_name: "INUK",
         description: "Sistem Transparansi dan Donasi Infaq NU Kudus",
         theme_color: "#10B981",
         background_color: "#ffffff",
-        
-        // IMPORTANT: These control how the app opens on Android/iOS
-        display: "standalone", // Opens without browser UI, like a native app
-        start_url: "/", // Where the app starts when launched
-        scope: "/", // Which URLs are part of this PWA
-        orientation: "portrait-primary", // Preferred screen orientation
-        
-        // FIXED: Icon paths must be relative to root, not to /public/
-        // Vite automatically serves public files from root during build
+        display: "standalone",
+        start_url: "/",
+        scope: "/",
+        orientation: "portrait-primary",
         icons: [
           {
-            src: "/logo192.png", // Changed from ./public/logo192.png
+            src: "/logo192.png",
             sizes: "192x192",
             type: "image/png",
             purpose: "any",
           },
           {
-            src: "/logo512.png", // Changed from ./public/logo512.png
+            src: "/logo512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "any",
@@ -45,38 +41,78 @@ export default defineConfig({
             src: "/logo512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "maskable", // Allows Android to shape the icon
+            purpose: "maskable",
           },
         ],
-        
-        // Help users find your app (if published to app stores)
         categories: ["finance", "productivity"],
       },
 
-      // Service Worker caching strategies
       workbox: {
-        // Which files to cache automatically
+        // FIXED PROBLEM 1: Removed 'html' from globPatterns
+        // HTML files should NOT be precached - they must always be fetched fresh
+        // so that users get references to new JS/CSS files immediately
         globPatterns: [
-          "**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2,webmanifest}"
+          "**/*.{js,css,ico,png,svg,jpg,jpeg,webp,woff,woff2,webmanifest}"
+          // Notice: NO 'html' in this list!
         ],
         
-        // Clean up old caches when updating
         cleanupOutdatedCaches: true,
         
-        // IMPORTANT: Changed to /index.html so offline navigation works
-        // When offline, any navigation request will serve index.html
+        // Navigation fallback for offline mode
         navigateFallback: "/index.html",
+        navigateFallbackDenylist: [
+          /^\/api/, 
+          /^\/auth/,
+          /^\/exports/,
+          /^\/uploads/
+        ],
         
-        // Don't cache API calls with this fallback
-        navigateFallbackDenylist: [/^\/api/, /^\/auth/],
-        
-        // Maximum file size to cache (2MB)
         maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
         
-        // Runtime caching for different resource types
+        // FIXED PROBLEM 2: Added NetworkFirst strategy for HTML
+        // This ensures HTML always comes from nginx (with your no-cache headers)
+        // Only falls back to cache if offline
         runtimeCaching: [
           {
-            // Cache images aggressively
+            // HTML FILES: Always fetch from network first
+            urlPattern: ({ request }) => request.destination === 'document',
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html-cache",
+              networkTimeoutSeconds: 3,
+              expiration: {
+                maxEntries: 5,
+                maxAgeSeconds: 60 * 60, // 1 hour max (safety fallback)
+              },
+              // Don't cache HTML if offline request fails
+              plugins: [
+                {
+                  cacheWillUpdate: async ({ response }) => {
+                    // Only cache successful responses
+                    if (response && response.status === 200) {
+                      return response;
+                    }
+                    return null;
+                  },
+                },
+              ],
+            },
+          },
+          {
+            // JS/CSS: Use StaleWhileRevalidate
+            // Shows cached version instantly, updates in background
+            urlPattern: /\.(?:js|css)$/,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "assets-cache",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+              },
+            },
+          },
+          {
+            // Images: Cache first (images don't change often)
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/,
             handler: "CacheFirst",
             options: {
@@ -88,33 +124,62 @@ export default defineConfig({
             },
           },
           {
-            // Cache Google Fonts
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            // Fonts: Cache first (fonts never change)
+            urlPattern: /\.(?:woff|woff2|ttf|eot)$/,
             handler: "CacheFirst",
             options: {
-              cacheName: "google-fonts-cache",
+              cacheName: "fonts-cache",
               expiration: {
-                maxEntries: 10,
+                maxEntries: 20,
                 maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
               },
             },
           },
           {
-            // Cache font files
+            // Google Fonts CSS
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "google-fonts-cache",
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 365 * 24 * 60 * 60,
+              },
+            },
+          },
+          {
+            // Google Font files
             urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
             handler: "CacheFirst",
             options: {
               cacheName: "gstatic-fonts-cache",
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+                maxAgeSeconds: 365 * 24 * 60 * 60,
+              },
+            },
+          },
+          {
+            // Exports: NEVER cache
+            urlPattern: /\/exports\/donations\/.*/,
+            handler: "NetworkOnly",
+          },
+          {
+            // Uploads: Network first with short cache
+            urlPattern: /\/uploads\/.*/,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "uploads-cache",
+              networkTimeoutSeconds: 5,
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 24 * 60 * 60, // 1 day
               },
             },
           },
         ],
       },
 
-      // Enable PWA in development for testing
       devOptions: {
         enabled: true,
         type: "module",
