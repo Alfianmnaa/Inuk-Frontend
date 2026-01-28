@@ -4,14 +4,8 @@ import { X } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
 import { updateTreasurer, type GetTreasurerResponse } from "../../../services/UserService";
-import axios from "axios";
-import { generateExcelBlob } from "../../../utils/ExportToExcel";
+import { exportDonations } from "../../../services/DonationService";
 import { type Transaction } from "../TransaksiDonasi"; // Import interface Transaction
-
-// Fonnte API endpoint
-const FONNTE_TEXT_API = "https://api.fonnte.com/send";
-// Ganti dengan token Anda. IDEALNYA dari ENV.
-const FONNTE_TOKEN = "ctX6jaq47H3Nw6mSWNqK";
 
 interface BendaharaModalProps {
   isOpen: boolean;
@@ -20,14 +14,14 @@ interface BendaharaModalProps {
   currentTreasurer: GetTreasurerResponse;
   // Props Baru: Data untuk export
   transactionData: Transaction[];
-  regionInfo: {
-    region: string;
+  dateFilter: {
     startDate: string;
     endDate: string;
+    sortBy: string;
   };
 }
 
-const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSuccess, currentTreasurer, transactionData, regionInfo }) => {
+const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSuccess, currentTreasurer, transactionData, dateFilter }) => {
   const { token } = useAuth();
   const [name, setName] = useState(currentTreasurer.treasurer_name || "");
   const [phone, setPhone] = useState(currentTreasurer.treasurer_phone || "");
@@ -93,7 +87,7 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
     }
   };
 
-  // LOGIKA BARU: GENERATE EXCEL -> UPLOAD -> KIRIM WA
+  // LOGIKA BARU: PANGGIL BACKEND export/donation (backend yang akan meng-handle pengiriman WA)
   const handleSendWA = async () => {
     const currentName = currentTreasurer.treasurer_name || name;
     const currentPhone = currentTreasurer.treasurer_phone || phone;
@@ -108,76 +102,44 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
       return;
     }
 
+    if (!token) {
+      toast.error("Anda tidak terautentikasi.");
+      return;
+    }
+
     setIsSending(true);
     const sendToast = toast.loading("Memproses laporan...");
 
     try {
-      // 1. Generate Excel Blob
-      const dataToExport = transactionData.map((t) => ({
-        ID_Transaksi: t.id,
-        Tanggal: t.tanggalFormatted,
-        Donatur: t.name,
-        Provinsi: t.provinsi,
-        Kota: t.kabupaten_kota,
-        Kecamatan: t.kecamatan,
-        Desa: t.desa_kelurahan,
-        Total_Donasi: t.total,
-      }));
+      // Kirim permintaan ekspor ke backend.
+      // Backend akan membuat file dan mengirim notifikasi WhatsApp (jika di-handle di server).
+      // const startDate = dateFilter.startDate ? dateFilter.startDate : undefined;
+      // const endDate = dateFilter.endDate ? dateFilter.endDate : undefined;
 
-      const excelBlob = generateExcelBlob(dataToExport, "Laporan Donasi");
-      if (!excelBlob) throw new Error("Gagal membuat file Excel.");
+      // Pastikan nilai sortBy hanya "newest" | "oldest" | undefined
+      let sortBy: "newest" | "oldest" | undefined = undefined;
+      if (dateFilter.sortBy === "newest" || dateFilter.sortBy === "oldest") {
+        sortBy = dateFilter.sortBy;
+      }
 
-      // 2. Upload ke Backend
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const randomHash = Math.random().toString(36).substring(2, 8);
-      const fileName = `laporan-donasi-${timestamp}-${randomHash}.xlsx`;
-
-      const formData = new FormData();
-      formData.append("file", excelBlob, fileName);
-
-      const apiBase = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-      toast.loading("Mengunggah file...", { id: sendToast });
-      const uploadResponse = await axios.post(`${apiBase}/export/donation`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      console.log(uploadResponse);
-      console.log(uploadResponse.data);
-
-      const fileUrl = uploadResponse.data.fileUrl;
-      console.log(fileUrl);
-      if (!fileUrl) throw new Error("Gagal mendapatkan URL file dari server.");
-
-      // 3. Kirim Pesan Fonnte dengan URL
-      const cleanPhone = currentPhone.replace("+", "");
-      const regionStr = regionInfo.region;
-      const dateStart = regionInfo.startDate || "Awal";
-      const dateEnd = regionInfo.endDate || "Sekarang";
-
-      const textMessage = `*LAPORAN DONASI INUK*\n\nAssalamu'alaikum Bpk/Ibu *${currentName}*,\nBerikut adalah laporan donasi dari wilayah *${regionStr}*.\n\n📅 Periode: ${dateStart} s/d ${dateEnd}\n💰 Total Transaksi: ${transactionData.length}\n\n📥 *Download File Excel:*\n${fileUrl}\n\n_Link ini berlaku sementara. Mohon segera diunduh._\n\nTerima kasih.`;
-
-      toast.loading("Mengirim WhatsApp...", { id: sendToast });
-
-      const fonntePayload = {
-        target: cleanPhone,
-        message: textMessage,
+      const query = {
+        startDate: dateFilter.startDate || undefined,
+        endDate: dateFilter.endDate || undefined,
+        sortBy: sortBy,
       };
 
-      const fonnteResponse = await axios.post(FONNTE_TEXT_API, fonntePayload, {
-        headers: {
-          Authorization: FONNTE_TOKEN,
-        },
-      });
+      toast.loading("Meminta ekspor laporan...", { id: sendToast });
+      const resp = await exportDonations(token, query);
 
-      if (fonnteResponse.data.status) {
-        toast.success("Laporan & Notifikasi berhasil dikirim!", { id: sendToast });
+      // Resp memiliki struktur ExportDonationsResponse { job_id, status, message, file_url?, file_name? }
+      if (resp && (resp.status === "success" || resp.job_id || resp.status === "queued")) {
+        // Jika backend mengembalikan pesan, tampilkan; jika tidak, tampilkan pesan sukses umum
+        const successMessage = resp.message || "Permintaan ekspor berhasil. Bendahara akan menerima notifikasi.";
+        toast.success(successMessage, { id: sendToast });
         onClose();
       } else {
-        throw new Error(fonnteResponse.data.reason || "Gagal mengirim via Fonnte.");
+        // Jika backend menyatakan gagal atau tidak ada indikasi sukses
+        throw new Error(resp.message || "Gagal memproses permintaan ekspor.");
       }
     } catch (error: any) {
       console.error("Proses Kirim WA Gagal:", error);
@@ -188,7 +150,7 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-[1050] h-full">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-1050 h-full">
       <div className="bg-white p-6 m-4 rounded-xl w-full max-w-sm shadow-2xl">
         <div className="flex justify-between items-center border-b pb-3 mb-4">
           <h3 className="text-xl font-bold text-gray-800">{isEditing ? "Edit Data Bendahara" : "Kirim Laporan ke Bendahara"}</h3>
@@ -231,7 +193,7 @@ const BendaharaModal: React.FC<BendaharaModalProps> = ({ isOpen, onClose, onSucc
           {/* Mode View: Tampilkan Info */}
           {!isEditing && isDataExist && (
             <div className="mb-4 bg-blue-50 p-3 rounded-lg text-sm border border-blue-200 flex items-start">
-              <FaInfoCircle className="w-4 h-4 mr-2 mt-0.5 text-blue-500 flex-shrink-0" />
+              <FaInfoCircle className="w-4 h-4 mr-2 mt-0.5 text-blue-500 shrink-0" />
               <p className="text-blue-800">Klik tombol di bawah untuk membuat file Excel laporan dan mengirimkan link downloadnya langsung ke WhatsApp Bendahara.</p>
             </div>
           )}

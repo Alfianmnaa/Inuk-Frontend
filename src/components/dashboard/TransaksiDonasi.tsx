@@ -330,10 +330,10 @@ const TransaksiDonasi: React.FC = () => {
           onSuccess={fetchTreasurer}
           currentTreasurer={treasurerData}
           transactionData={sortedTransactions} // <-- PASSING DATA DISINI
-          regionInfo={{
-            region: userRegionFilter.village || userRegionFilter.subdistrict || "Region",
+          dateFilter={{
             startDate: startDateFilter,
             endDate: endDateFilter,
+            sortBy: sortConfig.direction === "desc" ? "newest" : "oldest"
           }}
         />
 

@@ -127,3 +127,32 @@ export const getDonationRecap = async (subdistrict?: string, village?: string, y
     throw new Error("Unable to fetch donation recap data.");
   }
 };
+
+export interface ExportDonationsDateQuery {
+  startDate?: string; // RFC3339 format, optional
+  endDate?: string; // RFC3339 format, optional
+  sortBy?: "newest" | "oldest"; // optional
+}
+
+export interface ExportDonationsResponse {
+  job_id: string;
+  status: string;
+  message: string;
+  file_url?: string;
+  file_name?: string;
+}
+
+export const exportDonations = async (
+  token: string,
+  query: ExportDonationsDateQuery = {}
+): Promise<ExportDonationsResponse> => {
+  const response = await axios.post<ExportDonationsResponse>(
+    `${VITE_API_URL}/export/donation`,
+    null,
+    {
+      params: query,
+      ...getAuthHeaders(token),
+    }
+  );
+  return response.data;
+};
