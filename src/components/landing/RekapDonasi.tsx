@@ -78,8 +78,12 @@ const RekapDonasi: React.FC = () => {
 
   // Set default to current month and year
   const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1); // Current month (1-12)
-  const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear()); // Current year
+  const [selectedMonth, setSelectedMonth] = useState<number>(
+    currentDate.getMonth() + 1,
+  ); // Current month (1-12)
+  const [selectedYear, setSelectedYear] = useState<number>(
+    currentDate.getFullYear(),
+  ); // Current year
 
   // --- Data Fetching Effect ---
   useEffect(() => {
@@ -286,7 +290,7 @@ const RekapDonasi: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Kecamatan Dropdown */}
             <div className="relative mb-4">
               <select
@@ -294,6 +298,10 @@ const RekapDonasi: React.FC = () => {
                 value={selectedKecamatan}
                 onChange={handleKecamatanChange}
               >
+                <option value="" disabled hidden>
+                  Pilih Kecamatan
+                </option>
+
                 {kecamatanList.map((kec) => (
                   <option key={kec.name} value={kec.name}>
                     {kec.name}
