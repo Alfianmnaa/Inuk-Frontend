@@ -48,7 +48,7 @@ const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void; activeLink
       </div>
 
       {/* Navigasi - Filter berdasarkan peran */}
-      <nav className="flex-grow p-4 overflow-y-auto">
+      <nav className="grow p-4 overflow-y-auto">
         {DASHBOARD_NAV.filter((item) => !item.roles || (userRole && item.roles.includes(userRole))) // Logika Filter
           .map((item, index) =>
             item.isHeader ? (

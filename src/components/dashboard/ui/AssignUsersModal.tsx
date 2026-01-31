@@ -75,7 +75,7 @@ const AssignUsersModal: React.FC<AssignUsersModalProps> = ({ isOpen, onClose, on
   if (!isOpen || !targetRegion) return null;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-[1060]">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-1060">
       <div className="bg-white p-6 rounded-xl w-full max-w-lg shadow-2xl h-[500px] flex flex-col">
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-lg font-bold text-gray-800">Tambah Penanggung Jawab</h3>

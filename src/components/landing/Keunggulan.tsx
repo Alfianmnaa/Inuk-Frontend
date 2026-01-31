@@ -109,7 +109,7 @@ const Keunggulan: React.FC = () => {
           </motion.div>
 
           {/* Right Column*/}
-          <div className="w-full h-full min-h-[400px] lg:min-h-0 relative flex flex-col justify-center">
+          <div className="w-full h-full min-h-100 lg:min-h-0 relative flex flex-col justify-center">
             <AnimatePresence mode="wait">
               <motion.div key={currentItem.id} variants={contentVariants} initial="initial" animate="animate" exit="exit" className="w-full">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">

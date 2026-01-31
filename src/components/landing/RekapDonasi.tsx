@@ -307,7 +307,7 @@ const RekapDonasi: React.FC = () => {
 
             {/* Autocomplete Search Input */}
             <div className="flex space-x-2" ref={searchRef}>
-              <div className="relative flex-grow">
+              <div className="relative grow">
                 <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
@@ -400,7 +400,7 @@ const RekapDonasi: React.FC = () => {
             <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
               <FaChartBar className="mr-2 text-primary" /> Grafik Donasi
             </h3>
-            <div className="flex-grow">
+            <div className="grow">
               {isDataAvailable && filteredData.length > 0 ? (
                 // Pass data in the same shape as before, but mapped from new API
                 <DonationChart

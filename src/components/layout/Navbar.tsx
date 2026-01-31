@@ -65,7 +65,7 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* Desktop Links */}
-          <div className="hidden lg:flex flex-grow justify-end items-center space-x-8">
+          <div className="hidden lg:flex grow justify-end items-center space-x-8">
             <NavLink to="/" end className={getNavLinkClass}>
               Beranda
             </NavLink>
@@ -99,17 +99,17 @@ const Navbar: React.FC = () => {
 
           <ul className="flex flex-col space-y-4 mt-6 text-gray-800 font-semibold text-lg">
             <li>
-              <NavLink to="/" end onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "!text-primary" : ""}`}>
+              <NavLink to="/" end onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "text-primary!" : ""}`}>
                 Beranda
               </NavLink>
             </li>
             <li>
-              <NavLink to="/login" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "!text-primary" : ""}`}>
+              <NavLink to="/login" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "text-primary!" : ""}`}>
                 Login
               </NavLink>
             </li>
             <li>
-              <NavLink to="/register" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "!text-primary" : ""}`}>
+              <NavLink to="/register" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "text-primary!" : ""}`}>
                 Register
               </NavLink>
             </li>

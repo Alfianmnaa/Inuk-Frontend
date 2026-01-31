@@ -503,7 +503,7 @@ const TransaksiDonasi: React.FC = () => {
                   {sortedTransactions.length > 0 ? (
                     sortedTransactions.map((t) => (
                       <tr key={t.id} className="text-sm text-gray-700 border-b hover:bg-green-50/50 transition-colors">
-                        <td className="py-3 px-4 font-medium max-w-[100px] truncate">{t.kaleng}</td>
+                        <td className="py-3 px-4 font-medium max-w-25 truncate">{t.kaleng}</td>
                         <td className="py-3 px-4">{t.tanggalFormatted}</td>
                         <td className="py-3 px-4">
                           <p className="font-semibold text-gray-900">{t.name}</p>

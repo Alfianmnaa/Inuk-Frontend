@@ -112,7 +112,7 @@ const FAQ: React.FC = () => {
 
           {/* Kolom Kanan: Gambar */}
           <motion.div variants={imageVariants} initial="hidden" whileInView="visible" viewport={{ once: true }} className="w-full flex justify-center lg:justify-start">
-            <div className="relative w-full rounded-xl overflow-hidden shadow-2xl h-full min-h-[400px]">
+            <div className="relative w-full rounded-xl overflow-hidden shadow-2xl h-full min-h-100">
               <img src={faqpic} alt="Donasi Infaq" className="w-full h-full object-cover" />
             </div>
           </motion.div>

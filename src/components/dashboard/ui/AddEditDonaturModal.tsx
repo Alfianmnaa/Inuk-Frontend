@@ -143,7 +143,7 @@ const AddEditDonaturModal: React.FC<AddEditDonaturModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-[1050] h-full">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-1050 h-full">
       <div className="bg-white p-6 m-4 rounded-xl w-full max-w-md shadow-2xl">
         <div className="flex justify-between items-center border-b pb-3 mb-4">
           <h3 className="text-xl font-bold text-gray-800">

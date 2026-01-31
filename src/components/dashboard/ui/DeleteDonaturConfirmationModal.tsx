@@ -28,7 +28,7 @@ const DeleteDonaturConfirmationModal: React.FC<DeleteDonaturConfirmationModalPro
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/30 backdrop-blur z-[1050] flex justify-center items-center">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/30 backdrop-blur z-1050 flex justify-center items-center">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }} className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm mx-4">
             <div className="text-center">
               {/* Menggunakan ikon yang lebih sederhana */}

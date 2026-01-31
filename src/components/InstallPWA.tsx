@@ -81,7 +81,7 @@ export default function InstallPWA() {
     <div className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:right-4 md:w-auto">
       <div className="bg-emerald-500 text-white rounded-lg shadow-lg p-4 flex items-center gap-3 animate-slide-up">
         {/* Download icon */}
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <svg
             className="w-6 h-6"
             fill="none"
@@ -107,7 +107,7 @@ export default function InstallPWA() {
         </div>
 
         {/* Action buttons */}
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex gap-2 shrink-0">
           <button
             onClick={handleInstallClick}
             className="bg-white text-emerald-600 px-4 py-2 rounded-md text-sm font-semibold hover:bg-emerald-50 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-emerald-500"

@@ -74,7 +74,7 @@ const EditDonationModal: React.FC<EditModalProps> = ({ isOpen, onClose, transact
 
   return (
     // Backdrop
-    <div className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-[1050]">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-1050">
       <div className="bg-white p-6 m-4 rounded-xl w-full max-w-md shadow-2xl transform transition-all duration-300 scale-100">
         <h3 className="text-2xl font-bold mb-6 text-gray-800 border-b pb-2">Edit Transaksi</h3>
 

@@ -80,7 +80,7 @@ const Footer: React.FC = () => {
             <h3 className="text-lg font-bold mb-4">Kontak Kami</h3>
             <ul className="space-y-4 text-sm">
               <li className="flex items-start text-gray-400">
-                <FaMapMarkerAlt className="w-4 h-4 mr-3 mt-1 text-primary flex-shrink-0" />
+                <FaMapMarkerAlt className="w-4 h-4 mr-3 mt-1 text-primary shrink-0" />
                 <address className="not-italic">Jl. Pramuka No.21, Wergu Wetan, Kec. Kota Kudus, Kabupaten Kudus, Jawa Tengah 59319</address>
               </li>
               <li className="flex items-center text-gray-400">

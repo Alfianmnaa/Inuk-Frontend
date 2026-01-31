@@ -159,7 +159,7 @@ const HeroSection: React.FC = () => {
 
           {/* 2. Main Carousel Content Container */}
           <div
-            className={`relative flex items-start h-full min-h-[300px] md:min-h-0 
+            className={`relative flex items-start h-full min-h-75 md:min-h-0 
               ${isCardLayout ? "w-full md:w-2/3 md:pl-20" : "w-full"} 
               ${isCardLayout ? "justify-start" : "justify-center"}
             `}

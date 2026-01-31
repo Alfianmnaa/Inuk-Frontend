@@ -163,7 +163,7 @@ const Testimoni: React.FC = () => {
           <div ref={carouselRef} className="overflow-hidden">
             <motion.div drag="x" onDragEnd={handleDragEnd} animate={controls} style={{ x }} className="flex py-1" whileTap={{ cursor: "grabbing" }}>
               {TESTIMONI_DATA.map((item, index) => (
-                <motion.div key={index} className="p-4 flex-shrink-0 w-full md:w-1/2 lg:w-1/3">
+                <motion.div key={index} className="p-4 shrink-0 w-full md:w-1/2 lg:w-1/3">
                   <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 flex flex-col h-full relative overflow-hidden">
                     <FaQuoteLeft className="absolute left-6 top-6 w-10 h-10 text-green-500/20" />
                     <div className="flex justify-center mb-4">
@@ -172,7 +172,7 @@ const Testimoni: React.FC = () => {
                       </div>
                     </div>
 
-                    <p className="text-gray-700 text-center text-md mb-4 flex-grow">{item.text}</p>
+                    <p className="text-gray-700 text-center text-md mb-4 grow">{item.text}</p>
 
                     <div className="flex justify-center mb-4">{renderRating(item.rating)}</div>
 

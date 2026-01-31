@@ -35,9 +35,9 @@ const Navbar: React.FC = () => {
   };
 
   // Kelas untuk tautan aktif (saat isScrolled TRUE)
-  const activeClassScrolled = "text-gray-800 hover:text-primary !text-primary";
+  const activeClassScrolled = "text-gray-800 hover:text-primary text-primary!";
   // Kelas untuk tautan aktif (saat isScrolled FALSE)
-  const activeClassTransparent = "text-white hover:text-primary !text-primary";
+  const activeClassTransparent = "text-white hover:text-primary text-primary!";
   // Kelas default untuk tautan (saat isScrolled TRUE)
   const defaultClassScrolled = "text-gray-800 hover:text-primary";
   // Kelas default untuk tautan (saat isScrolled FALSE)
@@ -106,7 +106,7 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* Desktop Links */}
-          <div className="hidden lg:flex flex-grow justify-end items-center space-x-8">
+          <div className="hidden lg:flex grow justify-end items-center space-x-8">
             {/* Beranda - NavLink dengan 'end' agar hanya aktif di root '/' */}
             <NavLink to="/" end className={getNavLinkClass}>
               Beranda
@@ -120,13 +120,13 @@ const Navbar: React.FC = () => {
               </NavLink>
               {/* Dropdown Menu */}
               <div className={`absolute top-full mt-2 w-48 bg-white text-gray-800 rounded-md shadow-lg opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100 transition-all duration-300`}>
-                <NavLink to="/tentang/sejarah" className={({ isActive }) => `block px-4 py-2 hover:bg-gray-100 rounded-t-md ${isActive ? "!bg-gray-100 !text-primary" : ""}`}>
+                <NavLink to="/tentang/sejarah" className={({ isActive }) => `block px-4 py-2 hover:bg-gray-100 rounded-t-md ${isActive ? "bg-gray-100! text-primary!" : ""}`}>
                   Sejarah
                 </NavLink>
-                <NavLink to="/tentang/visi-misi" className={({ isActive }) => `block px-4 py-2 hover:bg-gray-100 ${isActive ? "!bg-gray-100 !text-primary" : ""}`}>
+                <NavLink to="/tentang/visi-misi" className={({ isActive }) => `block px-4 py-2 hover:bg-gray-100 ${isActive ? "bg-gray-100! text-primary!" : ""}`}>
                   Visi Misi
                 </NavLink>
-                <NavLink to="/tentang/tim-kami" className={({ isActive }) => `block px-4 py-2 hover:bg-gray-100 rounded-b-md ${isActive ? "!bg-gray-100 !text-primary" : ""}`}>
+                <NavLink to="/tentang/tim-kami" className={({ isActive }) => `block px-4 py-2 hover:bg-gray-100 rounded-b-md ${isActive ? "bg-gray-100! text-primary!" : ""}`}>
                   Tim Kami
                 </NavLink>
               </div>
@@ -175,7 +175,7 @@ const Navbar: React.FC = () => {
           <ul className="flex flex-col space-y-4 mt-6 text-gray-800 font-semibold text-lg">
             <li>
               {/* NavLink Mobile Beranda */}
-              <NavLink to="/" end onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "!text-primary" : ""}`}>
+              <NavLink to="/" end onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "text-primary!" : ""}`}>
                 Beranda
               </NavLink>
             </li>
@@ -189,19 +189,19 @@ const Navbar: React.FC = () => {
                 <ul className="ml-4 mt-2 space-y-2 text-sm text-gray-600">
                   <li>
                     {/* NavLink Mobile Sejarah */}
-                    <NavLink to="/tentang/sejarah" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "!text-primary" : ""}`}>
+                    <NavLink to="/tentang/sejarah" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "text-primary!" : ""}`}>
                       Sejarah
                     </NavLink>
                   </li>
                   <li>
                     {/* NavLink Mobile Visi Misi */}
-                    <NavLink to="/tentang/visi-misi" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "!text-primary" : ""}`}>
+                    <NavLink to="/tentang/visi-misi" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "text-primary!" : ""}`}>
                       Visi Misi
                     </NavLink>
                   </li>
                   <li>
                     {/* NavLink Mobile Tim Kami */}
-                    <NavLink to="/tentang/tim-kami" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "!text-primary" : ""}`}>
+                    <NavLink to="/tentang/tim-kami" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "text-primary!" : ""}`}>
                       Tim Kami
                     </NavLink>
                   </li>
@@ -210,19 +210,19 @@ const Navbar: React.FC = () => {
             </li>
             <li>
               {/* NavLink Mobile Program */}
-              <NavLink to="/program" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "!text-primary" : ""}`}>
+              <NavLink to="/program" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "text-primary!" : ""}`}>
                 Program
               </NavLink>
             </li>
             <li>
               {/* NavLink Mobile Berita */}
-              <NavLink to="/berita" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "!text-primary" : ""}`}>
+              <NavLink to="/berita" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "text-primary!" : ""}`}>
                 Berita
               </NavLink>
             </li>
             <li>
               {/* NavLink Mobile Kontak */}
-              <NavLink to="/kontak" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "!text-primary" : ""}`}>
+              <NavLink to="/kontak" onClick={toggleMobileMenu} className={({ isActive }) => `block hover:text-primary ${isActive ? "text-primary!" : ""}`}>
                 Kontak
               </NavLink>
             </li>

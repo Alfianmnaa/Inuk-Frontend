@@ -299,7 +299,7 @@ const CMSBerita: React.FC = () => {
             <div className="relative" ref={statusDropdownRef}>
               <div 
                 onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                className="w-full border border-gray-300 rounded-lg py-2 px-4 bg-white min-h-[38px] cursor-pointer hover:border-primary transition-colors"
+                className="w-full border border-gray-300 rounded-lg py-2 px-4 bg-white min-h-9.5 cursor-pointer hover:border-primary transition-colors"
               >
                 <div className="flex flex-wrap gap-1">
                   {filterStatus.length === 0 ? (

@@ -97,9 +97,9 @@ const Layanan: React.FC = () => {
                 <img src={service.image} alt={service.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
               </div>
 
-              <div className="p-6 flex flex-col flex-grow">
+              <div className="p-6 flex flex-col grow">
                 <h3 className="text-xl font-bold text-gray-900 mb-3">{service.title}</h3>
-                <p className="text-gray-600 text-sm flex-grow mb-4">{service.description}</p>
+                <p className="text-gray-600 text-sm grow mb-4">{service.description}</p>
 
                 <motion.a href="#" whileHover={buttonHover} whileTap={{ scale: 0.95 }} className="inline-block self-start mt-auto bg-primary text-white font-semibold py-2 px-6 rounded-full text-sm hover:bg-green-600 transition-colors">
                   Selengkapnya

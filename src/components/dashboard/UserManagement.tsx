@@ -240,7 +240,7 @@ const UserManagement: React.FC = () => {
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map((u) => (
                     <tr key={u.id} className="text-sm text-gray-700 border-b hover:bg-green-50/50 transition-colors">
-                      <td className="py-3 px-4 font-mono text-xs max-w-[100px] truncate">{u.id.substring(0, 8)}...</td>
+                      <td className="py-3 px-4 font-mono text-xs max-w-25 truncate">{u.id.substring(0, 8)}...</td>
                       <td className="py-3 px-4 font-semibold text-gray-900">{u.name}</td>
                       <td className="py-3 px-4">{u.phone}</td>
                       <td className="py-3 px-4">

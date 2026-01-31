@@ -216,7 +216,7 @@ const Blog: React.FC = () => {
               whileTap={originalDataLength > getVisibleCards() ? { cursor: "grabbing" } : undefined}
             >
               {articles.map((article, index) => (
-                <motion.div key={`${article.id}-${index}`} className="p-4 flex-shrink-0 w-full md:w-1/3">
+                <motion.div key={`${article.id}-${index}`} className="p-4 shrink-0 w-full md:w-1/3">
                   <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden flex flex-col h-full">
                     <div className="relative h-56 w-full overflow-hidden bg-gray-100">
                       <img 
@@ -240,12 +240,12 @@ const Blog: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="p-5 flex flex-col flex-grow">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 min-h-[3.5rem]">
+                    <div className="p-5 flex flex-col grow">
+                      <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2 min-h-14">
                         {article.title}
                       </h3>
 
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-3 flex-grow">
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-3 grow">
                         {article.header_image_caption}
                       </p>
 

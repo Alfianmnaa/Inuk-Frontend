@@ -50,7 +50,7 @@ const CreateRegionModal: React.FC<CreateRegionModalProps> = ({ isOpen, onClose, 
 
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-[1050]">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-1050">
         <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
           <div className="flex justify-between items-center mb-4 border-b pb-2">
             <h3 className="text-lg font-bold text-gray-800">Buat Region Baru</h3>
