@@ -57,6 +57,7 @@ const RekapDonasi: React.FC = () => {
   const searchRef = useRef<HTMLDivElement>(null);
 
   const months = [
+    { name: "Semua Bulan", value: 0 }, // Optional: show all months
     { name: "Januari", value: 1 },
     { name: "Februari", value: 2 },
     { name: "Maret", value: 3 },
@@ -71,8 +72,14 @@ const RekapDonasi: React.FC = () => {
     { name: "Desember", value: 12 },
   ];
 
-  const [selectedMonth, setSelectedMonth] = useState<number>(1); // Januari
-  const [selectedYear, setSelectedYear] = useState<number>(2025); // Static
+  // Generate dynamic year range (from 5 years ago to 2 years in the future)
+  const currentYear = new Date().getFullYear();
+  const yearRange = Array.from({ length: 8 }, (_, i) => currentYear - 5 + i);
+
+  // Set default to current month and year
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1); // Current month (1-12)
+  const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear()); // Current year
 
   // --- Data Fetching Effect ---
   useEffect(() => {
@@ -237,39 +244,46 @@ const RekapDonasi: React.FC = () => {
           className="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-200 mb-10"
         >
           <div className="max-w-xl mx-auto">
-            <label className="block text-gray-700 font-semibold mb-2">
+            <label className="block text-gray-700 font-semibold mb-3">
               Pilih Data Wilayah
             </label>
 
-            {/* Month Dropdown */}
-            <div className="relative mb-4">
-              <select
-                className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              >
-                {months.map((month) => (
-                  <option key={month.value} value={month.value}>
-                    {month.name}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <BiChevronDown className="w-5 h-5" />
+            {/* Compact Month and Year Dropdowns - Side by Side */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {/* Month Dropdown */}
+              <div className="relative">
+                <select
+                  className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                >
+                  {months.map((month) => (
+                    <option key={month.value} value={month.value}>
+                      {month.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <BiChevronDown className="w-5 h-5" />
+                </div>
               </div>
-            </div>
 
-            {/* Year Dropdown */}
-            <div className="relative mb-4">
-              <select
-                className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-              >
-                <option value={2025}>2025</option>
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <BiChevronDown className="w-5 h-5" />
+              {/* Year Dropdown */}
+              <div className="relative">
+                <select
+                  className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                >
+                  {yearRange.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <BiChevronDown className="w-5 h-5" />
+                </div>
               </div>
             </div>
             
