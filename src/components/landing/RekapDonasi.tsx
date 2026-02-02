@@ -13,6 +13,8 @@ import { BiChevronDown } from "react-icons/bi";
 import DonationChart from "../../utils/DonationChart";
 import {
   getDonationRecap,
+  getDonationRecapYears,
+  getDonationRecapMonths,
   type DonationDataRecap,
 } from "../../services/DonationService";
 
@@ -72,18 +74,118 @@ const RekapDonasi: React.FC = () => {
     { name: "Desember", value: 12 },
   ];
 
-  // Generate dynamic year range (from 5 years ago to 2 years in the future)
-  const currentYear = new Date().getFullYear();
-  const yearRange = Array.from({ length: 8 }, (_, i) => currentYear - 5 + i);
+  // State untuk available years dan months dari database
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [availableMonths, setAvailableMonths] = useState<number[]>([]);
+  const [isLoadingYears, setIsLoadingYears] = useState(true);
+  const [isLoadingMonths, setIsLoadingMonths] = useState(false);
 
   // Set default to current month and year
   const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<number>(
-    currentDate.getMonth() + 1,
-  ); // Current month (1-12)
-  const [selectedYear, setSelectedYear] = useState<number>(
-    currentDate.getFullYear(),
-  ); // Current year
+  const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1); // Current month (1-12)
+  const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear()); // Current year
+
+  // --- Fetch Available Years (Only Once on Mount) ---
+  useEffect(() => {
+    const fetchAvailableYears = async () => {
+      // Check sessionStorage first (cache)
+      const cachedYears = sessionStorage.getItem("inuk_recap_years");
+      
+      if (cachedYears) {
+        // Use cached data - improves performance
+        const years = JSON.parse(cachedYears) as number[];
+        setAvailableYears(years);
+        
+        // Set default year to most recent available year
+        if (years.length > 0 && !years.includes(currentDate.getFullYear())) {
+          setSelectedYear(years[years.length - 1]);
+        }
+        
+        setIsLoadingYears(false);
+        return;
+      }
+
+      // No cache - fetch from API
+      try {
+        const years = await getDonationRecapYears();
+        
+        if (years.length === 0) {
+          console.warn("No years available from API");
+          setAvailableYears([currentDate.getFullYear()]);
+        } else {
+          setAvailableYears(years);
+          // Cache in sessionStorage
+          sessionStorage.setItem("inuk_recap_years", JSON.stringify(years));
+          
+          // Set default year to most recent available year
+          if (!years.includes(currentDate.getFullYear())) {
+            setSelectedYear(years[years.length - 1]);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching years:", error);
+        // Fallback to current year
+        setAvailableYears([currentDate.getFullYear()]);
+      } finally {
+        setIsLoadingYears(false);
+      }
+    };
+
+    fetchAvailableYears();
+  }, []); // Only run once on mount
+
+  // --- Fetch Available Months (When Year Changes) ---
+  useEffect(() => {
+    const fetchAvailableMonths = async () => {
+      if (!selectedYear) return;
+
+      // Check sessionStorage first (cache per year)
+      const cacheKey = `inuk_recap_months_${selectedYear}`;
+      const cachedMonths = sessionStorage.getItem(cacheKey);
+      
+      if (cachedMonths) {
+        // Use cached data
+        const months = JSON.parse(cachedMonths) as number[];
+        setAvailableMonths(months);
+        
+        // Reset month to "Semua Bulan" (0) if current month not available
+        if (selectedMonth > 0 && !months.includes(selectedMonth)) {
+          setSelectedMonth(0);
+        }
+        
+        return;
+      }
+
+      // No cache - fetch from API
+      setIsLoadingMonths(true);
+      try {
+        const months = await getDonationRecapMonths(selectedYear);
+        
+        if (months.length === 0) {
+          console.warn(`No months available for year ${selectedYear}`);
+          setAvailableMonths([]);
+          setSelectedMonth(0); // Default to "Semua Bulan"
+        } else {
+          setAvailableMonths(months);
+          // Cache in sessionStorage
+          sessionStorage.setItem(cacheKey, JSON.stringify(months));
+          
+          // Reset month to "Semua Bulan" (0) if current month not available
+          if (selectedMonth > 0 && !months.includes(selectedMonth)) {
+            setSelectedMonth(0);
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching months for year ${selectedYear}:`, error);
+        setAvailableMonths([]);
+        setSelectedMonth(0); // Fallback to "Semua Bulan"
+      } finally {
+        setIsLoadingMonths(false);
+      }
+    };
+
+    fetchAvailableMonths();
+  }, [selectedYear]); // Run when year changes
 
   // --- Data Fetching Effect ---
   useEffect(() => {
@@ -257,40 +359,63 @@ const RekapDonasi: React.FC = () => {
               {/* Month Dropdown */}
               <div className="relative">
                 <select
-                  className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                  className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                  disabled={isLoadingMonths || isLoadingYears}
                 >
-                  {months.map((month) => (
-                    <option key={month.value} value={month.value}>
-                      {month.name}
-                    </option>
-                  ))}
+                  {/* Always show "Semua Bulan" option */}
+                  <option value={0}>Semua Bulan</option>
+                  
+                  {/* Only show months that are available in the database */}
+                  {availableMonths.map((monthValue) => {
+                    const monthObj = months.find(m => m.value === monthValue);
+                    return monthObj && monthObj.value > 0 ? (
+                      <option key={monthValue} value={monthValue}>
+                        {monthObj.name}
+                      </option>
+                    ) : null;
+                  })}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                  <BiChevronDown className="w-5 h-5" />
+                  {isLoadingMonths ? (
+                    <FaSpinner className="w-4 h-4 animate-spin text-primary" />
+                  ) : (
+                    <BiChevronDown className="w-5 h-5" />
+                  )}
                 </div>
               </div>
 
               {/* Year Dropdown */}
               <div className="relative">
                 <select
-                  className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                  className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  disabled={isLoadingYears}
                 >
-                  {yearRange.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
+                  {availableYears.length > 0 ? (
+                    availableYears.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))
+                  ) : (
+                    <option value={currentDate.getFullYear()}>
+                      {currentDate.getFullYear()}
                     </option>
-                  ))}
+                  )}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                  <BiChevronDown className="w-5 h-5" />
+                  {isLoadingYears ? (
+                    <FaSpinner className="w-4 h-4 animate-spin text-primary" />
+                  ) : (
+                    <BiChevronDown className="w-5 h-5" />
+                  )}
                 </div>
               </div>
             </div>
-
+            
             {/* Kecamatan Dropdown */}
             <div className="relative mb-4">
               <select
@@ -298,10 +423,6 @@ const RekapDonasi: React.FC = () => {
                 value={selectedKecamatan}
                 onChange={handleKecamatanChange}
               >
-                <option value="" disabled hidden>
-                  Pilih Kecamatan
-                </option>
-
                 {kecamatanList.map((kec) => (
                   <option key={kec.name} value={kec.name}>
                     {kec.name}
@@ -430,9 +551,8 @@ const RekapDonasi: React.FC = () => {
                   <h2 className="text-2xl font-bold text-red-600 mb-2">
                     Gagal Memuat Data Rekap Donasi
                   </h2>
-                  <p className="text-gray-600">
-                    Silakan cek koneksi API atau pastikan data rekapitulasi
-                    tersedia di backend.
+                  <p className="text-gray-600 text-center px-4">
+                    Terjadi kesalahan saat mengambil data. Silakan periksa koneksi internet Anda atau coba lagi nanti.
                   </p>
                 </div>
               )}

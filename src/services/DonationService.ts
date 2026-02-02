@@ -111,20 +111,75 @@ export const getDonationRecap = async (subdistrict?: string, village?: string, y
     const currentYear = new Date().getFullYear();
     year = year || currentYear;
 
+    // Build params object, excluding month if it's 0 (all months)
+    const params: any = {
+      kecamatan: subdistrict,
+      desa_kelurahan: village,
+      year,
+    };
+
+    // Only include month parameter if it's not 0 (0 means all months)
+    if (month && month > 0) {
+      params.month = month;
+    }
+
     // Fetch data from the API
     const response = await axios.get(`${VITE_API_URL}/donations-recap`, {
-      params: {
-        kecamatan: subdistrict,
-        desa_kelurahan: village,
-        year,
-        month,
-      },
+      params,
     });
     
     return response.data;
   } catch (error) {
     console.error("Failed to fetch donation recap:", error);
     throw new Error("Unable to fetch donation recap data.");
+  }
+};
+
+// Interface for Years Response
+export interface DonationRecapYearsResponse {
+  years: number[];
+}
+
+// Interface for Months Response
+export interface DonationRecapMonthsResponse {
+  months: number[];
+}
+
+/**
+ * Fetch available years for donation recap data
+ * This should be called once on page load and cached in sessionStorage
+ * @returns Promise with array of available years
+ */
+export const getDonationRecapYears = async (): Promise<number[]> => {
+  try {
+    const response = await axios.get<DonationRecapYearsResponse>(
+      `${VITE_API_URL}/donations-recap/year`
+    );
+    return response.data.years;
+  } catch (error) {
+    console.error("Failed to fetch available years:", error);
+    throw new Error("Gagal mengambil data tahun yang tersedia. Silakan coba lagi.");
+  }
+};
+
+/**
+ * Fetch available months for a specific year
+ * This should be cached in sessionStorage per year
+ * @param year - The year to fetch available months for
+ * @returns Promise with array of available months (1-12)
+ */
+export const getDonationRecapMonths = async (year: number): Promise<number[]> => {
+  try {
+    const response = await axios.get<DonationRecapMonthsResponse>(
+      `${VITE_API_URL}/donations-recap/month`,
+      {
+        params: { year },
+      }
+    );
+    return response.data.months;
+  } catch (error) {
+    console.error(`Failed to fetch available months for year ${year}:`, error);
+    throw new Error(`Gagal mengambil data bulan yang tersedia untuk tahun ${year}. Silakan coba lagi.`);
   }
 };
 
