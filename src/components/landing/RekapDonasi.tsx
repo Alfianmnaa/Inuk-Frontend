@@ -201,7 +201,8 @@ const RekapDonasi: React.FC = () => {
         setRecapData(data);
 
         // Atur nilai selectedKecamatan ke item pertama segera setelah data berhasil diambil.
-        if (data.kecamatan.length > 0) {
+        // Add defensive checks for kecamatan array
+        if (data && data.kecamatan && Array.isArray(data.kecamatan) && data.kecamatan.length > 0) {
           setSelectedKecamatan(data.kecamatan[0].name);
         } else {
           setSelectedKecamatan("");
@@ -220,7 +221,7 @@ const RekapDonasi: React.FC = () => {
 
   // Temukan data kecamatan yang dipilih (Menggunakan selectedKecamatan)
   const currentKecamatan = useMemo(() => {
-    if (!recapData) {
+    if (!recapData || !recapData.kecamatan || !Array.isArray(recapData.kecamatan)) {
       return {
         name: selectedKecamatan || "Pilih Kecamatan",
         total_donor: 0,
@@ -422,15 +423,26 @@ const RekapDonasi: React.FC = () => {
                 className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                 value={selectedKecamatan}
                 onChange={handleKecamatanChange}
+                disabled={isLoading || kecamatanList.length === 0}
               >
-                {kecamatanList.map((kec) => (
-                  <option key={kec.name} value={kec.name}>
-                    {kec.name}
+                {kecamatanList.length > 0 ? (
+                  kecamatanList.map((kec) => (
+                    <option key={kec.name} value={kec.name}>
+                      {kec.name}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">
+                    {isLoading ? "Memuat data..." : "Tidak ada data kecamatan"}
                   </option>
-                ))}
+                )}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <BiChevronDown className="w-5 h-5" />
+                {isLoading ? (
+                  <FaSpinner className="w-4 h-4 animate-spin text-primary" />
+                ) : (
+                  <BiChevronDown className="w-5 h-5" />
+                )}
               </div>
             </div>
 
