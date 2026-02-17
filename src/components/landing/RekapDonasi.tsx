@@ -503,7 +503,7 @@ const RekapDonasi: React.FC = () => {
             className="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border-t-4 border-primary"
           >
             <h3 className="text-lg font-bold text-primary mb-4 flex items-center">
-              <FaLeaf className="mr-2" /> Ringkasan Kecamatan
+              <FaLeaf className="mr-2" /> Ringkasan
             </h3>
             <div className="space-y-3 text-sm text-gray-700">
               <div className="flex justify-between">
@@ -550,7 +550,8 @@ const RekapDonasi: React.FC = () => {
                     jumlahDonatur: item.total_donor,
                     totalDonasi: item.total_donation,
                   }))}
-                  kecamatanName={currentKecamatan.name}
+                  areaName={currentKecamatan.name}
+                  dataLevel="Desa"
                 />
               ) : isDataAvailable ? (
                 <div className="flex items-center justify-center bg-gray-100 rounded-lg h-64 md:h-96">
@@ -658,6 +659,81 @@ const RekapDonasi: React.FC = () => {
             </tbody>
           </table>
         </motion.div>
+
+        {/* ===== SECTION: Keseluruhan ===== */}
+        <motion.div variants={itemVariants} className="text-center mt-20 mb-12">
+          <h2 className="text-4xl font-bold text-gray-800">Keseluruhan</h2>
+          <p className="text-gray-600 mt-3 max-w-xl mx-auto">
+            Ringkasan total donasi seluruh kecamatan dalam satu kabupaten/kota untuk periode yang dipilih.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Ringkasan Kabupaten */}
+          <motion.div
+            variants={itemVariants}
+            className="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border-t-4 border-primary"
+          >
+            <h3 className="text-lg font-bold text-primary mb-4 flex items-center">
+              <FaLeaf className="mr-2" /> Ringkasan
+            </h3>
+            <div className="space-y-3 text-sm text-gray-700">
+              <div className="flex justify-between">
+                <span className="font-semibold">Kabupaten/Kota</span>
+                <span className="font-bold text-gray-900">
+                  : {recapData?.name || "-"}
+                </span>
+              </div>
+              <div className="flex justify-between border-t pt-3">
+                <span className="font-semibold">Total Donasi</span>
+                <span className="font-bold text-gray-900">
+                  : {formatRupiah(recapData?.total_donation ?? 0)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold">Jumlah Donatur</span>
+                <span className="font-bold text-gray-900">
+                  : {recapData?.total_donor ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-semibold">Jumlah Kecamatan</span>
+                <span className="font-bold text-gray-900">
+                  : {recapData?.kecamatan?.length ?? 0}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Grafik Per Kecamatan */}
+          <motion.div
+            variants={itemVariants}
+            className="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg flex flex-col"
+          >
+            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+              <FaChartBar className="mr-2 text-primary" /> Grafik Donasi
+            </h3>
+            <div className="grow">
+              {isDataAvailable ? (
+                <DonationChart
+                  data={(recapData?.kecamatan ?? []).map((kec) => ({
+                    desa: kec.name,
+                    jumlahDonatur: kec.total_donor,
+                    totalDonasi: kec.total_donation,
+                  }))}
+                  areaName={recapData?.name ?? "Kabupaten/Kota"}
+                  dataLevel="Kecamatan"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center bg-gray-100 rounded-lg h-64 md:h-96">
+                  <p className="text-gray-500 italic">
+                    Tidak ada data kecamatan untuk ditampilkan di grafik.
+                  </p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
       </div>
     </motion.section>
   );

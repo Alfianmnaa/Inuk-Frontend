@@ -13,10 +13,11 @@ interface DonationData {
 
 interface DonationChartProps {
   data: DonationData[];
-  kecamatanName: string;
+  areaName: string;
+  dataLevel?: "Desa" | "Kecamatan";
 }
 
-const DonationChart: React.FC<DonationChartProps> = ({ data, kecamatanName }) => {
+const DonationChart: React.FC<DonationChartProps> = ({ data, areaName, dataLevel = "Desa" }) => {
   const chartData = {
     labels: data.map((item) => item.desa),
     datasets: [
@@ -40,7 +41,7 @@ const DonationChart: React.FC<DonationChartProps> = ({ data, kecamatanName }) =>
       },
       title: {
         display: true,
-        text: `Rekap Donasi Desa di ${kecamatanName}`,
+        text: `Rekap Donasi ${dataLevel} di ${areaName}`,
         font: {
           size: 16,
         },

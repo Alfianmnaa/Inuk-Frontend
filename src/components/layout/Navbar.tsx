@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { FiLogIn, FiMenu, FiX } from "react-icons/fi";
 import logo from "../../assets/landing/layout/logo.png";
 import { MdEmail, MdLocationOn } from "react-icons/md";
-import { FaPhone, FaUser } from "react-icons/fa";
+import { FaPhone } from "react-icons/fa";
 import { Link, NavLink } from "react-router-dom";
 
 const Navbar: React.FC = () => {
