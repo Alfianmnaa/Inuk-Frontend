@@ -9,7 +9,7 @@ import Pagination from "./ui/Pagination";
 import AddressSelector, { type AddressSelection } from "./AddressSelector";
 import AddTransactionModal from "./ui/AddTransactionModal";
 import BendaharaModal from "./ui/BendaharaModal";
-import { getDonations, type TransactionAPI, type DonationsResponse, type DonationsFilter, updateDonation, deleteDonation, type UpdateDonationRequest } from "../../services/DonationService";
+import { getDonations, getDonationsExtract, type TransactionAPI, type DonationsResponse, type DonationsFilter, updateDonation, deleteDonation, type UpdateDonationRequest } from "../../services/DonationService";
 import { useAuth } from "../../context/AuthContext";
 import { generateExcelBlob, downloadExcelFromBlob } from "../../utils/ExportToExcel";
 import { getTreasurer, type GetTreasurerResponse } from "../../services/UserService";
@@ -277,27 +277,72 @@ const TransaksiDonasi: React.FC = () => {
   };
 
   // Helper untuk Download Instan (Manual)
-  const handleInstantDownload = () => {
-    if (sortedTransactions.length === 0) {
-      toast("Tidak ada data untuk diunduh.", { icon: "⚠️" });
-      return;
+  const handleInstantDownload = async () => {
+    if (!token) return;
+
+    const getRfc3339 = (dateStr: string, isEnd: boolean) => {
+      if (!dateStr) return undefined;
+      const time = isEnd ? "T23:59:59Z" : "T00:00:00Z";
+      return `${dateStr}${time}`;
+    };
+
+    let extractFilters: {
+      provinsi?: string;
+      kabupaten_kota?: string;
+      kecamatan?: string;
+      desa_kelurahan?: string;
+      startDate?: string;
+      endDate?: string;
+    };
+
+    if (userRole === "user") {
+      extractFilters = {
+        provinsi: userRegionFilter.province,
+        kabupaten_kota: userRegionFilter.city,
+        kecamatan: userRegionFilter.subdistrict,
+        desa_kelurahan: userRegionFilter.village,
+        startDate: getRfc3339(startDateFilter, false),
+        endDate: getRfc3339(endDateFilter, true),
+      };
+    } else {
+      extractFilters = {
+        provinsi: addressFilters.province || undefined,
+        kabupaten_kota: addressFilters.city || undefined,
+        kecamatan: addressFilters.subdistrict || undefined,
+        desa_kelurahan: addressFilters.village || undefined,
+        startDate: getRfc3339(startDateFilter, false),
+        endDate: getRfc3339(endDateFilter, true),
+      };
     }
 
-    const dataToExport = sortedTransactions.map((t) => ({
-      ID_Transaksi: t.id,
-      Tanggal: t.tanggalFormatted,
-      Donatur: t.name,
-      Provinsi: t.provinsi,
-      Kota: t.kabupaten_kota,
-      Kecamatan: t.kecamatan,
-      Desa: t.desa_kelurahan,
-      Total_Donasi: t.total,
-    }));
+    const toastId = toast.loading("Mengambil data untuk Excel...");
+    try {
+      const results = await getDonationsExtract(token, extractFilters);
 
-    const filename = "Laporan_Donasi_INUK";
-    const excelBlob = generateExcelBlob(dataToExport, "Transaksi");
-    if (excelBlob) {
-      downloadExcelFromBlob(excelBlob, filename);
+      if (results.length === 0) {
+        toast("Tidak ada data untuk diunduh.", { icon: "⚠️", id: toastId });
+        return;
+      }
+
+      const dataToExport = results.map((t, index) => ({
+        No: index + 1,
+        No_Alat: t.kaleng,
+        Tanggal: new Date(t.date_time).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
+        Donatur: t.name,
+        Kecamatan: t.kecamatan,
+        Desa: t.desa_kelurahan,
+        Total_Donasi: t.total,
+      }));
+
+      const filename = "Laporan_Donasi_INUK";
+      const excelBlob = generateExcelBlob(dataToExport, "Transaksi");
+      if (excelBlob) {
+        downloadExcelFromBlob(excelBlob, filename);
+        toast.success("Excel berhasil diunduh!", { id: toastId });
+      }
+    } catch (error: any) {
+      toast.error("Gagal mengunduh data Excel.", { id: toastId });
+      console.error("Extract Download Error:", error);
     }
   };
 
@@ -365,54 +410,55 @@ const TransaksiDonasi: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
               <FaFilter className="mr-2 text-primary" /> Filter Data
             </h3>
-            {isUserRole && (
-              <div className="flex space-x-2 flex-wrap justify-end">
-                {/* Tampilkan Data Bendahara */}
-                <div className="bg-yellow-50 p-2 rounded-lg text-xs self-center border border-yellow-200 mr-4 hidden sm:block">
-                  <p className="font-semibold text-yellow-800">Bendahara Aktif:</p>
-                  {isTreasurerLoading ? (
-                    <p className="text-gray-700 flex items-center">Memuat...</p>
-                  ) : (
-                    <p className="text-gray-700">
-                      {treasurerData.treasurer_phone} ({treasurerData.treasurer_name})
-                    </p>
-                  )}
-                </div>
+            <div className="flex space-x-2 flex-wrap justify-end">
+              {isUserRole && (
+                <>
+                  {/* Tampilkan Data Bendahara */}
+                  <div className="bg-yellow-50 p-2 rounded-lg text-xs self-center border border-yellow-200 mr-4 hidden sm:block">
+                    <p className="font-semibold text-yellow-800">Bendahara Aktif:</p>
+                    {isTreasurerLoading ? (
+                      <p className="text-gray-700 flex items-center">Memuat...</p>
+                    ) : (
+                      <p className="text-gray-700">
+                        {treasurerData.treasurer_phone} ({treasurerData.treasurer_name})
+                      </p>
+                    )}
+                  </div>
 
-                {/* Tombol Konfirmasi & Kirim Laporan */}
-                <motion.button
-                  onClick={() => setIsBendaharaModalOpen(true)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors mb-2"
-                  title="Konfirmasi data bendahara dan kirim laporan via WhatsApp"
-                >
-                  <FaWhatsapp className="mr-2" /> Kirim Notifikasi WhatsApp
-                </motion.button>
-
-                {/* Tombol Download Instan (Manual Backup) */}
-                <motion.button
-                  onClick={handleInstantDownload}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-indigo-600 transition-colors mb-2"
-                >
-                  <FaFileExcel className="mr-2" /> Download Excel
-                </motion.button>
-
-                {/* Tombol Tambah Transaksi */}
-                {!isUserBlocked && (
+                  {/* Tombol Konfirmasi & Kirim Laporan */}
                   <motion.button
-                    onClick={handleAddTransactionClick}
+                    onClick={() => setIsBendaharaModalOpen(true)}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-700 transition-colors mb-2"
+                    className="bg-green-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors mb-2"
+                    title="Konfirmasi data bendahara dan kirim laporan via WhatsApp"
+                  >
+                    <FaWhatsapp className="mr-2" /> Kirim Notifikasi WhatsApp
+                  </motion.button>
+                </>
+              )}
+
+              {/* Tombol Download Excel - visible for all roles */}
+              <motion.button
+                onClick={handleInstantDownload}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-indigo-600 transition-colors mb-2"
+              >
+                <FaFileExcel className="mr-2" /> Download Excel
+              </motion.button>
+
+              {isUserRole && !isUserBlocked && (
+                <motion.button
+                  onClick={handleAddTransactionClick}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-700 transition-colors mb-2"
                   >
                     <FaPlus className="mr-2" /> Tambah Transaksi
                   </motion.button>
                 )}
               </div>
-            )}
           </div>
 
           {/* Input Filter Grid */}

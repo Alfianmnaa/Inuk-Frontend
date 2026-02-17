@@ -37,12 +37,6 @@ const Navbar: React.FC = () => {
             </a>
           </div>
           <div className="flex space-x-4 text-sm">
-            <Link to="/register" className="flex items-center space-x-1 hover:text-primary transition-colors">
-              {" "}
-              {/* Menggunakan Link */}
-              <FaUser size={16} className="mr-2 text-primary" />
-              <span>Register</span>
-            </Link>
             <Link to="/login" className="flex items-center space-x-1 hover:text-primary transition-colors">
               {" "}
               {/* Menggunakan Link */}

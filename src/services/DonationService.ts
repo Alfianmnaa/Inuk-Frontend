@@ -197,6 +197,25 @@ export interface ExportDonationsResponse {
   file_name?: string;
 }
 
+// Interface for /donations/extract query
+export interface DonationsExtractFilter {
+  provinsi?: string;
+  kabupaten_kota?: string;
+  kecamatan?: string;
+  desa_kelurahan?: string;
+  startDate?: string; // RFC3339 format
+  endDate?: string; // RFC3339 format
+}
+
+// GET /donations/extract (Download all matching records, no pagination)
+export const getDonationsExtract = async (token: string, filters: DonationsExtractFilter): Promise<TransactionAPI[]> => {
+  const response = await axios.get<TransactionAPI[]>(`${VITE_API_URL}/donations/extract`, {
+    params: filters,
+    ...getAuthHeaders(token),
+  });
+  return response.data;
+};
+
 export const exportDonations = async (
   token: string,
   query: ExportDonationsDateQuery = {}
