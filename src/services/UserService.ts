@@ -195,9 +195,9 @@ export const updateTreasurer = async (token: string, payload: UpdateTreasurerPay
 };
 
 // --- BARU: Admin Register User (Tambah User) ---
-export const adminRegisterUser = async (token: string, payload: RegisterUserPayload, role: "user" | "admin"): Promise<any> => {
-  // Endpoint yang dipanggil sesuai role yang akan dibuat
-  const endpoint = role === "admin" ? "/admin/register" : "/register";
+export const adminRegisterUser = async (token: string, payload: RegisterUserPayload): Promise<any> => {
+  // Endpoint untuk menambahkan user
+  const endpoint = "/register";
   try {
     // NOTE: Endpoint register tidak di bawah middleware Admin, namun kita tetap kirim token untuk konsistensi
     const response: AxiosResponse<any> = await axios.post(`${VITE_API_URL}${endpoint}`, payload, getAuthHeaders(token));

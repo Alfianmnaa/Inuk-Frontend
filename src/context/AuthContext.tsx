@@ -5,8 +5,8 @@ import type { ReactNode } from "react";
 interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
-  userRole: "user" | "admin" | null;
-  login: (token: string, role: "user" | "admin") => void;
+  userRole: "user" | "admin" | "superadmin" | null;
+  login: (token: string, role: "user" | "admin" | "superadmin") => void;
   logout: () => void;
 }
 
@@ -16,12 +16,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
 
   const storedRole = localStorage.getItem("userRole");
-  const initialRole = storedRole === "user" || storedRole === "admin" ? storedRole : null;
-  const [userRole, setUserRole] = useState<"user" | "admin" | null>(initialRole);
+  const initialRole = storedRole === "user" || storedRole === "admin"  || storedRole == "superadmin" ? storedRole : null;
+  const [userRole, setUserRole] = useState<"user" | "admin" | "superadmin" | null>(initialRole);
 
   const isAuthenticated = !!token;
 
-  const login = (newToken: string, role: "user" | "admin") => {
+  const login = (newToken: string, role: "user" | "admin" | "superadmin") => {
     localStorage.setItem("token", newToken);
     localStorage.setItem("userRole", role);
     setToken(newToken);

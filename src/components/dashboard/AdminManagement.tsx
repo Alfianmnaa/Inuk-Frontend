@@ -5,17 +5,17 @@ import { Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import DashboardLayout from "./DashboardLayout";
-import AddEditUserModal from "./ui/AddEditUserModal";
-import DeleteUserModal from "./ui/DeleteUserModal";
+import AddEditAdminModal from "./ui/AddEditAdminModal";
+import DeleteAdminModal from "./ui/DeleteAdminModal";
 
-// [BARU] Import fungsi API
-import { getUsers, deleteUser, type GetUsersResponse } from "../../services/UserService";
+// Import fungsi API dari AdminService
+import { getAdmins, deleteAdmin, type GetAdminsResponse } from "../../services/AdminService";
 import { useAuth } from "../../context/AuthContext";
 
 // --- Data & Interfaces ---
 
-// Interface UserDisplay harus konsisten dengan modal
-export interface UserDisplay {
+// Interface AdminDisplay harus konsisten dengan modal
+export interface AdminDisplay {
   id: string;
   name: string;
   phone: string;
@@ -24,13 +24,13 @@ export interface UserDisplay {
 }
 
 // Helper function untuk Sorting
-type SortKeys = keyof UserDisplay | null;
+type SortKeys = keyof AdminDisplay | null;
 interface SortConfig {
   key: SortKeys;
   direction: "ascending" | "descending";
 }
 
-const TableSortHeader: React.FC<{ label: string; sortKey: keyof UserDisplay; sortConfig: SortConfig; requestSort: (key: keyof UserDisplay) => void }> = ({ label, sortKey, sortConfig, requestSort }) => {
+const TableSortHeader: React.FC<{ label: string; sortKey: keyof AdminDisplay; sortConfig: SortConfig; requestSort: (key: keyof AdminDisplay) => void }> = ({ label, sortKey, sortConfig, requestSort }) => {
   const isSorted = sortConfig.key === sortKey;
   const direction = sortConfig.direction;
 
@@ -51,9 +51,9 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
 };
 
-const UserManagement: React.FC = () => {
+const AdminManagement: React.FC = () => {
   const { token } = useAuth();
-  const [usersList, setUsersList] = useState<UserDisplay[]>([]); // State untuk data nyata
+  const [adminsList, setAdminsList] = useState<AdminDisplay[]>([]); // State untuk data nyata
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "name", direction: "ascending" });
   const [isLoading, setIsLoading] = useState(true);
@@ -61,69 +61,69 @@ const UserManagement: React.FC = () => {
   // State untuk Modal
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserDisplay | null>(null);
+  const [selectedAdmin, setSelectedAdmin] = useState<AdminDisplay | null>(null);
 
-  // --- Data Fetching Function (MODIFIKASI INI) ---
-  const fetchUsers = useCallback(async () => {
+  // --- Data Fetching Function ---
+  const fetchAdmins = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
     try {
-      // 1. Panggil API untuk Verified Users (terikat region)
-      const verifiedUsersData: GetUsersResponse[] = await getUsers(token, searchTerm, undefined, true);
+      // 1. Panggil API untuk Verified Admins (terikat region)
+      const verifiedAdminsData: GetAdminsResponse[] = await getAdmins(token, searchTerm, undefined, true);
 
-      // 2. Panggil API untuk Unverified Users (tidak terikat region)
-      const unverifiedUsersData: GetUsersResponse[] = await getUsers(token, searchTerm, undefined, false);
+      // 2. Panggil API untuk Unverified Admins (tidak terikat region)
+      const unverifiedAdminsData: GetAdminsResponse[] = await getAdmins(token, searchTerm, undefined, false);
 
       // 3. Gabungkan hasil dari kedua panggilan ke dalam Map untuk menghilangkan duplikasi
-      const combinedUsersMap = new Map<string, GetUsersResponse>();
+      const combinedAdminsMap = new Map<string, GetAdminsResponse>();
 
-      // Tambahkan verified users
-      verifiedUsersData?.forEach((user) => combinedUsersMap.set(user.id, user));
-      // Tambahkan unverified users (yang belum ada di Map)
-      unverifiedUsersData?.forEach((user) => {
-        if (!combinedUsersMap.has(user.id)) {
-          combinedUsersMap.set(user.id, user);
+      // Tambahkan verified admins
+      verifiedAdminsData?.forEach((admin) => combinedAdminsMap.set(admin.id, admin));
+      // Tambahkan unverified admins (yang belum ada di Map)
+      unverifiedAdminsData?.forEach((admin) => {
+        if (!combinedAdminsMap.has(admin.id)) {
+          combinedAdminsMap.set(admin.id, admin);
         }
       });
 
-      const uniqueUsersData = Array.from(combinedUsersMap.values());
+      const uniqueAdminsData = Array.from(combinedAdminsMap.values());
 
       // Mengubah data API ke format tampilan
-      const mappedData: UserDisplay[] = uniqueUsersData.map((u) => ({
-        id: u.id,
-        name: u.name,
-        phone: u.phone,
+      const mappedData: AdminDisplay[] = uniqueAdminsData.map((a) => ({
+        id: a.id,
+        name: a.name,
+        phone: a.phone,
         // Cek jika region_id bukan nilai nol dan ada isinya
-        isPJT: u.region_id !== "00000000-0000-0000-0000-000000000000" && !!u.region_id,
+        isPJT: a.region_id !== "00000000-0000-0000-0000-000000000000" && !!a.region_id,
         // Untuk Region Name, kita pakai placeholder ID atau "Terikat"
-        regionName: u.region_id && u.region_id !== "00000000-0000-0000-0000-000000000000" ? `Terikat (${u.region_id.substring(0, 8)}...)` : "-",
+        regionName: a.region_id && a.region_id !== "00000000-0000-0000-0000-000000000000" ? `Terikat (${a.region_id.substring(0, 8)}...)` : "-",
       }));
-      setUsersList(mappedData);
+      setAdminsList(mappedData);
     } catch (error: any) {
-      setUsersList([]);
-      toast.error(error.message || "Gagal memuat data pengguna.");
-      console.error("Fetch Users Error:", error.response?.data || error);
+      setAdminsList([]);
+      toast.error(error.message || "Gagal memuat data admin.");
+      console.error("Fetch Admins Error:", error.response?.data || error);
     } finally {
       setIsLoading(false);
     }
   }, [token, searchTerm]);
 
-  // Effect untuk memuat data pengguna saat mount dan saat search term berubah
+  // Effect untuk memuat data admin saat mount dan saat search term berubah
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    fetchAdmins();
+  }, [fetchAdmins]);
 
   // Handler sukses (refresh data)
   const handleSuccess = () => {
-    fetchUsers();
+    fetchAdmins();
     setIsAddEditModalOpen(false);
     setIsDeleteModalOpen(false);
-    setSelectedUser(null);
+    setSelectedAdmin(null);
   };
 
   // 1. Logika Filtering & Searching
-  const filteredUsers = useMemo(() => {
-    let filtered = usersList;
+  const filteredAdmins = useMemo(() => {
+    let filtered = adminsList;
 
     // 2. Logika Sorting
     let sortableItems = [...filtered];
@@ -138,9 +138,9 @@ const UserManagement: React.FC = () => {
       });
     }
     return sortableItems;
-  }, [usersList, sortConfig]);
+  }, [adminsList, sortConfig]);
 
-  const requestSort = (key: keyof UserDisplay) => {
+  const requestSort = (key: keyof AdminDisplay) => {
     let direction: "ascending" | "descending" = "ascending";
     if (sortConfig.key === key && sortConfig.direction === "ascending") {
       direction = "descending";
@@ -150,17 +150,17 @@ const UserManagement: React.FC = () => {
 
   // Handlers Modal
   const handleAddClick = () => {
-    setSelectedUser(null); // Mode Add
+    setSelectedAdmin(null); // Mode Add
     setIsAddEditModalOpen(true);
   };
 
-  const handleEditClick = (user: UserDisplay) => {
-    setSelectedUser(user); // Mode Edit
+  const handleEditClick = (admin: AdminDisplay) => {
+    setSelectedAdmin(admin); // Mode Edit
     setIsAddEditModalOpen(true);
   };
 
-  const handleDeleteClick = (user: UserDisplay) => {
-    setSelectedUser(user);
+  const handleDeleteClick = (admin: AdminDisplay) => {
+    setSelectedAdmin(admin);
     setIsDeleteModalOpen(true);
   };
 
@@ -168,32 +168,32 @@ const UserManagement: React.FC = () => {
     if (!token) return;
     setIsLoading(true);
     try {
-      await deleteUser(token, id); // Panggil fungsi DELETE API yang baru
-      toast.success(`Pengguna berhasil dihapus!`);
+      await deleteAdmin(token, id); // Panggil fungsi DELETE API
+      toast.success(`Admin berhasil dihapus!`);
       handleSuccess();
     } catch (error: any) {
-      toast.error(error.message || "Gagal menghapus pengguna. Mungkin terikat Region.");
+      toast.error(error.message || "Gagal menghapus admin. Mungkin terikat Region.");
       console.error("Delete Error:", error);
     }
   };
 
   return (
-    <DashboardLayout activeLink="/dashboard/user-management" pageTitle="Manajemen Pengguna (Inputer/Admin)">
+    <DashboardLayout activeLink="/dashboard/admin-management" pageTitle="Manajemen Admin">
       <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
         {/* Modal Tambah/Edit */}
-        <AddEditUserModal isOpen={isAddEditModalOpen} onClose={() => setIsAddEditModalOpen(false)} onSuccess={handleSuccess} initialData={selectedUser} />
+        <AddEditAdminModal isOpen={isAddEditModalOpen} onClose={() => setIsAddEditModalOpen(false)} onSuccess={handleSuccess} initialData={selectedAdmin} />
 
         {/* Modal Hapus */}
-        {selectedUser && <DeleteUserModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} user={selectedUser} onConfirmDelete={handleConfirmDelete} />}
+        {selectedAdmin && <DeleteAdminModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} admin={selectedAdmin} onConfirmDelete={handleConfirmDelete} />}
 
         {/* Filter dan Aksi */}
         <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-              <FaUsers className="mr-2 text-primary" /> Kelola Daftar Pengguna ({usersList.length})
+              <FaUsers className="mr-2 text-primary" /> Kelola Daftar Admin ({adminsList.length})
             </h3>
             <motion.button onClick={handleAddClick} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors">
-              <FaPlus className="mr-2" /> Tambah Pengguna
+              <FaPlus className="mr-2" /> Tambah Admin
             </motion.button>
           </div>
 
@@ -216,14 +216,14 @@ const UserManagement: React.FC = () => {
           )}
         </motion.div>
 
-        {/* Tabel Data Pengguna */}
+        {/* Tabel Data Admin */}
         <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg overflow-x-auto">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <FaUsers className="mr-2 text-primary" /> Daftar Pengguna (Total: {usersList.length})
+            <FaUsers className="mr-2 text-primary" /> Daftar Admin (Total: {adminsList.length})
           </h3>
           {isLoading ? (
             <div className="text-center py-10 text-gray-500 flex items-center justify-center">
-              <FaSpinner className="animate-spin mr-3" /> Memuat data pengguna...
+              <FaSpinner className="animate-spin mr-3" /> Memuat data admin...
             </div>
           ) : (
             <table className="min-w-full table-auto border-collapse">
@@ -237,24 +237,24 @@ const UserManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.length > 0 ? (
-                  filteredUsers.map((u) => (
-                    <tr key={u.id} className="text-sm text-gray-700 border-b hover:bg-green-50/50 transition-colors">
-                      <td className="py-3 px-4 font-mono text-xs max-w-25 truncate">{u.id.substring(0, 8)}...</td>
-                      <td className="py-3 px-4 font-semibold text-gray-900">{u.name}</td>
-                      <td className="py-3 px-4">{u.phone}</td>
+                {filteredAdmins.length > 0 ? (
+                  filteredAdmins.map((a) => (
+                    <tr key={a.id} className="text-sm text-gray-700 border-b hover:bg-green-50/50 transition-colors">
+                      <td className="py-3 px-4 font-mono text-xs max-w-25 truncate">{a.id.substring(0, 8)}...</td>
+                      <td className="py-3 px-4 font-semibold text-gray-900">{a.name}</td>
+                      <td className="py-3 px-4">{a.phone}</td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${u.isPJT ? "bg-primary/20 text-primary" : "bg-red-100 text-red-700"}`}>
+                        <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${a.isPJT ? "bg-primary/20 text-primary" : "bg-red-100 text-red-700"}`}>
                           <FaMapMarkerAlt className="w-3 h-3 mr-1" />
-                          {u.isPJT ? u.regionName : "Belum Terikat"}
+                          {a.isPJT ? a.regionName : "Belum Terikat"}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center space-x-2">
-                          <button onClick={() => handleEditClick(u)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors" title="Edit Pengguna">
+                          <button onClick={() => handleEditClick(a)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors" title="Edit Admin">
                             <Edit size={18} />
                           </button>
-                          <button onClick={() => handleDeleteClick(u)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors" title="Hapus Pengguna">
+                          <button onClick={() => handleDeleteClick(a)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors" title="Hapus Admin">
                             <Trash2 size={18} />
                           </button>
                         </div>
@@ -264,7 +264,7 @@ const UserManagement: React.FC = () => {
                 ) : (
                   <tr>
                     <td colSpan={5} className="py-8 text-center text-gray-500 italic">
-                      Tidak ada data pengguna yang ditemukan.
+                      Tidak ada data admin yang ditemukan.
                     </td>
                   </tr>
                 )}
@@ -277,4 +277,4 @@ const UserManagement: React.FC = () => {
   );
 };
 
-export default UserManagement;
+export default AdminManagement;

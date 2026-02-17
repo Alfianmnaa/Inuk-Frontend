@@ -26,7 +26,7 @@ ifeq ($(OS),Windows_NT)
 
     STAGING_DOMAIN := $(shell for /f "tokens=2 delims==" %%A in ('findstr "^CLIENT_DOMAIN=" $(ENV_STAGING)') do @echo %%A)
     STAGING_DOMAIN := $(if $(STAGING_DOMAIN),$(STAGING_DOMAIN),localhost)
-	
+
 	PROD_DOMAIN := $(shell for /f "tokens=2 delims==" %%A in ('findstr "^CLIENT_DOMAIN=" $(ENV_PROD)') do @echo %%A)
     PROD_DOMAIN := $(if $(PROD_DOMAIN),$(PROD_DOMAIN),localhost)
 else
@@ -167,6 +167,53 @@ logs-prod:
 	@echo "🌐 Available at (PROD): $(PROD_URL)"
 
 # ===============================
+# 📦 DEPENDENCIES (NEW)
+# ===============================
+
+install:
+		@echo "📦 Installing npm dependencies..."
+		npm install
+		@echo "✅ Dependencies installed"
+
+update:
+		@echo "🔄 Updating dependencies..."
+		npm update
+		@echo "✅ Dependencies updated"
+
+# ===============================
+# 🚀 LOCAL DEV (NEW - with Nix)
+# ===============================
+
+run-local:
+		@echo "🚀 Starting Vite dev server locally..."
+		@echo "React app: http://localhost:5173"
+		@echo ""
+		@echo "⚠️  Note: Storage files (/uploads, /exports) need nginx:"
+		@echo "    In another terminal: make up-storage"
+		@echo ""
+		npm run dev
+
+up-storage:
+		@echo "🗄️ Starting storage nginx container..."
+		docker compose -f $(COMPOSE_DEV) --env-file $(ENV_DEV) up -d client-storage-dev
+		@echo "✅ Storage nginx running"
+		@echo "   Test: curl http://localhost/nginx-health"
+
+down-storage:
+		@echo "🛑 Stopping storage nginx..."
+		docker compose -f $(COMPOSE_DEV) --env-file $(ENV_DEV) stop client-storage-dev
+		@echo "✅ Storage nginx stopped"
+
+# ===============================
+# 🧹 CLEANUP (NEW)
+# ===============================
+
+clean-local:
+		@echo "🧹 Cleaning build artifacts..."
+		rm -rf dist dev-dist node_modules/.vite
+		@echo "✅ Cleaned"
+
+# ===============================
 # 📖 HELP
 # ===============================
 
@@ -178,6 +225,13 @@ help:
 	@echo "  make reset-dev / reset-staging / reset-prod        -> Down + remove volumes"
 	@echo "  make clean-dev / clean-staging / clean-prod        -> Remove images + volumes"
 	@echo "  make logs-dev / logs-staging / logs-prod           -> Follow logs"
+	@echo ""
+	@echo "Local Dev Mode:"
+	@echo "  make install             Install npm dependencies"
+	@echo "  make run-local           Vite dev server (instant hot reload)"
+	@echo "  make up-storage          Start storage nginx only"
+	@echo "  make down-storage        Stop storage nginx"
+	@echo "  make clean-local         Clean build artifacts"
 	@echo ""
 	@echo "🌍 URLs:"
 	@echo "  DEV: $(DEV_URL)"

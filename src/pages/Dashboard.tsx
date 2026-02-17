@@ -10,6 +10,7 @@ import RegionManagement from "../components/dashboard/RegionManagement";
 import TransaksiDonasi from "../components/dashboard/TransaksiDonasi";
 import DonaturManagement from "../components/dashboard/DonaturManagement";
 import UserManagement from "../components/dashboard/UserManagement";
+import AdminManagement from "../components/dashboard/AdminManagement";
 import ArticleEditor from "../components/dashboard/ArticleEditor";
 
 // Halaman Dummy Dashboard Utama
@@ -83,6 +84,16 @@ const DashboardRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
+          
+      <Route
+        path="/admin-management"
+        element={
+          <ProtectedRoute>
+            <AdminManagement />
+          </ProtectedRoute>
+        }
+      />
+          
       <Route
         path="/cms-berita"
         element={

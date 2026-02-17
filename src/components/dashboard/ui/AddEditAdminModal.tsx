@@ -4,11 +4,11 @@ import { FaSave, FaSpinner, FaUser, FaPhoneAlt, FaLock, FaEye, FaEyeSlash } from
 import { X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "../../../context/AuthContext";
-// Import fungsi API
-import { adminRegisterUser, updateUser, type RegisterUserPayload, type UpdateUserPayload } from "../../../services/UserService";
+// Import fungsi API dari AdminService
+import { adminRegisterAdmin, updateAdmin, type RegisterAdminPayload, type UpdateAdminPayload } from "../../../services/AdminService";
 
-// Interface UserDisplay harus konsisten dengan yang di UserManagement.tsx
-export interface UserDisplay {
+// Interface AdminDisplay harus konsisten dengan yang di AdminManagement.tsx
+export interface AdminDisplay {
   id: string;
   name: string;
   phone: string;
@@ -16,14 +16,14 @@ export interface UserDisplay {
   regionName: string;
 }
 
-interface AddEditUserModalProps {
+interface AddEditAdminModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  initialData?: UserDisplay | null;
+  initialData?: AdminDisplay | null;
 }
 
-const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, onSuccess, initialData }) => {
+const AddEditAdminModal: React.FC<AddEditAdminModalProps> = ({ isOpen, onClose, onSuccess, initialData }) => {
   const { token } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState("");
@@ -69,7 +69,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
       return;
     }
     if (!isEditMode && !password) {
-      toast.error("Kata Sandi wajib diisi saat menambahkan pengguna baru.");
+      toast.error("Kata Sandi wajib diisi saat menambahkan admin baru.");
       return;
     }
 
@@ -88,33 +88,33 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
       }
 
       if (isEditMode && initialData) {
-        // --- MODE EDIT (PATCH /admin/user/:id) ---
-        const updatePayload: UpdateUserPayload = {
+        // --- MODE EDIT (PATCH /superadmin/admin/:id) ---
+        const updatePayload: UpdateAdminPayload = {
           name: name,
           phone: finalPhone,
           // region_id TIDAK disertakan, sehingga backend akan menggunakan nilai yang ada
         };
-        await updateUser(token, initialData.id, updatePayload);
-        toast.success(`Pengguna ${name} berhasil diperbarui!`);
+        await updateAdmin(token, initialData.id, updatePayload);
+        toast.success(`Admin ${name} berhasil diperbarui!`);
       } else {
-        // --- MODE CREATE (POST /user/register) ---
-        const registerPayload: RegisterUserPayload = {
+        // --- MODE CREATE (POST /admin/register) ---
+        const registerPayload: RegisterAdminPayload = {
           name: name,
           phone: finalPhone,
           password: password,
         };
-        // Always create as "user" role
-        await adminRegisterUser(token, registerPayload);
-        toast.success(`Pengguna ${name} berhasil ditambahkan!`);
+        // Always create as "admin" role
+        await adminRegisterAdmin(token, registerPayload);
+        toast.success(`Admin ${name} berhasil ditambahkan!`);
       }
 
       onSuccess();
       onClose();
     } catch (error: any) {
       const errorData = error.response?.data;
-      const errorMsg = errorData?.message || errorData?.error || "Gagal menyimpan data Pengguna. Cek konsol.";
+      const errorMsg = errorData?.message || errorData?.error || "Gagal menyimpan data Admin. Cek konsol.";
       toast.error(errorMsg);
-      console.error("User Save Error:", errorData || error);
+      console.error("Admin Save Error:", errorData || error);
     } finally {
       setIsSubmitting(false);
     }
@@ -124,7 +124,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/30 backdrop-blur flex justify-center items-center z-1050 h-full">
       <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }} className="bg-white p-6 m-4 rounded-xl w-full max-w-md shadow-2xl">
         <div className="flex justify-between items-center border-b pb-3 mb-4">
-          <h3 className="text-xl font-bold text-gray-800">{isEditMode ? "Edit Data Pengguna" : "Tambah Pengguna Baru"}</h3>
+          <h3 className="text-xl font-bold text-gray-800">{isEditMode ? "Edit Data Admin" : "Tambah Admin Baru"}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={20} />
           </button>
@@ -139,7 +139,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Nama Lengkap Pengguna"
+              placeholder="Nama Lengkap Admin"
               className="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 focus:ring-primary focus:border-primary"
               required
               disabled={isSubmitting}
@@ -183,7 +183,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
           )}
 
           {/* Info Tambahan di Mode Edit */}
-          {isEditMode && initialData?.isPJT && <div className="mb-4 text-sm text-red-500 bg-red-50 p-3 rounded-lg border border-red-200">*Pengguna ini terikat sebagai PJT Region. Perubahan PJT dilakukan di halaman Manajemen Wilayah.</div>}
+          {isEditMode && initialData?.isPJT && <div className="mb-4 text-sm text-red-500 bg-red-50 p-3 rounded-lg border border-red-200">*Admin ini terikat sebagai PJT Region. Perubahan PJT dilakukan di halaman Manajemen Wilayah.</div>}
 
           {/* Tombol Submit */}
           <div className="flex justify-end space-x-3">
@@ -196,7 +196,7 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
               className="py-2 px-4 bg-primary text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center disabled:opacity-50"
             >
               {isSubmitting ? <FaSpinner className="animate-spin mr-2" /> : <FaSave className="mr-2" />}
-              {isEditMode ? "Simpan Perubahan" : "Tambah Pengguna"}
+              {isEditMode ? "Simpan Perubahan" : "Tambah Admin"}
             </button>
           </div>
         </form>
@@ -205,4 +205,4 @@ const AddEditUserModal: React.FC<AddEditUserModalProps> = ({ isOpen, onClose, on
   );
 };
 
-export default AddEditUserModal;
+export default AddEditAdminModal;

@@ -2,16 +2,25 @@ import React, { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { FaSpinner } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
-import { type RegionDetail } from "../../../services/RegionService";
 
-interface DeleteRegionModalProps {
+// Interface AdminDisplay harus konsisten dengan yang di AdminManagement.tsx
+export interface AdminDisplay {
+  id: string;
+  name: string;
+  phone: string;
+  isPJT: boolean;
+  regionName: string;
+}
+
+interface DeleteAdminModalProps {
   isOpen: boolean;
   onClose: () => void;
-  region: RegionDetail;
+  admin: AdminDisplay;
+  // Placeholder function for confirmation
   onConfirmDelete: (id: string) => Promise<void>;
 }
 
-const DeleteRegionModal: React.FC<DeleteRegionModalProps> = ({ isOpen, onClose, region, onConfirmDelete }) => {
+const DeleteAdminModal: React.FC<DeleteAdminModalProps> = ({ isOpen, onClose, admin, onConfirmDelete }) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   if (!isOpen) return null;
@@ -19,10 +28,9 @@ const DeleteRegionModal: React.FC<DeleteRegionModalProps> = ({ isOpen, onClose, 
   const handleConfirm = async () => {
     setIsDeleting(true);
     try {
-      await onConfirmDelete(region.id);
-      // Success is handled by parent, which will close the modal
+      await onConfirmDelete(admin.id);
     } catch (error) {
-      // Error is handled by the parent component (RegionManagement)
+      // Error handling is managed by the parent component (AdminManagement)
     } finally {
       setIsDeleting(false);
     }
@@ -38,16 +46,16 @@ const DeleteRegionModal: React.FC<DeleteRegionModalProps> = ({ isOpen, onClose, 
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100">
                 <Trash2 className="h-8 w-8 text-red-600" aria-hidden="true" />
               </div>
-              <h3 className="text-2xl font-bold text-red-700 mt-4">Hapus Region?</h3>
+              <h3 className="text-2xl font-bold text-red-700 mt-4">Hapus Admin?</h3>
             </div>
 
             <p className="mt-4 text-base text-gray-700 text-center">
-              Anda akan menghapus region <b>{region.desa_kelurahan}</b>, Kecamatan <b>{region.kecamatan}</b>.
+              Anda akan menghapus admin <b>{admin.name}</b>.
             </p>
-
-            <p className="text-sm text-center text-red-500 mt-1">
-              Aksi ini <b>tidak dapat dibatalkan</b> dan mungkin akan gagal jika Donasi/Donatur masih terikat dengan region ini di backend.
+            <p className="mt-2 text-sm text-gray-600 text-center">
+              Telepon: <span className="font-semibold">{admin.phone}</span>.
             </p>
+            {admin.isPJT && <p className="text-sm text-center text-red-500 mt-1">*PERINGATAN: Admin ini terikat sebagai PJT Region **{admin.regionName}**. Penghapusan bisa gagal di backend.</p>}
 
             <div className="mt-8 flex justify-between space-x-3">
               <button
@@ -75,4 +83,4 @@ const DeleteRegionModal: React.FC<DeleteRegionModalProps> = ({ isOpen, onClose, 
   );
 };
 
-export default DeleteRegionModal;
+export default DeleteAdminModal;

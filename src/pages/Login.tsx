@@ -30,7 +30,7 @@ const Login: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-  const attemptLogin = async (endpoint: string, role: "user" | "admin") => {
+  const attemptLogin = async (endpoint: string, role: "user" | "admin" | "superadmin") => {
     // 1. Konversi Nomor HP ke format +62
     let phoneInput = formData.phone;
     if (phoneInput.startsWith("0")) {
@@ -69,7 +69,15 @@ const Login: React.FC = () => {
             await attemptLogin("/admin/login", "admin");
             success = true;
           } catch (adminError: any) {
-            finalError = adminError.response?.data?.message || adminError.response?.data?.error || finalError;
+              finalError = adminError.response?.data?.message || adminError.response?.data?.error || finalError;
+              if (finalError.includes("Invalid password") || finalError.includes("invalid_credentials")) {
+                try {
+                  await attemptLogin("/superadmin/login", "superadmin");
+                  success = true;
+                } catch (adminError: any) {
+                  finalError = adminError.response?.data?.message || adminError.response?.data?.error || finalError;
+                }
+              }
           }
         }
       }

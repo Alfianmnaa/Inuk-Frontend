@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: dev
-    container_name: inuk-client
+    container_name: inuk-client-dev
     env_file: .env.dev
     environment:
       VITE_API_URL: ${VITE_API_URL}
@@ -16,6 +16,28 @@ services:
     restart: unless-stopped
     networks:
       - inuk-network
+
+  # NEW: nginx for storage files
+  client-storage-dev:
+    image: nginx:alpine
+    container_name: inuk-client-storage-dev
+    volumes:
+      - ../storage/uploads:/usr/share/nginx/uploads:ro
+      - ../storage/exports/donations:/usr/share/nginx/exports/donations:ro
+      - ./nginx-storage.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+    networks:
+      - inuk-network
+    labels:
+      - "traefik.enable=true"
+      # Route /uploads requests to this nginx
+      - "traefik.http.routers.uploads-dev.rule=PathPrefix(`/uploads`)"
+      - "traefik.http.routers.uploads-dev.entrypoints=web"
+      - "traefik.http.services.uploads-dev.loadbalancer.server.port=80"
+      # Route /exports requests to this nginx
+      - "traefik.http.routers.exports-dev.rule=PathPrefix(`/exports`)"
+      - "traefik.http.routers.exports-dev.entrypoints=web"
+      - "traefik.http.services.exports-dev.loadbalancer.server.port=80"
 
 networks:
   inuk-network:

@@ -12,23 +12,24 @@ interface NavItem {
   link: string;
   isHeader?: boolean;
   // NEW: Tentukan peran yang diizinkan
-  roles?: ("user" | "admin")[];
+  roles?: ("user" | "admin" | "superadmin")[];
 }
 
 const DASHBOARD_NAV: NavItem[] = [
   { name: "DASHBOARD UTAMA", icon: FaHome, link: "/dashboard" },
   // { name: "TRANSPARANSI & ANALISIS", icon: FaChartBar, link: "/dashboard/visualisasi", roles: ["user", "admin"] },
   { name: "--- MANAJEMEN DATA ---", icon: FaChevronDown, link: "#", isHeader: true },
-  { name: "Pencatatan Donasi", icon: FaReceipt, link: "/dashboard/transaksi", roles: ["user", "admin"] },
+  { name: "Pencatatan Donasi", icon: FaReceipt, link: "/dashboard/transaksi", roles: ["user", "admin", "superadmin"] },
   { name: "Manajemen Donatur", icon: FaUsers, link: "/dashboard/donatur-management", roles: ["user"] }, // HANYA UNTUK USER
-  { name: "Manajemen Pengguna", icon: FaUsers, link: "/dashboard/user-management", roles: ["admin"] },
-  { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management", roles: ["admin"] }, // HANYA UNTUK ADMIN
-  { name: "--- PENGELOLAAN KONTEN ---", icon: FaChevronDown, link: "#", isHeader: true, roles: ["admin"] },
-  { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita", roles: ["admin"] }, // Dibatasi untuk Admin (asumsi)
+  { name: "Manajemen Pengguna", icon: FaUsers, link: "/dashboard/user-management", roles: ["admin", "superadmin"] },
+  { name: "Manajemen Admin", icon: FaUsers, link: "/dashboard/admin-management", roles: ["superadmin"] },
+  { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management", roles: ["admin", "superadmin"] }, // HANYA UNTUK ADMIN
+  { name: "--- PENGELOLAAN KONTEN ---", icon: FaChevronDown, link: "#", isHeader: true, roles: ["superadmin"] },
+  { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita", roles: ["superadmin"] }, // Dibatasi untuk Admin (asumsi)
 ];
 
 // Sidebar menerima userRole baru
-const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void; activeLink: string; userRole: "user" | "admin" | null }> = ({ isOpen, toggleSidebar, activeLink, userRole }) => {
+const Sidebar: React.FC<{ isOpen: boolean; toggleSidebar: () => void; activeLink: string; userRole: "user" | "admin" | "superadmin" | null }> = ({ isOpen, toggleSidebar, activeLink, userRole }) => {
   return (
     <motion.div
       initial={false}
@@ -135,6 +136,9 @@ const DashboardLayout: React.FC<{ children: React.ReactNode; activeLink: string;
     }
     if (role === "admin") {
       return `login sebagai ADMIN`;
+    }
+    if (role === "superadmin") {
+      return `login sebagai SUPER ADMIN`;
     }
     return "Guest";
   }, [userRegionVillage]);

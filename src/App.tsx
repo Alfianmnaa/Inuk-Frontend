@@ -12,7 +12,7 @@ import InstallPWA from "./components/InstallPWA";
 
 import "./App.css";
 import ScrollToTopButton from "./utils/ScrollToTopButton";
-import Register from "./pages/Register";
+// import Register from "./pages/Register";
 import Login from "./pages/Login";
 import ArticleDetail from "./components/landing/ArticleDetail";
 import DashboardRoutes from "./pages/Dashboard";
@@ -44,7 +44,7 @@ const App = () => {
       <Routes>
         {/* Rute tanpa Navbar & Footer */}
         <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        {/*<Route path="/register" element={<Register />} />*/}
         <Route path="/artikel/:slug" element={<ArticleDetail />} />
 
         {/* Rute dengan Navbar & Footer */}

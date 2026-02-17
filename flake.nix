@@ -1,0 +1,24 @@
+{
+  description = "Frontend React environment";
+  
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+  };
+  
+  outputs = { self, nixpkgs }:
+    let
+      system = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${system};
+    in
+    {
+      devShells.${system}.default = pkgs.mkShell {
+        buildInputs = with pkgs; [
+          nodejs
+        ];
+        
+        shellHook = ''
+          echo "🎨 Frontend React Environment"
+        '';
+      };
+    };
+}
