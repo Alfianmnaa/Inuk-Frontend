@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaTimes, FaPlus, FaSpinner, FaCalendarAlt, FaDollarSign, FaUser, FaChevronDown } from "react-icons/fa";
+import { FaTimes, FaPlus, FaSpinner, FaCalendarAlt, FaDollarSign, FaUser, FaChevronDown, FaSearch } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { createDonation } from "../../../services/DonationService";
 import { useAuth } from "../../../context/AuthContext";
@@ -25,6 +25,12 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
   const [isLoadingDonors, setIsLoadingDonors] = useState(false); // State loading donatur
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // NEW: States for searchable dropdown
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedDonor, setSelectedDonor] = useState<DonaturAPI | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const initialForm = {
     donor_id: "", // State untuk ID Donatur
     total: 0,
@@ -41,7 +47,33 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
       // REMOVED: method: "",
       date_time: new Date().toISOString().substring(0, 16),
     });
+    setSearchTerm("");
+    setSelectedDonor(donors.length > 0 ? donors[0] : null);
+    setIsDropdownOpen(false);
   };
+
+  // Filter donors based on search term (name or kaleng)
+  const filteredDonors = donors.filter((donor) => {
+    const search = searchTerm.toLowerCase();
+    return donor.name.toLowerCase().includes(search) || donor.kaleng.toLowerCase().includes(search);
+  });
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isDropdownOpen]);
 
   // --- NEW: Fetch Donor list ---
   useEffect(() => {
@@ -54,6 +86,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
           // Set default donor_id ke yang pertama, hanya jika belum ada yang terpilih
           if (data.length > 0) {
             setFormData((prev) => ({ ...prev, donor_id: data[0].id }));
+            setSelectedDonor(data[0]);
           }
         })
         .catch(() => toast.error("Gagal memuat daftar Donatur."))
@@ -65,6 +98,14 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
   useEffect(() => {
     if (!isOpen) resetForm();
   }, [isOpen]);
+
+  // Handle donor selection from dropdown
+  const handleDonorSelect = (donor: DonaturAPI) => {
+    setSelectedDonor(donor);
+    setFormData({ ...formData, donor_id: donor.id });
+    setSearchTerm(donor.name); // Show donor name in input
+    setIsDropdownOpen(false);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -133,37 +174,87 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
           </header>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Input Pemilihan Donatur (NEW) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Pilih Donatur Kaleng</label>
+            {/* Input Pemilihan Donatur with Search (NEW) */}
+            <div ref={dropdownRef}>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Donatur Kaleng</label>
               <div className="relative">
-                {/* Ikon Donatur di kiri */}
-                <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
+                {/* Search Icon */}
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" />
 
-                <select
-                  name="donor_id"
-                  value={formData.donor_id}
-                  onChange={handleChange}
+                {/* Search Input */}
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setIsDropdownOpen(true);
+                  }}
+                  onFocus={() => setIsDropdownOpen(true)}
+                  placeholder={isLoadingDonors ? "Memuat..." : donors.length === 0 ? "Tidak ada donatur" : "Cari nama atau nomor kaleng..."}
                   disabled={isSubmitting || isLoadingDonors || donors.length === 0}
-                  className="w-full border border-gray-300 rounded-lg py-3 pl-10 pr-10 focus:ring-primary focus:border-primary transition-colors bg-white appearance-none"
-                  required
+                  className="w-full border border-gray-300 rounded-lg py-3 pl-10 pr-10 focus:ring-primary focus:border-primary transition-colors bg-white"
+                />
+
+                {/* Dropdown Toggle Icon */}
+                <button
+                  type="button"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  disabled={isSubmitting || isLoadingDonors || donors.length === 0}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
                 >
-                  <option value="" disabled>
-                    {isLoadingDonors ? "Memuat Donatur..." : donors.length === 0 ? "Tidak ada Donatur yang terdaftar" : "Pilih Donatur"}
-                  </option>
-                  {donors.map((donor) => (
-                    <option key={donor.id} value={donor.id}>
-                      {`${donor.name} (Kaleng: ${donor.kaleng}, RW: ${donor.rw.toString().padStart(3, "0")})`}
-                    </option>
-                  ))}
-                </select>
+                  <FaChevronDown className={`text-gray-500 transition-transform ${isDropdownOpen ? "rotate-180" : ""} ${isSubmitting || isLoadingDonors || donors.length === 0 ? "opacity-50" : ""}`} size={16} />
+                </button>
 
-                {/* Ikon Panah Dropdown di kanan */}
-                <FaChevronDown className={`absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none ${isSubmitting || isLoadingDonors || donors.length === 0 ? "opacity-50" : ""}`} size={16} />
-
-                {/* Spinner ketika loading */}
+                {/* Loading Spinner */}
                 {isLoadingDonors && <FaSpinner className="animate-spin absolute right-10 top-1/2 transform -translate-y-1/2 text-primary" size={16} />}
+
+                {/* Dropdown List */}
+                <AnimatePresence>
+                  {isDropdownOpen && !isLoadingDonors && filteredDonors.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                    >
+                      {filteredDonors.map((donor) => (
+                        <button
+                          key={donor.id}
+                          type="button"
+                          onClick={() => handleDonorSelect(donor)}
+                          className={`w-full text-left px-4 py-3 hover:bg-gray-100 transition-colors border-b border-gray-100 last:border-b-0 ${selectedDonor?.id === donor.id ? "bg-green-50" : ""}`}
+                        >
+                          <div className="flex items-center">
+                            <FaUser className="mr-2 text-gray-400" size={14} />
+                            <div>
+                              <div className="font-medium text-gray-800">{donor.name}</div>
+                              <div className="text-sm text-gray-500">
+                                Kaleng: <span className="font-mono">{donor.kaleng}</span> • RW: {donor.rw.toString().padStart(3, "0")} • RT: {donor.rt.toString().padStart(3, "0")}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* No Results Message */}
+                {isDropdownOpen && !isLoadingDonors && searchTerm && filteredDonors.length === 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-4 text-center text-gray-500">
+                    <FaSearch className="mx-auto mb-2 text-gray-400" size={20} />
+                    <p className="text-sm">Tidak ada donatur yang cocok dengan "{searchTerm}"</p>
+                  </div>
+                )}
               </div>
+
+              {/* Selected Donor Display */}
+              {selectedDonor && (
+                <div className="mt-2 text-sm text-gray-600 bg-green-50 p-2 rounded-lg border border-green-200">
+                  <strong>Terpilih:</strong> {selectedDonor.name} (Kaleng: {selectedDonor.kaleng})
+                </div>
+              )}
             </div>
 
             <div className="relative">
