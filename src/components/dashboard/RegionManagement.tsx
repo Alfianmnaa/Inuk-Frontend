@@ -234,8 +234,8 @@ const RegionManagement: React.FC = () => {
                             ) : (
                               <span className="text-red-400 text-xs italic bg-red-50 px-2 py-1 rounded">Belum Ada Inputer</span>
                             )}
-                            <button onClick={() => handleOpenAssign(region)} className="text-blue-600 hover:text-blue-800 p-1.5 rounded hover:bg-blue-50 tooltip" title="Tambah Inputer">
-                              <FaPlus size={14} />
+                            <button onClick={() => handleOpenAssign(region)} className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-50 tooltip" title="Tambah Inputer">
+                              <FaUserPlus size={16} />
                             </button>
                           </div>
                         </td>
@@ -252,10 +252,6 @@ const RegionManagement: React.FC = () => {
                         {/* Kolom Aksi */}
                         <td className="py-3 px-4 text-center">
                           <div className="flex justify-center space-x-2">
-                            <button onClick={() => handleOpenAssign(region)} className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-50 tooltip" title="Tambah Inputer">
-                              <FaUserPlus size={16} />
-                            </button>
-
                             <button onClick={() => handleEditClick(region)} className="text-yellow-500 hover:text-yellow-700 p-2 rounded hover:bg-yellow-50 tooltip" title="Edit Nama Wilayah">
                               <FaEdit size={16} />
                             </button>
