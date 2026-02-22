@@ -18,14 +18,15 @@ interface NavItem {
 const DASHBOARD_NAV: NavItem[] = [
   { name: "DASHBOARD UTAMA", icon: FaHome, link: "/dashboard" },
   // { name: "TRANSPARANSI & ANALISIS", icon: FaChartBar, link: "/dashboard/visualisasi", roles: ["user", "admin"] },
-  { name: "--- MANAJEMEN DATA ---", icon: FaChevronDown, link: "#", isHeader: true },
+  { name: "--- MENU INUK ---", icon: FaChevronDown, link: "#", isHeader: true },
   { name: "Pencatatan Donasi", icon: FaReceipt, link: "/dashboard/transaksi", roles: ["user", "admin", "superadmin"] },
   { name: "Manajemen Donatur", icon: FaUsers, link: "/dashboard/donatur-management", roles: ["user"] }, // HANYA UNTUK USER
+  { name: "--- MENU ADMIN ---", icon: FaChevronDown, link: "#", isHeader: true, roles: ["admin", "superadmin"] },
   { name: "Manajemen Pengguna", icon: FaUsers, link: "/dashboard/user-management", roles: ["admin", "superadmin"] },
+  { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management", roles: ["admin", "superadmin"] },
+  { name: "--- MENU ADMIN PUSAT ---", icon: FaChevronDown, link: "#", isHeader: true, roles: ["superadmin"] },
   { name: "Manajemen Admin", icon: FaUsers, link: "/dashboard/admin-management", roles: ["superadmin"] },
-  { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management", roles: ["admin", "superadmin"] }, // HANYA UNTUK ADMIN
-  { name: "--- PENGELOLAAN KONTEN ---", icon: FaChevronDown, link: "#", isHeader: true, roles: ["superadmin"] },
-  { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita", roles: ["superadmin"] }, // Dibatasi untuk Admin (asumsi)
+  { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita", roles: ["superadmin"] },
 ];
 
 // Sidebar menerima userRole baru

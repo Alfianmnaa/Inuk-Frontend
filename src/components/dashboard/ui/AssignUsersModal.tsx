@@ -62,7 +62,7 @@ const AssignUsersModal: React.FC<AssignUsersModalProps> = ({ isOpen, onClose, on
     setIsLoading(true);
     try {
       await setRegionUsers(targetRegion.id, selectedUserIds, token);
-      toast.success(`Berhasil menambahkan ${selectedUserIds.length} penanggung jawab.`);
+      toast.success(`Berhasil menambahkan ${selectedUserIds.length} inputer.`);
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -78,7 +78,7 @@ const AssignUsersModal: React.FC<AssignUsersModalProps> = ({ isOpen, onClose, on
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-1060">
       <div className="bg-white p-6 rounded-xl w-full max-w-lg shadow-2xl h-[500px] flex flex-col">
         <div className="flex justify-between items-center mb-2">
-          <h3 className="text-lg font-bold text-gray-800">Tambah Penanggung Jawab</h3>
+          <h3 className="text-lg font-bold text-gray-800">Tambah Inputer</h3>
           <button onClick={onClose}>
             <X />
           </button>
@@ -86,7 +86,7 @@ const AssignUsersModal: React.FC<AssignUsersModalProps> = ({ isOpen, onClose, on
         <p className="text-sm text-gray-500 mb-4">
           Region:{" "}
           <span className="font-semibold text-primary">
-            {targetRegion.kecamatan} / {targetRegion.desa_kelurahan}
+            {targetRegion?.kecamatan ?? '-'} / {targetRegion?.desa_kelurahan ?? '-'}
           </span>
         </p>
 

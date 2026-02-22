@@ -21,7 +21,7 @@ const ViewUsersModal: React.FC<ViewUsersModalProps> = ({ isOpen, onClose, region
 
   // Fungsi untuk menghapus user (Unassign)
   const handleRemoveUser = async (userIdToRemove: string, userName: string) => {
-    if (!confirm(`Yakin ingin menghapus "${userName}" dari penanggung jawab wilayah ini?`)) return;
+    if (!confirm(`Yakin ingin menghapus "${userName}" dari inputer wilayah ini?`)) return;
     if (!token) return;
 
     setLoadingId(userIdToRemove);
@@ -46,7 +46,7 @@ const ViewUsersModal: React.FC<ViewUsersModalProps> = ({ isOpen, onClose, region
       <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl">
         <div className="flex justify-between items-center mb-4 border-b pb-3">
           <h3 className="text-lg font-bold text-gray-800 flex items-center">
-            <FaUserShield className="mr-2 text-primary" /> Penanggung Jawab
+            <FaUserShield className="mr-2 text-primary" /> Inputer
           </h3>
           <button onClick={onClose}>
             <X />
@@ -78,7 +78,7 @@ const ViewUsersModal: React.FC<ViewUsersModalProps> = ({ isOpen, onClose, region
               ))}
             </ul>
           ) : (
-            <p className="text-center text-gray-500 italic py-4">Belum ada penanggung jawab.</p>
+            <p className="text-center text-gray-500 italic py-4">Belum ada inputer.</p>
           )}
         </div>
 

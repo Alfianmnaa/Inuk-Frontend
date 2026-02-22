@@ -115,7 +115,7 @@ export const setRegionUsers = async (regionId: string, userIds: string[], token:
   try {
     const payload: SetRegionUsersPayload = { users: userIds };
     const response = await axios.post(`${VITE_API_URL}/region/${regionId}/users`, payload, getAdminHeaders(token));
-    return response.data;
+    return response.data ?? { users: [] };
   } catch (error) {
     handleError(error, "Gagal menetapkan penanggung jawab.");
     throw error;

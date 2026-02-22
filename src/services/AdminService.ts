@@ -60,6 +60,10 @@ export interface UpdateAdminPayload {
   region_id?: string; // Dapat berupa UUID Region atau string kosong/null
 }
 
+export interface UpdateDeleteAdminRegionPayload {
+  region_id?: string; // Dapat berupa UUID Region atau string kosong/null
+}
+
 // --- Helper ---
 const getAuthHeaders = (token: string) => ({
   headers: { Authorization: `Bearer ${token}` },
@@ -146,6 +150,20 @@ export const updateAdmin = async (token: string, id: string, payload: UpdateAdmi
   if (!token) throw new Error("Autentikasi diperlukan.");
   try {
     const response: AxiosResponse<any> = await axios.patch(`${VITE_API_URL}/superadmin/admin/${id}`, payload, getAuthHeaders(token));
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const backendMessage = error.response.data?.message || error.response.data?.error || "Gagal memperbarui pengguna.";
+      throw new Error(backendMessage);
+    }
+    throw new Error("Terjadi kesalahan jaringan saat memperbarui pengguna.");
+  }
+};
+
+export const updateDeleteAdminRegion = async (token: string, id: string, payload: UpdateDeleteAdminRegionPayload): Promise<any> => {
+  if (!token) throw new Error("Autentikasi diperlukan.");
+  try {
+    const response: AxiosResponse<any> = await axios.patch(`${VITE_API_URL}/superadmin/admin/${id}/region`, payload, getAuthHeaders(token));
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {

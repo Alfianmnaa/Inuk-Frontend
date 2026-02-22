@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { FaPlus, FaSpinner, FaMapMarkedAlt, FaUserPlus, FaUsers, FaTrash, FaEdit, FaSearch, FaFilter } from "react-icons/fa";
+import { FaPlus, FaSpinner, FaMapMarkedAlt, FaUserPlus, FaUsers, FaTrash, FaEdit, FaSearch, FaFilter, FaUserShield } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 
 import DashboardLayout from "./DashboardLayout";
@@ -11,6 +11,7 @@ import { useAuth } from "../../context/AuthContext";
 // Modals
 import CreateRegionModal from "./ui/CreateRegionModal";
 import AssignUsersModal from "./ui/AssignUsersModal";
+import AssignAdminsModal from "./ui/AssignAdminsModal";
 import ViewUsersModal from "./ui/ViewUsersModal";
 import DeleteRegionModal from "./ui/DeleteRegionModal";
 import EditRegionModal from "./ui/EditRegionModal";
@@ -21,7 +22,7 @@ const itemVariants = {
 };
 
 const RegionManagement: React.FC = () => {
-  const { token } = useAuth();
+  const { token, userRole } = useAuth();
   const [regions, setRegions] = useState<RegionDetail[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -40,6 +41,7 @@ const RegionManagement: React.FC = () => {
   // --- MODAL STATES ---
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isAssignAdminsModalOpen, setIsAssignAdminsModalOpen] = useState(false);
   const [isViewUsersModalOpen, setIsViewUsersModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -99,6 +101,11 @@ const RegionManagement: React.FC = () => {
     setIsAssignModalOpen(true);
   };
 
+  const handleOpenAssignAdmins = (region: RegionDetail) => {
+    setSelectedRegion(region);
+    setIsAssignAdminsModalOpen(true);
+  };
+
   const handleOpenViewUsers = (region: RegionDetail) => {
     setSelectedRegion(region);
     setIsViewUsersModalOpen(true);
@@ -137,6 +144,8 @@ const RegionManagement: React.FC = () => {
       <EditRegionModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} onSuccess={fetchRegions} region={selectedRegion} />
 
       <AssignUsersModal isOpen={isAssignModalOpen} onClose={() => setIsAssignModalOpen(false)} onSuccess={fetchRegions} targetRegion={selectedRegion} />
+
+      <AssignAdminsModal isOpen={isAssignAdminsModalOpen} onClose={() => setIsAssignAdminsModalOpen(false)} onSuccess={fetchRegions} targetRegion={selectedRegion} />
 
       <ViewUsersModal isOpen={isViewUsersModalOpen} onClose={() => setIsViewUsersModalOpen(false)} region={selectedRegion} onUpdate={fetchRegions} />
 
@@ -192,7 +201,8 @@ const RegionManagement: React.FC = () => {
                   <th className="py-3 px-4 text-left">Provinsi / Kab</th>
                   <th className="py-3 px-4 text-left">Kecamatan</th>
                   <th className="py-3 px-4 text-left">Desa / Kelurahan</th>
-                  <th className="py-3 px-4 text-center">Penanggung Jawab</th>
+                  <th className="py-3 px-4 text-center">Inputer</th>
+                  {userRole === "superadmin" && <th className="py-3 px-4 text-center">Admin</th>}
                   <th className="py-3 px-4 text-center">Aksi</th>
                 </tr>
               </thead>
@@ -210,25 +220,39 @@ const RegionManagement: React.FC = () => {
                         <td className="py-3 px-4 font-medium">{region.kecamatan}</td>
                         <td className="py-3 px-4 font-medium">{region.desa_kelurahan}</td>
 
-                        {/* Kolom Penanggung Jawab */}
+                        {/* Kolom Inputer */}
                         <td className="py-3 px-4 text-center">
-                          {hasUsers ? (
-                            <button
-                              onClick={() => handleOpenViewUsers(region)}
-                              className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold flex items-center justify-center mx-auto hover:bg-green-200 transition tooltip"
-                              title="Klik untuk melihat/hapus penanggung jawab"
-                            >
-                              <FaUsers className="mr-1" /> Lihat {region.user.length} Penanggung Jawab
+                          <div className="flex items-center justify-center space-x-2">
+                            {hasUsers ? (
+                              <button
+                                onClick={() => handleOpenViewUsers(region)}
+                                className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold flex items-center justify-center hover:bg-green-200 transition tooltip"
+                                title="Klik untuk melihat/menghapus inputer"
+                              >
+                                <FaUsers className="mr-1" /> Lihat {region.user.length} Inputer
+                              </button>
+                            ) : (
+                              <span className="text-red-400 text-xs italic bg-red-50 px-2 py-1 rounded">Belum Ada Inputer</span>
+                            )}
+                            <button onClick={() => handleOpenAssign(region)} className="text-blue-600 hover:text-blue-800 p-1.5 rounded hover:bg-blue-50 tooltip" title="Tambah Inputer">
+                              <FaPlus size={14} />
                             </button>
-                          ) : (
-                            <span className="text-red-400 text-xs italic bg-red-50 px-2 py-1 rounded">Belum Ada Penanggung Jawab</span>
-                          )}
+                          </div>
                         </td>
+
+                        {/* Kolom Admin - hanya superadmin */}
+                        {userRole === "superadmin" && (
+                          <td className="py-3 px-4 text-center">
+                            <button onClick={() => handleOpenAssignAdmins(region)} className="text-purple-600 hover:text-purple-800 p-1.5 rounded hover:bg-purple-50 tooltip" title="Tambah Admin Wilayah">
+                              <FaUserShield size={16} />
+                            </button>
+                          </td>
+                        )}
 
                         {/* Kolom Aksi */}
                         <td className="py-3 px-4 text-center">
                           <div className="flex justify-center space-x-2">
-                            <button onClick={() => handleOpenAssign(region)} className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-50 tooltip" title="Tambah Penanggung Jawab">
+                            <button onClick={() => handleOpenAssign(region)} className="text-blue-600 hover:text-blue-800 p-2 rounded hover:bg-blue-50 tooltip" title="Tambah Inputer">
                               <FaUserPlus size={16} />
                             </button>
 
