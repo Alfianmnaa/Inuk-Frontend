@@ -3,7 +3,6 @@ import { Routes, Route } from "react-router-dom";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import Visualisasi from "../components/dashboard/Visualisasi";
 import PenyaluranDana from "../components/dashboard/PenyaluranDana";
-// import DonaturPenerima from "../components/dashboard/DonaturPenerima";
 import CMSBerita from "../components/dashboard/CMSBerita";
 import ProtectedRoute from "../components/ProtectedRoute";
 import RegionManagement from "../components/dashboard/RegionManagement";
@@ -12,8 +11,10 @@ import DonaturManagement from "../components/dashboard/DonaturManagement";
 import UserManagement from "../components/dashboard/UserManagement";
 import AdminManagement from "../components/dashboard/AdminManagement";
 import ArticleEditor from "../components/dashboard/ArticleEditor";
+import InfaqManagement from "../components/dashboard/InfaqManagement";
+import MasjidManagement from "../components/dashboard/MasjidManagement";
 
-// Halaman Dummy Dashboard Utama
+// Halaman Dashboard Utama
 const DashboardUtama = () => (
   <ProtectedRoute>
     <DashboardLayout activeLink="/dashboard" pageTitle="Dashboard Utama">
@@ -22,8 +23,7 @@ const DashboardUtama = () => (
           Selamat Datang di Admin INUK!
         </h3>
         <p className="mt-2 text-gray-600">
-          Gunakan menu di samping untuk mengelola data donasi, penyaluran, dan
-          konten website.
+          Gunakan menu di samping untuk mengelola data donasi, penyaluran, dan konten website.
         </p>
       </div>
     </DashboardLayout>
@@ -75,7 +75,6 @@ const DashboardRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/user-management"
         element={
@@ -84,7 +83,6 @@ const DashboardRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
-          
       <Route
         path="/admin-management"
         element={
@@ -93,7 +91,6 @@ const DashboardRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
-          
       <Route
         path="/cms-berita"
         element={
@@ -102,7 +99,6 @@ const DashboardRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/cms-berita/editor"
         element={
@@ -111,7 +107,6 @@ const DashboardRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/cms-berita/editor/:slug?"
         element={
@@ -120,7 +115,6 @@ const DashboardRoutes: React.FC = () => {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/region-management"
         element={
@@ -130,14 +124,30 @@ const DashboardRoutes: React.FC = () => {
         }
       />
 
-      {/* Rute 404 Dashboard */}
+      {/* ── NEW ROUTES ── */}
+      <Route
+        path="/infaq-management"
+        element={
+          <ProtectedRoute>
+            <InfaqManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/masjid-management"
+        element={
+          <ProtectedRoute>
+            <MasjidManagement />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* 404 */}
       <Route
         path="*"
         element={
           <DashboardLayout activeLink="" pageTitle="404 Not Found">
-            <p className="text-center text-red-500">
-              Halaman Dashboard tidak ditemukan.
-            </p>
+            <p className="text-center text-red-500">Halaman Dashboard tidak ditemukan.</p>
           </DashboardLayout>
         }
       />

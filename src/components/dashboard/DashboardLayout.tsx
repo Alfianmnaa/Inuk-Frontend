@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { FaBars, FaTimes, FaReceipt, FaUsers, FaEdit, FaChevronDown, FaHome, FaMapMarkerAlt } from "react-icons/fa";
+import { FaBars, FaTimes, FaReceipt, FaUsers, FaEdit, FaChevronDown, FaHome, FaMapMarkerAlt, FaMosque, FaMoneyBillWave } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { getUserProfile } from "../../services/UserService"; // NEW: Import getUserProfile
@@ -22,8 +22,10 @@ const DASHBOARD_NAV: NavItem[] = [
   { name: "Pencatatan Donasi", icon: FaReceipt, link: "/dashboard/transaksi", roles: ["user", "admin", "superadmin"] },
   { name: "Manajemen Donatur", icon: FaUsers, link: "/dashboard/donatur-management", roles: ["user"] }, // HANYA UNTUK USER
   { name: "--- MENU ADMIN ---", icon: FaChevronDown, link: "#", isHeader: true, roles: ["admin", "superadmin"] },
+  { name: "Pencatatan Infaq", icon: FaMoneyBillWave, link: "/dashboard/infaq-management", roles: ["admin", "superadmin"] },
   { name: "Manajemen Pengguna", icon: FaUsers, link: "/dashboard/user-management", roles: ["admin", "superadmin"] },
   { name: "Manajemen Wilayah", icon: FaMapMarkerAlt, link: "/dashboard/region-management", roles: ["admin", "superadmin"] },
+  { name: "Manajemen Masjid", icon: FaMosque, link: "/dashboard/masjid-management", roles: ["admin", "superadmin"] },
   { name: "--- MENU ADMIN PUSAT ---", icon: FaChevronDown, link: "#", isHeader: true, roles: ["superadmin"] },
   { name: "Manajemen Admin", icon: FaUsers, link: "/dashboard/admin-management", roles: ["superadmin"] },
   { name: "Manajemen Berita/Blog", icon: FaEdit, link: "/dashboard/cms-berita", roles: ["superadmin"] },
