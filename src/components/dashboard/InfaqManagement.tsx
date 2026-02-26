@@ -15,7 +15,7 @@ import { getInfaqs, type Infaq } from "../../services/InfaqService";
 import { getAdminProfile } from "../../services/AdminService";
 import { getSubdistricts } from "../../services/RegionService";
 import { useAuth } from "../../context/AuthContext";
-import { getAllFridayPons, formatFridayPonDisplay } from "../../utils/DateUtils";
+import { getAllFridayPons, formatFridayPonDisplay } from "../../utils/dateUtils";
 
 // Modals
 import AddEditInfaqModal from "./ui/AddEditInfaqModal";
