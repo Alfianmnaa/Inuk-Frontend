@@ -1,10 +1,6 @@
 type Pasaran = 0 | 1 | 2 | 3 | 4;
 
-const LEGI: Pasaran = 0;
-const PAHING: Pasaran = 1;
 const PON: Pasaran = 2;
-const WAGE: Pasaran = 3;
-const KLIWON: Pasaran = 4;
 
 function julianDayNumber(t: Date): number {
   const utc = new Date(t.toISOString());
