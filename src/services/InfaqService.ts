@@ -53,6 +53,29 @@ export interface DeleteInfaqResponse {
   is_deleted: boolean;
 }
 
+// ── Export ────────────────────────────────────────────────────────────────────
+
+export interface ExportInfaqsQuery {
+  /**
+   * Pasaran filter:
+   *  - ""           → semua data
+   *  - "2026"       → seluruh tahun 2026
+   *  - "2006-01-02" → Jumat Pon spesifik
+   */
+  pasaran?: string;
+  sort_by?: "newest" | "oldest";
+}
+
+export interface ExportInfaqsResponse {
+  job_id: string;
+  status: string;
+  message: string;
+  file_url?: string;
+  file_name?: string;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 const getAuthHeaders = (token: string) => ({
   headers: { Authorization: `Bearer ${token}` },
 });
@@ -64,6 +87,8 @@ const handleError = (error: any, defaultMsg: string) => {
   }
   throw new Error(defaultMsg);
 };
+
+// ── CRUD ──────────────────────────────────────────────────────────────────────
 
 export const getInfaqs = async (token: string, filters?: GetInfaqsQuery): Promise<Infaq[]> => {
   try {
@@ -106,4 +131,27 @@ export const deleteInfaq = async (token: string, id: string): Promise<DeleteInfa
     handleError(error, "Gagal menghapus infaq.");
     throw error;
   }
+};
+
+// ── Export ────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /export/infaq
+ *
+ * Meminta backend untuk membuat file Excel laporan infaq secara async dan
+ * mengirimkan notifikasi WhatsApp ke nomor yang terdaftar di akun admin.
+ */
+export const exportInfaqs = async (
+  token: string,
+  query: ExportInfaqsQuery = {}
+): Promise<ExportInfaqsResponse> => {
+  const response = await axios.post<ExportInfaqsResponse>(
+    `${VITE_API_URL}/export/infaq`,
+    null,
+    {
+      params: query,
+      ...getAuthHeaders(token),
+    }
+  );
+  return response.data;
 };

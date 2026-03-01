@@ -35,20 +35,37 @@ const AddEditMasjidModal: React.FC<AddEditMasjidModalProps> = ({ isOpen, onClose
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // Fetch regions based on role
-        let fetchedRegions: RegionDetail[] = [];
+        // ── Dual fetch regions (is_active: true AND false) ──────────────────
+        // Backend requires is_active to be specified explicitly.
+        // We fetch both so the dropdown shows all available regions.
+        let baseFilters: Record<string, any> = {};
+
         if (userRole === "superadmin") {
-          fetchedRegions = await getRegions({ province: "Jawa Tengah", city: "Kudus" });
+          baseFilters = { province: "Jawa Tengah", city: "Kudus" };
         } else {
-          // For regular admin, filter by their kecamatan
           const profile = await getAdminProfile(token);
-          fetchedRegions = await getRegions({
+          baseFilters = {
             province: profile.provinsi,
             city: profile.kabupaten_kota,
             subdistrict: profile.kecamatan,
-          });
+          };
         }
-        setRegions(fetchedRegions);
+
+        const [activeRegions, inactiveRegions] = await Promise.all([
+          getRegions({ ...baseFilters, is_active: true }),
+          getRegions({ ...baseFilters, is_active: false }),
+        ]);
+
+        const combined = [...activeRegions, ...inactiveRegions];
+
+        // Sort by kecamatan → desa_kelurahan untuk tampilan rapi
+        combined.sort((a, b) => {
+          const kec = a.kecamatan.localeCompare(b.kecamatan);
+          if (kec !== 0) return kec;
+          return a.desa_kelurahan.localeCompare(b.desa_kelurahan);
+        });
+
+        setRegions(combined);
 
         // Fetch admins list for superadmin
         if (userRole === "superadmin") {
