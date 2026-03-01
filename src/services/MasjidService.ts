@@ -2,14 +2,16 @@ import axios from "axios";
 
 const VITE_API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+// Backend GetMasjidsResponse now includes region fields directly
 export interface MasjidResponse {
   id: string;
   name: string;
-  region_id: string;
-}
-
-export interface MasjidDetailResponse extends MasjidResponse {
   admin_id: string;
+  region_id: string;
+  provinsi: string;
+  kecamatan: string;
+  kabupaten_kota: string;
+  desa_kelurahan: string;
 }
 
 export interface CreateMasjidPayload {
@@ -42,7 +44,10 @@ const handleError = (error: any, defaultMsg: string) => {
 
 export const getMasjids = async (token: string): Promise<MasjidResponse[]> => {
   try {
-    const response = await axios.get<MasjidResponse[]>(`${VITE_API_URL}/masjids`, getAuthHeaders(token));
+    const response = await axios.get<MasjidResponse[]>(
+      `${VITE_API_URL}/masjids`,
+      getAuthHeaders(token)
+    );
     return response.data;
   } catch (error) {
     console.error("Failed to fetch masjids:", error);
@@ -50,9 +55,16 @@ export const getMasjids = async (token: string): Promise<MasjidResponse[]> => {
   }
 };
 
-export const createMasjid = async (token: string, data: CreateMasjidPayload): Promise<MasjidDetailResponse> => {
+export const createMasjid = async (
+  token: string,
+  data: CreateMasjidPayload
+): Promise<MasjidResponse> => {
   try {
-    const response = await axios.post<MasjidDetailResponse>(`${VITE_API_URL}/masjid`, data, getAuthHeaders(token));
+    const response = await axios.post<MasjidResponse>(
+      `${VITE_API_URL}/masjid`,
+      data,
+      getAuthHeaders(token)
+    );
     return response.data;
   } catch (error) {
     handleError(error, "Gagal membuat masjid.");
@@ -60,9 +72,17 @@ export const createMasjid = async (token: string, data: CreateMasjidPayload): Pr
   }
 };
 
-export const updateMasjid = async (token: string, id: string, data: UpdateMasjidPayload): Promise<MasjidDetailResponse> => {
+export const updateMasjid = async (
+  token: string,
+  id: string,
+  data: UpdateMasjidPayload
+): Promise<MasjidResponse> => {
   try {
-    const response = await axios.patch<MasjidDetailResponse>(`${VITE_API_URL}/masjid/${id}`, data, getAuthHeaders(token));
+    const response = await axios.patch<MasjidResponse>(
+      `${VITE_API_URL}/masjid/${id}`,
+      data,
+      getAuthHeaders(token)
+    );
     return response.data;
   } catch (error) {
     handleError(error, "Gagal memperbarui masjid.");
@@ -70,9 +90,15 @@ export const updateMasjid = async (token: string, id: string, data: UpdateMasjid
   }
 };
 
-export const deleteMasjid = async (token: string, id: string): Promise<DeleteMasjidResponse> => {
+export const deleteMasjid = async (
+  token: string,
+  id: string
+): Promise<DeleteMasjidResponse> => {
   try {
-    const response = await axios.delete<DeleteMasjidResponse>(`${VITE_API_URL}/masjid/${id}`, getAuthHeaders(token));
+    const response = await axios.delete<DeleteMasjidResponse>(
+      `${VITE_API_URL}/masjid/${id}`,
+      getAuthHeaders(token)
+    );
     return response.data;
   } catch (error) {
     handleError(error, "Gagal menghapus masjid.");

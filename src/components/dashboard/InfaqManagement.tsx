@@ -10,10 +10,8 @@ import {
   FaFileExcel,
   FaWhatsapp,
   FaFilter,
-  FaCalendarAlt,
   FaSortDown as FaSortDesc,
   FaSortUp as FaSortAsc,
-  FaInfoCircle,
 } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 
@@ -36,6 +34,11 @@ import {
 import { generateExcelBlob, downloadExcelFromBlob } from "../../utils/ExportToExcel";
 
 import AdminBendaharaModal from "./ui/AdminBendaharaModal";
+import {
+  getAllFridayPons,
+  formatDateToLocalDateInput,
+  formatFridayPonDisplay,
+} from "../../utils/dateUtils";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -264,8 +267,26 @@ const InfaqManagement: React.FC = () => {
 
   // Filters
   const [searchText, setSearchText] = useState("");
-  const [pasaranFilter, setPasaranFilter] = useState(""); // "" | "YYYY" | "YYYY-MM-DD"
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedFridayPon, setSelectedFridayPon] = useState<string>(""); // "" = full year, "YYYY-MM-DD" = specific day
   const [sortDir, setSortDir] = useState<"newest" | "oldest">("newest");
+
+  // Derived: list of years (2025 → current)
+  const yearOptions = useMemo(() => {
+    const current = new Date().getFullYear();
+    const years: number[] = [];
+    for (let y = 2025; y <= current; y++) years.push(y);
+    return years;
+  }, []);
+
+  // Derived: list of Friday Pons for selected year
+  const fridayPonOptions = useMemo(
+    () => getAllFridayPons(selectedYear, selectedYear),
+    [selectedYear]
+  );
+
+  // Pasaran query string sent to backend/filter
+  const pasaranFilter = selectedFridayPon || String(selectedYear);
 
   // Modal state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -288,6 +309,8 @@ const InfaqManagement: React.FC = () => {
   const fetchData = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
+    // Compute pasaran string inline so useCallback dependency is on primitives
+    const pasaran = selectedFridayPon || String(selectedYear);
     try {
       // Get admin profile to determine kecamatan scope
       const profile = await getAdminProfile(token);
@@ -297,7 +320,7 @@ const InfaqManagement: React.FC = () => {
           province: profile.provinsi,
           city: profile.kabupaten_kota,
           subdistrict: profile.kecamatan,
-          date_time: pasaranFilter || undefined,
+          date_time: pasaran || undefined,
         }),
         getMasjids(token),
       ]);
@@ -315,7 +338,7 @@ const InfaqManagement: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [token, pasaranFilter, sortDir]);
+  }, [token, selectedYear, selectedFridayPon, sortDir]);
 
   useEffect(() => { fetchTreasurer(); }, [fetchTreasurer]);
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -523,9 +546,9 @@ const InfaqManagement: React.FC = () => {
           </div>
 
           {/* Filter controls */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Search */}
-            <div className="relative md:col-span-1">
+            <div className="relative md:col-span-2">
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
@@ -536,37 +559,55 @@ const InfaqManagement: React.FC = () => {
               />
             </div>
 
-            {/* Pasaran / date filter */}
-            <div className="relative md:col-span-1">
-              <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder='Filter pasaran: "2026" atau "2026-01-02"'
-                value={pasaranFilter}
-                onChange={(e) => setPasaranFilter(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 focus:ring-primary focus:border-primary text-sm outline-none"
-              />
+            {/* Year dropdown */}
+            <div>
+              <select
+                value={selectedYear}
+                onChange={(e) => {
+                  setSelectedYear(Number(e.target.value));
+                  // Reset Friday Pon when year changes — old dates may not exist in new year
+                  setSelectedFridayPon("");
+                }}
+                className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary text-sm outline-none bg-white"
+              >
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    Tahun {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Friday Pon dropdown */}
+            <div>
+              <select
+                value={selectedFridayPon}
+                onChange={(e) => setSelectedFridayPon(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary text-sm outline-none bg-white"
+              >
+                <option value="">— Semua Jumat Pon {selectedYear} —</option>
+                {fridayPonOptions.map((date) => {
+                  const value = formatDateToLocalDateInput(date);
+                  return (
+                    <option key={value} value={value}>
+                      {formatFridayPonDisplay(date)}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
 
             {/* Sort */}
-            <select
-              value={sortDir}
-              onChange={(e) => setSortDir(e.target.value as "newest" | "oldest")}
-              className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary text-sm outline-none bg-white"
-            >
-              <option value="newest">Tanggal Terbaru</option>
-              <option value="oldest">Tanggal Terlama</option>
-            </select>
-          </div>
-
-          {/* Pasaran hint */}
-          <div className="mt-3 flex items-start gap-2 text-xs text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-200">
-            <FaInfoCircle className="mt-0.5 shrink-0 text-blue-400" />
-            <span>
-              Filter Pasaran: kosongkan untuk semua data · isi tahun (mis. <code>2026</code>) untuk
-              seluruh tahun · isi tanggal Jumat Pon (mis. <code>2026-01-02</code>) untuk hari
-              spesifik.
-            </span>
+            <div className="md:col-span-2">
+              <select
+                value={sortDir}
+                onChange={(e) => setSortDir(e.target.value as "newest" | "oldest")}
+                className="w-full border border-gray-300 rounded-lg py-2 px-4 focus:ring-primary focus:border-primary text-sm outline-none bg-white"
+              >
+                <option value="newest">Tanggal Terbaru</option>
+                <option value="oldest">Tanggal Terlama</option>
+              </select>
+            </div>
           </div>
         </motion.div>
 
