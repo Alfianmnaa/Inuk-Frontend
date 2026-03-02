@@ -40,11 +40,13 @@ export interface GetInfaqsQuery {
 export interface CreateInfaqPayload {
   MasjidID: string;
   Total: number;
+  /** Format: YYYY-MM-DD (e.g. "2026-01-02") — must be a Jum'at Pon */
   DateTime: string;
 }
 
 export interface UpdateInfaqPayload {
   Total?: number;
+  /** Format: YYYY-MM-DD (e.g. "2026-01-02") — must be a Jum'at Pon */
   DateTime: string;
 }
 
@@ -96,7 +98,7 @@ export const getInfaqs = async (token: string, filters?: GetInfaqsQuery): Promis
       params: filters,
       ...getAuthHeaders(token),
     });
-    return response.data;
+    return response.data ?? [];
   } catch (error) {
     console.error("Failed to fetch infaqs:", error);
     return [];

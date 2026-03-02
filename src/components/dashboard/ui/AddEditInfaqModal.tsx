@@ -6,41 +6,59 @@ import { toast } from "react-hot-toast";
 import { useAuth } from "../../../context/AuthContext";
 import { createInfaq, updateInfaq, type Infaq } from "../../../services/InfaqService";
 import { getMasjids, type MasjidResponse } from "../../../services/MasjidService";
-import { getAllFridayPons, formatFridayPonDisplay } from "../../../utils/dateUtils";
+import {
+  getAllFridayPons,
+  formatDateToLocalDateInput,
+  formatFridayPonDisplay,
+} from "../../../utils/dateUtils";
 
 interface AddEditInfaqModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  infaq?: Infaq | null; // null = create mode, set = edit mode
+  infaq?: Infaq | null;
 }
 
 const currentYear = new Date().getFullYear();
 const START_YEAR = 2025;
 
-const AddEditInfaqModal: React.FC<AddEditInfaqModalProps> = ({ isOpen, onClose, onSuccess, infaq }) => {
+function defaultFridayPon(year: number): string {
+  const pons = getAllFridayPons(year, year);
+  if (pons.length === 0) return "";
+  const now = new Date();
+  const past = pons.filter((d) => d <= now);
+  const pick = past.length > 0 ? past[past.length - 1] : pons[0];
+  return formatDateToLocalDateInput(pick);
+}
+
+const AddEditInfaqModal: React.FC<AddEditInfaqModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  infaq,
+}) => {
   const { token } = useAuth();
   const isEditMode = !!infaq;
 
   const [masjidId, setMasjidId] = useState("");
   const [total, setTotal] = useState<number | "">("");
   const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedDateISO, setSelectedDateISO] = useState("");
+  const [selectedDate, setSelectedDate] = useState(() => defaultFridayPon(currentYear));
   const [masjids, setMasjids] = useState<MasjidResponse[]>([]);
   const [isLoadingMasjids, setIsLoadingMasjids] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Generate available years
   const years = useMemo(() => {
     const arr: number[] = [];
     for (let y = START_YEAR; y <= currentYear; y++) arr.push(y);
     return arr;
   }, []);
 
-  // Generate Jumat Pon list for selected year
-  const fridayPons = useMemo(() => getAllFridayPons(selectedYear, selectedYear), [selectedYear]);
+  const fridayPons = useMemo(
+    () => getAllFridayPons(selectedYear, selectedYear),
+    [selectedYear]
+  );
 
-  // Fetch masjids for create mode
   useEffect(() => {
     if (!isOpen || !token || isEditMode) return;
     setIsLoadingMasjids(true);
@@ -50,50 +68,36 @@ const AddEditInfaqModal: React.FC<AddEditInfaqModalProps> = ({ isOpen, onClose, 
       .finally(() => setIsLoadingMasjids(false));
   }, [isOpen, token, isEditMode]);
 
-  // Populate form when editing
   useEffect(() => {
     if (!isOpen) return;
     if (isEditMode && infaq) {
       setTotal(infaq.Total);
-      // Parse existing DateTime to set year and date
-      const existingDate = new Date(infaq.DateTime);
-      const year = existingDate.getFullYear();
-      setSelectedYear(year >= START_YEAR ? year : currentYear);
-      setSelectedDateISO(infaq.DateTime);
+      const d = new Date(infaq.DateTime);
+      const year = d.getFullYear();
+      const safeYear = year >= START_YEAR ? year : currentYear;
+      setSelectedYear(safeYear);
+      setSelectedDate(formatDateToLocalDateInput(d));
     } else {
-      // Create mode defaults
       setMasjidId("");
       setTotal("");
       setSelectedYear(currentYear);
-      // Default to most recent past Jumat Pon of current year
-      const pons = getAllFridayPons(currentYear, currentYear);
-      const now = new Date();
-      const past = pons.filter((d) => d <= now);
-      const defaultDate = past.length > 0 ? past[past.length - 1] : pons[0];
-      if (defaultDate) {
-        setSelectedDateISO(defaultDate.toISOString());
-      }
+      setSelectedDate(defaultFridayPon(currentYear));
     }
   }, [isOpen, infaq, isEditMode]);
 
-  // When year changes, reset date to first Friday Pon of that year
   const handleYearChange = (year: number) => {
     setSelectedYear(year);
-    const pons = getAllFridayPons(year, year);
-    if (pons.length > 0) {
-      setSelectedDateISO(pons[0].toISOString());
-    }
+    setSelectedDate(defaultFridayPon(year));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
-
     if (!total || Number(total) <= 0) {
       toast.error("Nominal infaq harus lebih dari 0.");
       return;
     }
-    if (!selectedDateISO) {
+    if (!selectedDate) {
       toast.error("Pilih tanggal Jum'at Pon terlebih dahulu.");
       return;
     }
@@ -102,22 +106,20 @@ const AddEditInfaqModal: React.FC<AddEditInfaqModalProps> = ({ isOpen, onClose, 
       return;
     }
 
-    // Convert to UTC ISO string before sending to API
-    const dateTimeUTC = new Date(selectedDateISO).toISOString();
 
     setIsSubmitting(true);
     try {
       if (isEditMode && infaq) {
         await updateInfaq(token, infaq.id, {
           Total: Number(total),
-          DateTime: dateTimeUTC,
+          DateTime: selectedDate,
         });
         toast.success("Catatan infaq berhasil diperbarui!");
       } else {
         await createInfaq(token, {
           MasjidID: masjidId,
           Total: Number(total),
-          DateTime: dateTimeUTC,
+          DateTime: selectedDate,
         });
         toast.success("Catatan infaq berhasil ditambahkan!");
       }
@@ -146,7 +148,6 @@ const AddEditInfaqModal: React.FC<AddEditInfaqModalProps> = ({ isOpen, onClose, 
           exit={{ scale: 0.9, opacity: 0 }}
           className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl mx-4"
         >
-          {/* Header */}
           <div className="flex justify-between items-center mb-5 border-b pb-3">
             <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
               <FaMoneyBillWave className="text-primary" />
@@ -158,7 +159,7 @@ const AddEditInfaqModal: React.FC<AddEditInfaqModalProps> = ({ isOpen, onClose, 
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Pilih Masjid — hanya create mode */}
+            {/* Pilih Masjid — create mode only */}
             {!isEditMode && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -191,7 +192,7 @@ const AddEditInfaqModal: React.FC<AddEditInfaqModalProps> = ({ isOpen, onClose, 
               </div>
             )}
 
-            {/* Nominal Infaq */}
+            {/* Nominal */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Nominal Infaq (Rp) <span className="text-red-500">*</span>
@@ -212,51 +213,41 @@ const AddEditInfaqModal: React.FC<AddEditInfaqModalProps> = ({ isOpen, onClose, 
 
             {/* Tanggal Jum'at Pon */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tanggal Jum'at Pon <span className="text-red-500">*</span>
               </label>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2">
-                <p className="text-xs text-green-700 font-medium">
-                  📅 Hanya tanggal Jum'at Pon yang valid untuk pencatatan infaq
-                </p>
-
-                {/* Year Selector */}
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-gray-600 w-12 shrink-0">Tahun:</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Tahun</p>
                   <select
                     value={selectedYear}
                     onChange={(e) => handleYearChange(Number(e.target.value))}
-                    className="flex-1 border border-gray-300 p-2 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none bg-white"
+                    className="w-full border border-gray-300 p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none bg-white transition"
                   >
                     {years.map((y) => (
                       <option key={y} value={y}>{y}</option>
                     ))}
                   </select>
                 </div>
-
-                {/* Jumat Pon Date Selector */}
-                <div className="flex items-start gap-2">
-                  <label className="text-xs text-gray-600 w-12 shrink-0 mt-2.5">Tanggal:</label>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Jum'at Pon</p>
                   <select
                     required
-                    value={selectedDateISO}
-                    onChange={(e) => setSelectedDateISO(e.target.value)}
-                    className="flex-1 border border-gray-300 p-2 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none bg-white"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full border border-gray-300 p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none bg-white transition"
                   >
-                    <option value="">-- Pilih Jum'at Pon --</option>
-                    {fridayPons.map((d) => (
-                      <option key={d.toISOString()} value={d.toISOString()}>
-                        {formatFridayPonDisplay(d)}
-                      </option>
-                    ))}
+                    <option value="">-- Pilih --</option>
+                    {fridayPons.map((d) => {
+                      const value = formatDateToLocalDateInput(d);
+                      return (
+                        <option key={value} value={value}>
+                          {formatFridayPonDisplay(d)}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
-
-                {selectedDateISO && (
-                  <p className="text-xs text-gray-500 pl-14">
-                    UTC: {new Date(selectedDateISO).toISOString()}
-                  </p>
-                )}
               </div>
             </div>
 

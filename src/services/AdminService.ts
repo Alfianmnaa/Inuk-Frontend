@@ -64,31 +64,6 @@ export interface UpdateDeleteAdminRegionPayload {
   region_id?: string; // Dapat berupa UUID Region atau string kosong/null
 }
 
-// ── Admin Treasurer ───────────────────────────────────────────────────────────
-
-/** Response dari GET /admin/treasurer */
-export interface GetAdminTreasurerResponse {
-  treasurer_phone: string;
-  treasurer_name: string;
-}
-
-/** Payload untuk PATCH /admin/treasurer */
-export interface UpdateAdminTreasurerPayload {
-  treasurer_name: string;
-  treasurer_phone: string;
-}
-
-/** Response dari PATCH /admin/treasurer */
-export interface UpdateAdminTreasurerResponse {
-  id: string;
-  phone: string;
-  name: string;
-  treasurer_phone: string;
-  treasurer_name: string;
-  created_at: string;
-  updated_at: string;
-}
-
 // --- Helper ---
 const getAuthHeaders = (token: string) => ({
   headers: { Authorization: `Bearer ${token}` },
@@ -116,52 +91,6 @@ export const getAdminProfile = async (token: string): Promise<GetAdminProfileRes
   }
 };
 
-// GET /admin/treasurer
-/**
- * Mengambil data Bendahara dari akun admin yang sedang login.
- */
-export const getAdminTreasurer = async (token: string): Promise<GetAdminTreasurerResponse> => {
-  if (!token) throw new Error("Autentikasi diperlukan. Token tidak ditemukan.");
-  try {
-    const response: AxiosResponse<GetAdminTreasurerResponse> = await axios.get(
-      `${VITE_API_URL}/admin/treasurer`,
-      getAuthHeaders(token)
-    );
-    return response.data;
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      const backendMessage = error.response.data?.message || error.response.data?.error || "Gagal memuat data Bendahara.";
-      throw new Error(backendMessage);
-    }
-    throw new Error("Terjadi kesalahan jaringan saat memuat data Bendahara.");
-  }
-};
-
-// PATCH /admin/treasurer
-/**
- * Memperbarui data Bendahara dari akun admin yang sedang login.
- */
-export const updateAdminTreasurer = async (
-  token: string,
-  payload: UpdateAdminTreasurerPayload
-): Promise<UpdateAdminTreasurerResponse> => {
-  if (!token) throw new Error("Autentikasi diperlukan. Token tidak ditemukan.");
-  try {
-    const response: AxiosResponse<UpdateAdminTreasurerResponse> = await axios.patch(
-      `${VITE_API_URL}/admin/treasurer`,
-      payload,
-      getAuthHeaders(token)
-    );
-    return response.data;
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      const backendMessage = error.response.data?.message || error.response.data?.error || "Gagal memperbarui data Bendahara.";
-      throw new Error(backendMessage);
-    }
-    throw new Error("Terjadi kesalahan jaringan saat memperbarui data Bendahara.");
-  }
-};
-
 // GET /superadmin/admins (Read/Filter)
 // is_verified dipertahankan untuk kebutuhan dual call di frontend
 export const getAdmins = async (token: string, name?: string, phone?: string, is_verified?: boolean): Promise<GetAdminsResponse[]> => {
@@ -174,7 +103,7 @@ export const getAdmins = async (token: string, name?: string, phone?: string, is
       params: { name, phone, is_verified },
       ...getAuthHeaders(token),
     });
-    return response.data;
+    return response.data ?? [];
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
       const backendMessage = error.response.data?.message || error.response.data?.error || "Akses ditolak.";

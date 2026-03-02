@@ -48,7 +48,7 @@ export const getMasjids = async (token: string): Promise<MasjidResponse[]> => {
       `${VITE_API_URL}/masjids`,
       getAuthHeaders(token)
     );
-    return response.data;
+    return response.data ?? [];
   } catch (error) {
     console.error("Failed to fetch masjids:", error);
     return [];

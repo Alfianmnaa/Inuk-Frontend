@@ -148,7 +148,7 @@ export const getUsers = async (token: string, name?: string, phone?: string, is_
       params: { name, phone, is_verified },
       ...getAuthHeaders(token),
     });
-    return response.data;
+    return response.data ?? [];
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
       const backendMessage = error.response.data?.message || error.response.data?.error || "Akses ditolak.";
