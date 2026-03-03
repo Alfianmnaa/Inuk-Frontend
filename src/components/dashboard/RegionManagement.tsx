@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { FaPlus, FaSpinner, FaMapMarkedAlt, FaUserPlus, FaUsers, FaTrash, FaEdit, FaSearch, FaFilter, FaUserShield } from "react-icons/fa";
+import { FaPlus, FaSpinner, FaMapMarkedAlt, FaUserPlus, FaUsers, FaTrash, FaEdit, FaSearch, FaFilter } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 
 import DashboardLayout from "./DashboardLayout";
@@ -11,7 +11,6 @@ import { useAuth } from "../../context/AuthContext";
 // Modals
 import CreateRegionModal from "./ui/CreateRegionModal";
 import AssignUsersModal from "./ui/AssignUsersModal";
-import AssignAdminsModal from "./ui/AssignAdminsModal";
 import ViewUsersModal from "./ui/ViewUsersModal";
 import DeleteRegionModal from "./ui/DeleteRegionModal";
 import EditRegionModal from "./ui/EditRegionModal";
@@ -22,12 +21,10 @@ const itemVariants = {
 };
 
 const RegionManagement: React.FC = () => {
-  const { token, userRole } = useAuth();
+  const { token } = useAuth();
   const [regions, setRegions] = useState<RegionDetail[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // --- PERBAIKAN STATE FILTER (Disatukan dalam Object) ---
-  // Ini menggantikan state terpisah (selectedProvince, etc) agar kompatibel dengan AddressSelector
   const [filterLocation, setFilterLocation] = useState({
     province: "",
     city: "",
@@ -35,13 +32,10 @@ const RegionManagement: React.FC = () => {
     village: "",
   });
 
-  // Search Text Manual
   const [searchText, setSearchText] = useState("");
 
-  // --- MODAL STATES ---
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [isAssignAdminsModalOpen, setIsAssignAdminsModalOpen] = useState(false);
   const [isViewUsersModalOpen, setIsViewUsersModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -101,11 +95,6 @@ const RegionManagement: React.FC = () => {
     setIsAssignModalOpen(true);
   };
 
-  const handleOpenAssignAdmins = (region: RegionDetail) => {
-    setSelectedRegion(region);
-    setIsAssignAdminsModalOpen(true);
-  };
-
   const handleOpenViewUsers = (region: RegionDetail) => {
     setSelectedRegion(region);
     setIsViewUsersModalOpen(true);
@@ -144,8 +133,6 @@ const RegionManagement: React.FC = () => {
       <EditRegionModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} onSuccess={fetchRegions} region={selectedRegion} />
 
       <AssignUsersModal isOpen={isAssignModalOpen} onClose={() => setIsAssignModalOpen(false)} onSuccess={fetchRegions} targetRegion={selectedRegion} />
-
-      <AssignAdminsModal isOpen={isAssignAdminsModalOpen} onClose={() => setIsAssignAdminsModalOpen(false)} onSuccess={fetchRegions} targetRegion={selectedRegion} />
 
       <ViewUsersModal isOpen={isViewUsersModalOpen} onClose={() => setIsViewUsersModalOpen(false)} region={selectedRegion} onUpdate={fetchRegions} />
 
@@ -202,7 +189,6 @@ const RegionManagement: React.FC = () => {
                   <th className="py-3 px-4 text-left">Kecamatan</th>
                   <th className="py-3 px-4 text-left">Desa / Kelurahan</th>
                   <th className="py-3 px-4 text-center">Inputer</th>
-                  {userRole === "superadmin" && <th className="py-3 px-4 text-center">Admin</th>}
                   <th className="py-3 px-4 text-center">Aksi</th>
                 </tr>
               </thead>
@@ -240,15 +226,6 @@ const RegionManagement: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Kolom Admin - hanya superadmin */}
-                        {userRole === "superadmin" && (
-                          <td className="py-3 px-4 text-center">
-                            <button onClick={() => handleOpenAssignAdmins(region)} className="text-purple-600 hover:text-purple-800 p-1.5 rounded hover:bg-purple-50 tooltip" title="Tambah Admin Wilayah">
-                              <FaUserShield size={16} />
-                            </button>
-                          </td>
-                        )}
-
                         {/* Kolom Aksi */}
                         <td className="py-3 px-4 text-center">
                           <div className="flex justify-center space-x-2">
@@ -266,7 +243,7 @@ const RegionManagement: React.FC = () => {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} className="text-center py-6 text-gray-500">
+                    <td colSpan={4} className="text-center py-6 text-gray-500">
                       Tidak ada data region sesuai filter.
                     </td>
                   </tr>

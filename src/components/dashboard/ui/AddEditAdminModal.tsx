@@ -4,17 +4,8 @@ import { FaSave, FaSpinner, FaUser, FaPhoneAlt, FaLock, FaEye, FaEyeSlash } from
 import { X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "../../../context/AuthContext";
-// Import fungsi API dari AdminService
 import { adminRegisterAdmin, updateAdmin, type RegisterAdminPayload, type UpdateAdminPayload } from "../../../services/AdminService";
-
-// Interface AdminDisplay harus konsisten dengan yang di AdminManagement.tsx
-export interface AdminDisplay {
-  id: string;
-  name: string;
-  phone: string;
-  isPJT: boolean;
-  regionName: string;
-}
+import { type AdminDisplay } from "../AdminManagement";
 
 interface AddEditAdminModalProps {
   isOpen: boolean;

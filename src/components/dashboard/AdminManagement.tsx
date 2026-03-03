@@ -1,15 +1,16 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { FaSearch, FaTimes, FaPlus, FaUsers, FaSpinner, FaSortUp, FaSortDown, FaMapMarkerAlt } from "react-icons/fa";
+import { FaSearch, FaTimes, FaPlus, FaUsers, FaSpinner, FaSortUp, FaSortDown, FaMapMarkerAlt, FaUserShield, FaUnlink } from "react-icons/fa";
 import { Edit, Trash2 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
 import DashboardLayout from "./DashboardLayout";
 import AddEditAdminModal from "./ui/AddEditAdminModal";
 import DeleteAdminModal from "./ui/DeleteAdminModal";
+import AssignAdminRegionModal from "./ui/AssignAdminRegionModal";
 
 // Import fungsi API dari AdminService
-import { getAdmins, deleteAdmin, type GetAdminsResponse } from "../../services/AdminService";
+import { getAdmins, deleteAdmin, updateDeleteAdminRegion, type GetAdminsResponse } from "../../services/AdminService";
 import { useAuth } from "../../context/AuthContext";
 
 // --- Data & Interfaces ---
@@ -19,8 +20,10 @@ export interface AdminDisplay {
   id: string;
   name: string;
   phone: string;
-  isPJT: boolean; // Penanggung Jawab Terikat (RegionID !== null)
-  regionName: string; // Nama desa/kelurahan jika ada
+  isPJT: boolean;
+  regionId: string;
+  kecamatan: string;
+  village: string;
 }
 
 // Helper function untuk Sorting
@@ -61,6 +64,7 @@ const AdminManagement: React.FC = () => {
   // State untuk Modal
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAssignRegionModalOpen, setIsAssignRegionModalOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminDisplay | null>(null);
 
   // --- Data Fetching Function ---
@@ -89,15 +93,19 @@ const AdminManagement: React.FC = () => {
       const uniqueAdminsData = Array.from(combinedAdminsMap.values());
 
       // Mengubah data API ke format tampilan
-      const mappedData: AdminDisplay[] = uniqueAdminsData.map((a) => ({
-        id: a.id,
-        name: a.name,
-        phone: a.phone,
-        // Cek jika region_id bukan nilai nol dan ada isinya
-        isPJT: a.region_id !== "00000000-0000-0000-0000-000000000000" && !!a.region_id,
-        // Untuk Region Name, kita pakai placeholder ID atau "Terikat"
-        regionName: a.region_id && a.region_id !== "00000000-0000-0000-0000-000000000000" ? `Terikat (${a.region_id.substring(0, 8)}...)` : "-",
-      }));
+      const mappedData: AdminDisplay[] = uniqueAdminsData.map((a) => {
+        const isBound =
+          !!a.region_id && a.region_id !== "00000000-0000-0000-0000-000000000000";
+        return {
+          id: a.id,
+          name: a.name,
+          phone: a.phone,
+          isPJT: isBound,
+          regionId: isBound ? a.region_id! : "",
+          kecamatan: a.kecamatan || "",
+          village: a.desa_kelurahan || "",
+        };
+      });
       setAdminsList(mappedData);
     } catch (error: any) {
       setAdminsList([]);
@@ -118,6 +126,7 @@ const AdminManagement: React.FC = () => {
     fetchAdmins();
     setIsAddEditModalOpen(false);
     setIsDeleteModalOpen(false);
+    setIsAssignRegionModalOpen(false);
     setSelectedAdmin(null);
   };
 
@@ -150,18 +159,34 @@ const AdminManagement: React.FC = () => {
 
   // Handlers Modal
   const handleAddClick = () => {
-    setSelectedAdmin(null); // Mode Add
+    setSelectedAdmin(null);
     setIsAddEditModalOpen(true);
   };
 
   const handleEditClick = (admin: AdminDisplay) => {
-    setSelectedAdmin(admin); // Mode Edit
+    setSelectedAdmin(admin);
     setIsAddEditModalOpen(true);
   };
 
   const handleDeleteClick = (admin: AdminDisplay) => {
     setSelectedAdmin(admin);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleAssignRegionClick = (admin: AdminDisplay) => {
+    setSelectedAdmin(admin);
+    setIsAssignRegionModalOpen(true);
+  };
+
+  const handleRemoveRegion = async (admin: AdminDisplay) => {
+    if (!token) return;
+    try {
+      await updateDeleteAdminRegion(token, admin.id, { region_id: "" });
+      toast.success(`Wilayah ${admin.name} berhasil dihapus.`);
+      fetchAdmins();
+    } catch (error: any) {
+      toast.error(error.message || "Gagal menghapus wilayah.");
+    }
   };
 
   const handleConfirmDelete = async (id: string) => {
@@ -185,6 +210,9 @@ const AdminManagement: React.FC = () => {
 
         {/* Modal Hapus */}
         {selectedAdmin && <DeleteAdminModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} admin={selectedAdmin} onConfirmDelete={handleConfirmDelete} />}
+
+        {/* Modal Tetapkan Wilayah */}
+        <AssignAdminRegionModal isOpen={isAssignRegionModalOpen} onClose={() => setIsAssignRegionModalOpen(false)} onSuccess={handleSuccess} admin={selectedAdmin} />
 
         {/* Filter dan Aksi */}
         <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg">
@@ -244,10 +272,39 @@ const AdminManagement: React.FC = () => {
                       <td className="py-3 px-4 font-semibold text-gray-900">{a.name}</td>
                       <td className="py-3 px-4">{a.phone}</td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${a.isPJT ? "bg-primary/20 text-primary" : "bg-red-100 text-red-700"}`}>
-                          <FaMapMarkerAlt className="w-3 h-3 mr-1" />
-                          {a.isPJT ? a.regionName : "Belum Terikat"}
-                        </span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* 1. Status badge */}
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${
+                              a.isPJT
+                                ? "bg-primary/20 text-primary"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            <FaMapMarkerAlt className="w-3 h-3 mr-1" />
+                            {a.isPJT ? a.kecamatan : "Belum Terikat"}
+                          </span>
+
+                          {/* 2. Assign region button */}
+                          <button
+                            onClick={() => handleAssignRegionClick(a)}
+                            title="Tetapkan Wilayah"
+                            className="text-purple-600 hover:text-purple-800 p-1.5 rounded hover:bg-purple-50 transition-colors"
+                          >
+                            <FaUserShield size={14} />
+                          </button>
+
+                          {/* 3. Remove region button — only when bound */}
+                          {a.isPJT && (
+                            <button
+                              onClick={() => handleRemoveRegion(a)}
+                              title="Lepas Wilayah"
+                              className="text-orange-500 hover:text-orange-700 p-1.5 rounded hover:bg-orange-50 transition-colors"
+                            >
+                              <FaUnlink size={13} />
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center space-x-2">

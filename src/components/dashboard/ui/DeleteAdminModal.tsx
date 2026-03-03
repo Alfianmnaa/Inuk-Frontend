@@ -2,15 +2,7 @@ import React, { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { FaSpinner } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Interface AdminDisplay harus konsisten dengan yang di AdminManagement.tsx
-export interface AdminDisplay {
-  id: string;
-  name: string;
-  phone: string;
-  isPJT: boolean;
-  regionName: string;
-}
+import { type AdminDisplay } from "../AdminManagement";
 
 interface DeleteAdminModalProps {
   isOpen: boolean;
@@ -55,7 +47,11 @@ const DeleteAdminModal: React.FC<DeleteAdminModalProps> = ({ isOpen, onClose, ad
             <p className="mt-2 text-sm text-gray-600 text-center">
               Telepon: <span className="font-semibold">{admin.phone}</span>.
             </p>
-            {admin.isPJT && <p className="text-sm text-center text-red-500 mt-1">*PERINGATAN: Admin ini terikat sebagai PJT Region **{admin.regionName}**. Penghapusan bisa gagal di backend.</p>}
+            {admin.isPJT && (
+              <p className="text-sm text-center text-red-500 mt-1">
+                *PERINGATAN: Admin ini terikat sebagai PJT Region <b>{admin.kecamatan} / {admin.village}</b>. Penghapusan bisa gagal di backend.
+              </p>
+            )}
 
             <div className="mt-8 flex justify-between space-x-3">
               <button

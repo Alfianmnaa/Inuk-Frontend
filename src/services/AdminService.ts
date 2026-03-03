@@ -7,7 +7,11 @@ export interface GetAdminsResponse {
   id: string;
   name: string;
   phone: string;
-  region_id: string | null; // Region ID yang dipegang admin (null jika belum punya)
+  region_id: string | null;
+  provinsi: string;
+  kecamatan: string;
+  kabupaten_kota: string;
+  desa_kelurahan: string;
   created_at: string;
 }
 
