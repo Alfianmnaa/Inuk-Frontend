@@ -63,7 +63,6 @@ export function formatDateToLocalDateInput(date: Date): string {
 
 export function formatFridayPonDisplay(date: Date): string {
   const options: Intl.DateTimeFormatOptions = {
-    weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
