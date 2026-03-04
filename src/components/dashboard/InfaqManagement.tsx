@@ -19,8 +19,6 @@ import DashboardLayout from "./DashboardLayout";
 import { useAuth } from "../../context/AuthContext";
 import {
   getInfaqs,
-  createInfaq,
-  updateInfaq,
   deleteInfaq,
   type Infaq,
   type ExportInfaqsQuery,
@@ -34,6 +32,7 @@ import {
 import { generateExcelBlob, downloadExcelFromBlob } from "../../utils/ExportToExcel";
 
 import AdminBendaharaModal from "./ui/AdminBendaharaModal";
+import AddEditInfaqModal from "./ui/AddEditInfaqModal";
 import {
   getAllFridayPons,
   formatDateToLocalDateInput,
@@ -64,150 +63,6 @@ const INITIAL_TREASURER: GetAdminTreasurerResponse = {
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-};
-
-// ── Inline Add/Edit Modal ────────────────────────────────────────────────────
-
-interface InfaqFormModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (payload: { MasjidID: string; Total: number; DateTime: string }) => Promise<void>;
-  masjids: MasjidResponse[];
-  initialData?: Infaq | null;
-  isSubmitting: boolean;
-}
-
-const InfaqFormModal: React.FC<InfaqFormModalProps> = ({
-  isOpen,
-  onClose,
-  onSubmit,
-  masjids,
-  initialData,
-  isSubmitting,
-}) => {
-  const isEdit = !!initialData;
-  const [masjidId, setMasjidId] = useState("");
-  const [total, setTotal] = useState("");
-  const [dateTime, setDateTime] = useState("");
-
-  useEffect(() => {
-    if (isEdit && initialData) {
-      setMasjidId(initialData.MasjidID);
-      setTotal(String(initialData.Total));
-      // Convert ISO to datetime-local format
-      setDateTime(initialData.DateTime.substring(0, 16));
-    } else {
-      setMasjidId("");
-      setTotal("");
-      setDateTime("");
-    }
-  }, [initialData, isEdit, isOpen]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!masjidId) { toast.error("Pilih masjid terlebih dahulu."); return; }
-    if (!total || isNaN(Number(total)) || Number(total) <= 0) {
-      toast.error("Nominal harus berupa angka positif.");
-      return;
-    }
-    if (!dateTime) { toast.error("Tanggal harus diisi."); return; }
-    await onSubmit({
-      MasjidID: masjidId,
-      Total: Number(total),
-      DateTime: new Date(dateTime).toISOString(),
-    });
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-[1050]">
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl mx-4"
-      >
-        <div className="flex justify-between items-center mb-5 border-b pb-3">
-          <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <FaMosque className="text-primary" />
-            {isEdit ? "Edit Data Infaq" : "Tambah Data Infaq"}
-          </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-xl leading-none">✕</button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Pilih Masjid */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Masjid <span className="text-red-500">*</span>
-            </label>
-            <select
-              required
-              value={masjidId}
-              onChange={(e) => setMasjidId(e.target.value)}
-              className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary outline-none bg-white"
-            >
-              <option value="">-- Pilih Masjid --</option>
-              {masjids.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Nominal */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nominal (Rp) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              min={1}
-              required
-              value={total}
-              onChange={(e) => setTotal(e.target.value)}
-              placeholder="Contoh: 250000"
-              className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary outline-none"
-            />
-          </div>
-
-          {/* Tanggal */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tanggal &amp; Waktu <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="datetime-local"
-              required
-              value={dateTime}
-              onChange={(e) => setDateTime(e.target.value)}
-              className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-primary outline-none"
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-5 py-2 bg-primary text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
-            >
-              {isSubmitting && <FaSpinner className="animate-spin" />}
-              {isEdit ? "Perbarui" : "Simpan"}
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </div>
-  );
 };
 
 // ── Delete Confirm Modal ──────────────────────────────────────────────────────
@@ -262,7 +117,6 @@ const InfaqManagement: React.FC = () => {
 
   // Loading
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Filters
@@ -345,40 +199,6 @@ const InfaqManagement: React.FC = () => {
 
   // ── CRUD handlers ──────────────────────────────────────────────────────────
 
-  const handleCreate = async (payload: { MasjidID: string; Total: number; DateTime: string }) => {
-    if (!token) return;
-    setIsSubmitting(true);
-    try {
-      await createInfaq(token, payload);
-      toast.success("Data infaq berhasil ditambahkan!");
-      setIsFormOpen(false);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal menambahkan data infaq.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleUpdate = async (payload: { MasjidID: string; Total: number; DateTime: string }) => {
-    if (!token || !selectedInfaq) return;
-    setIsSubmitting(true);
-    try {
-      await updateInfaq(token, selectedInfaq.id, {
-        Total: payload.Total,
-        DateTime: payload.DateTime,
-      });
-      toast.success("Data infaq berhasil diperbarui!");
-      setIsFormOpen(false);
-      setSelectedInfaq(null);
-      fetchData();
-    } catch (err: any) {
-      toast.error(err.message || "Gagal memperbarui data infaq.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const handleDelete = async () => {
     if (!token || !selectedInfaq) return;
     setIsDeleting(true);
@@ -449,13 +269,11 @@ const InfaqManagement: React.FC = () => {
 
       {/* ── Modals ─────────────────────────────────────────────────────────── */}
 
-      <InfaqFormModal
+      <AddEditInfaqModal
         isOpen={isFormOpen}
         onClose={() => { setIsFormOpen(false); setSelectedInfaq(null); }}
-        onSubmit={selectedInfaq ? handleUpdate : handleCreate}
-        masjids={masjids}
-        initialData={selectedInfaq}
-        isSubmitting={isSubmitting}
+        onSuccess={() => { setIsFormOpen(false); setSelectedInfaq(null); fetchData(); }}
+        infaq={selectedInfaq}
       />
 
       <DeleteInfaqModal

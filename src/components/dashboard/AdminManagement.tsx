@@ -273,9 +273,9 @@ const AdminManagement: React.FC = () => {
                       <td className="py-3 px-4">{a.phone}</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          {/* 1. Status badge — fixed width, ellipsis on long names */}
+                          {/* 1. Status badge — compact, truncate long kecamatan names */}
                           <span
-                            className={`inline-flex items-center w-32 px-2.5 py-1 text-xs font-semibold rounded-full overflow-hidden ${
+                            className={`inline-flex items-center max-w-[7.5rem] px-2.5 py-1 text-xs font-semibold rounded-full overflow-hidden ${
                               a.isPJT
                                 ? "bg-primary/20 text-primary"
                                 : "bg-red-100 text-red-700"
