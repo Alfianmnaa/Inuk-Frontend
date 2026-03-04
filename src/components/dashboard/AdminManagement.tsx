@@ -272,34 +272,34 @@ const AdminManagement: React.FC = () => {
                       <td className="py-3 px-4 font-semibold text-gray-900">{a.name}</td>
                       <td className="py-3 px-4">{a.phone}</td>
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {/* 1. Status badge */}
+                        <div className="flex items-center gap-2">
+                          {/* 1. Status badge — fixed width, ellipsis on long names */}
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 text-xs font-semibold rounded-full ${
+                            className={`inline-flex items-center w-32 px-2.5 py-1 text-xs font-semibold rounded-full overflow-hidden ${
                               a.isPJT
                                 ? "bg-primary/20 text-primary"
                                 : "bg-red-100 text-red-700"
                             }`}
                           >
-                            <FaMapMarkerAlt className="w-3 h-3 mr-1" />
-                            {a.isPJT ? a.kecamatan : "Belum Terikat"}
+                            <FaMapMarkerAlt className="w-3 h-3 mr-1 shrink-0" />
+                            <span className="truncate">{a.isPJT ? a.kecamatan : "Belum Terikat"}</span>
                           </span>
 
-                          {/* 2. Assign region button */}
+                          {/* 2. Assign region — indigo, matches Edit */}
                           <button
                             onClick={() => handleAssignRegionClick(a)}
                             title="Tetapkan Wilayah"
-                            className="text-purple-600 hover:text-purple-800 p-1.5 rounded hover:bg-purple-50 transition-colors"
+                            className="text-indigo-600 hover:text-indigo-900 p-1.5 rounded hover:bg-indigo-50 transition-colors"
                           >
                             <FaUserShield size={14} />
                           </button>
 
-                          {/* 3. Remove region button — only when bound */}
+                          {/* 3. Remove region — red, matches Delete; only when bound */}
                           {a.isPJT && (
                             <button
                               onClick={() => handleRemoveRegion(a)}
                               title="Lepas Wilayah"
-                              className="text-orange-500 hover:text-orange-700 p-1.5 rounded hover:bg-orange-50 transition-colors"
+                              className="text-red-600 hover:text-red-900 p-1.5 rounded hover:bg-red-50 transition-colors"
                             >
                               <FaUnlink size={13} />
                             </button>

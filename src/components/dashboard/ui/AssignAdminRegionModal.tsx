@@ -35,10 +35,19 @@ const AssignAdminRegionModal: React.FC<AssignAdminRegionModalProps> = ({
     setSelectedVillageId(null);
     setSearchTerm("");
     setIsLoadingVillages(true);
-    getRegions()
-      .then((regions) => {
+    Promise.all([
+      getRegions({ is_active: true }),
+      getRegions({ is_active: false }),
+    ])
+      .then(([active, inactive]) => {
+        const combined = [...active, ...inactive];
+        combined.sort(
+          (a, b) =>
+            a.kecamatan.localeCompare(b.kecamatan) ||
+            a.desa_kelurahan.localeCompare(b.desa_kelurahan)
+        );
         setVillages(
-          regions.map((r) => ({
+          combined.map((r) => ({
             id: r.id,
             desa_kelurahan: r.desa_kelurahan,
             kecamatan: r.kecamatan,
