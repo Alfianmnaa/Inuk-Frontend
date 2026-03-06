@@ -71,8 +71,8 @@ const AddEditInfaqModal: React.FC<AddEditInfaqModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     if (isEditMode && infaq) {
-      setTotal(infaq.Total);
-      const d = new Date(infaq.DateTime);
+      setTotal(infaq.total);
+      const d = new Date(infaq.date_time);
       const year = d.getFullYear();
       const safeYear = year >= START_YEAR ? year : currentYear;
       setSelectedYear(safeYear);
@@ -111,15 +111,15 @@ const AddEditInfaqModal: React.FC<AddEditInfaqModalProps> = ({
     try {
       if (isEditMode && infaq) {
         await updateInfaq(token, infaq.id, {
-          Total: Number(total),
-          DateTime: selectedDate,
+          total: Number(total),
+          date_time: selectedDate,
         });
         toast.success("Catatan infaq berhasil diperbarui!");
       } else {
         await createInfaq(token, {
-          MasjidID: masjidId,
-          Total: Number(total),
-          DateTime: selectedDate,
+          masjid_id: masjidId,
+          total: Number(total),
+          date_time: selectedDate,
         });
         toast.success("Catatan infaq berhasil ditambahkan!");
       }

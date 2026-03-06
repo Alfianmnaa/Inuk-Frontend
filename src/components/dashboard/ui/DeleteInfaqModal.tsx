@@ -34,7 +34,7 @@ const DeleteInfaqModal: React.FC<DeleteInfaqModalProps> = ({ isOpen, onClose, on
     }
   };
 
-  const formattedDate = new Date(infaq.DateTime).toLocaleDateString("id-ID", {
+  const formattedDate = new Date(infaq.date_time).toLocaleDateString("id-ID", {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -45,7 +45,7 @@ const DeleteInfaqModal: React.FC<DeleteInfaqModalProps> = ({ isOpen, onClose, on
     style: "currency",
     currency: "IDR",
     minimumFractionDigits: 0,
-  }).format(infaq.Total);
+  }).format(infaq.total);
 
   return (
     <AnimatePresence>
@@ -68,7 +68,7 @@ const DeleteInfaqModal: React.FC<DeleteInfaqModalProps> = ({ isOpen, onClose, on
               </div>
               <h3 className="text-2xl font-bold text-red-700">Hapus Catatan Infaq?</h3>
               <div className="mt-3 text-sm text-gray-600 space-y-1 bg-gray-50 rounded-lg p-3">
-                <p><span className="font-medium">Masjid:</span> {infaq.Name}</p>
+                <p><span className="font-medium">Masjid:</span> {infaq.name}</p>
                 <p><span className="font-medium">Nominal:</span> {formattedTotal}</p>
                 <p><span className="font-medium">Tanggal:</span> {formattedDate}</p>
               </div>

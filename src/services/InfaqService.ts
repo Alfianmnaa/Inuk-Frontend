@@ -4,28 +4,28 @@ const VITE_API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export interface Infaq {
   id: string;
-  MasjidID: string;
-  Name: string;
-  Province: string;
-  City: string;
-  Subdistrict: string;
-  Village: string;
-  Total: number;
-  DateTime: string;
+  masjid_id: string;
+  name: string;
+  provinsi: string;
+  kabupaten_kota: string;
+  kecamatan: string;
+  desa_kelurahan: string;
+  total: number;
+  date_time: string;
 }
 
 export interface InfaqDetailResponse {
   id: string;
   admin_id: string;
-  MasjidID: string;
-  Name: string;
-  RegionID: string;
-  Village: string;
-  Subdistrict: string;
-  City: string;
-  Province: string;
-  Total: number;
-  DateTime: string;
+  masjid_id: string;
+  name: string;
+  region_id: string;
+  desa_kelurahan: string;
+  kecamatan: string;
+  kabupaten_kota: string;
+  provinsi: string;
+  total: number;
+  date_time: string;
   created_at: string;
   updated_at: string;
 }
@@ -38,16 +38,16 @@ export interface GetInfaqsQuery {
 }
 
 export interface CreateInfaqPayload {
-  MasjidID: string;
-  Total: number;
+  masjid_id: string;
+  total: number;
   /** Format: YYYY-MM-DD (e.g. "2026-01-02") — must be a Jum'at Pon */
-  DateTime: string;
+  date_time: string;
 }
 
 export interface UpdateInfaqPayload {
-  Total?: number;
+  total?: number;
   /** Format: YYYY-MM-DD (e.g. "2026-01-02") — must be a Jum'at Pon */
-  DateTime: string;
+  date_time: string;
 }
 
 export interface DeleteInfaqResponse {

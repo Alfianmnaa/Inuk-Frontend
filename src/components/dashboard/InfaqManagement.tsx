@@ -83,8 +83,8 @@ const DeleteInfaqModal: React.FC<DeleteInfaqModalProps> = ({ isOpen, onClose, on
         <h3 className="text-lg font-bold text-gray-800 mb-2">Hapus Data Infaq?</h3>
         <p className="text-sm text-gray-600 mb-6">
           Anda akan menghapus data infaq dari{" "}
-          <span className="font-semibold">{infaq.Name}</span> senilai{" "}
-          <span className="font-semibold text-red-600">{formatRupiah(infaq.Total)}</span>.
+          <span className="font-semibold">{infaq.name}</span> senilai{" "}
+          <span className="font-semibold text-red-600">{formatRupiah(infaq.total)}</span>.
           Tindakan ini tidak dapat dibatalkan.
         </p>
         <div className="flex justify-end gap-3">
@@ -181,7 +181,7 @@ const InfaqManagement: React.FC = () => {
 
       // Client-side sort
       const sorted = [...infaqData].sort((a, b) => {
-        const diff = new Date(a.DateTime).getTime() - new Date(b.DateTime).getTime();
+        const diff = new Date(a.date_time).getTime() - new Date(b.date_time).getTime();
         return sortDir === "newest" ? -diff : diff;
       });
 
@@ -225,11 +225,11 @@ const InfaqManagement: React.FC = () => {
 
     const dataToExport = filteredInfaqs.map((inf, idx) => ({
       No: idx + 1,
-      Nama_Masjid: inf.Name,
-      Desa_Kelurahan: inf.Village,
-      Kecamatan: inf.Subdistrict,
-      Tanggal: formatDate(inf.DateTime),
-      Nominal_Rp: inf.Total,
+      Nama_Masjid: inf.name,
+      Desa_Kelurahan: inf.desa_kelurahan,
+      Kecamatan: inf.kecamatan,
+      Tanggal: formatDate(inf.date_time),
+      Nominal_Rp: inf.total,
     }));
 
     const blob = generateExcelBlob(dataToExport, "Laporan Infaq");
@@ -246,14 +246,14 @@ const InfaqManagement: React.FC = () => {
     if (!lower) return infaqs;
     return infaqs.filter(
       (inf) =>
-        inf.Name.toLowerCase().includes(lower) ||
-        inf.Village.toLowerCase().includes(lower) ||
-        inf.Subdistrict.toLowerCase().includes(lower)
+        inf.name.toLowerCase().includes(lower) ||
+        inf.desa_kelurahan.toLowerCase().includes(lower) ||
+        inf.kecamatan.toLowerCase().includes(lower)
     );
   }, [infaqs, searchText]);
 
   const totalNominal = useMemo(
-    () => filteredInfaqs.reduce((sum, inf) => sum + inf.Total, 0),
+    () => filteredInfaqs.reduce((sum, inf) => sum + inf.total, 0),
     [filteredInfaqs]
   );
 
@@ -472,19 +472,19 @@ const InfaqManagement: React.FC = () => {
                           <div className="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center shrink-0">
                             <FaMosque className="text-primary text-xs" />
                           </div>
-                          <span className="font-medium text-gray-800">{inf.Name}</span>
+                          <span className="font-medium text-gray-800">{inf.name}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-gray-600 text-xs">
-                        {inf.Village}
+                        {inf.desa_kelurahan}
                         <br />
                         <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-medium">
-                          {inf.Subdistrict}
+                          {inf.kecamatan}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-gray-600">{formatDate(inf.DateTime)}</td>
+                      <td className="py-3 px-4 text-gray-600">{formatDate(inf.date_time)}</td>
                       <td className="py-3 px-4 text-right font-semibold text-primary">
-                        {formatRupiah(inf.Total)}
+                        {formatRupiah(inf.total)}
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex justify-center gap-2">
