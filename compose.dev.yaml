@@ -17,13 +17,14 @@ services:
     networks:
       - inuk-network
 
-  # NEW: nginx for storage files
+  # nginx for storage files
   client-storage-dev:
     image: nginx:alpine
     container_name: inuk-client-storage-dev
     volumes:
       - ../storage/uploads:/usr/share/nginx/uploads:ro
       - ../storage/exports/donations:/usr/share/nginx/exports/donations:ro
+      - ../storage/exports/infaqs:/usr/share/nginx/exports/infaqs:ro
       - ./nginx-storage.conf:/etc/nginx/nginx.conf:ro
     restart: unless-stopped
     networks:

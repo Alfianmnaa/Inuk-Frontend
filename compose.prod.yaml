@@ -12,6 +12,7 @@ services:
       - CLIENT_DOMAIN=${CLIENT_DOMAIN}
     volumes:
       - ../storage/exports/donations:/usr/share/nginx/exports/donations:ro
+      - ../storage/exports/infaqs:/usr/share/nginx/exports/infaqs:ro
       - ../storage/uploads:/usr/share/nginx/uploads:ro
     restart: unless-stopped
     networks:
@@ -23,23 +24,34 @@ services:
       - "traefik.http.routers.frontend-http.entrypoints=web"
       - "traefik.http.routers.frontend-http.middlewares=redirect-to-https@file"
       # HTTPS Router for main
-      - "traefik.http.routers.frontend-https.rule=Host(`${CLIENT_DOMAIN}`) && !PathPrefix(`/exports/donations`) && !PathPrefix(`/uploads`)"
+      - "traefik.http.routers.frontend-https.rule=Host(`${CLIENT_DOMAIN}`) && !PathPrefix(`/exports/donations`) && !PathPrefix(`/exports/infaqs`) && !PathPrefix(`/uploads`)"
       - "traefik.http.routers.frontend-https.entrypoints=websecure"
       - "traefik.http.routers.frontend-https.tls=true"
       - "traefik.http.routers.frontend-https.tls.certresolver=letsencrypt"
       - "traefik.http.routers.frontend-https.middlewares=default-security@file"
       - "traefik.http.routers.frontend-https.priority=1"
-      # HTTP Router for exports (redirects to HTTPS)
-      - "traefik.http.routers.exports-http.rule=Host(`${CLIENT_DOMAIN}`) && PathPrefix(`/exports/donations`)"
-      - "traefik.http.routers.exports-http.entrypoints=web"
-      - "traefik.http.routers.exports-http.middlewares=redirect-to-https@file"
-      # HTTPS Router for exports (with rate limiting)
-      - "traefik.http.routers.exports-https.rule=Host(`${CLIENT_DOMAIN}`) && PathPrefix(`/exports/donations`)"
-      - "traefik.http.routers.exports-https.entrypoints=websecure"
-      - "traefik.http.routers.exports-https.tls=true"
-      - "traefik.http.routers.exports-https.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.exports-https.middlewares=default-security@file,rate-limit-files@file"
-      - "traefik.http.routers.exports-https.priority=2"
+      # HTTP Router for exports/donations (redirects to HTTPS)
+      - "traefik.http.routers.exports-donations-http.rule=Host(`${CLIENT_DOMAIN}`) && PathPrefix(`/exports/donations`)"
+      - "traefik.http.routers.exports-donations-http.entrypoints=web"
+      - "traefik.http.routers.exports-donations-http.middlewares=redirect-to-https@file"
+      # HTTPS Router for exports/donations (with rate limiting)
+      - "traefik.http.routers.exports-donations-https.rule=Host(`${CLIENT_DOMAIN}`) && PathPrefix(`/exports/donations`)"
+      - "traefik.http.routers.exports-donations-https.entrypoints=websecure"
+      - "traefik.http.routers.exports-donations-https.tls=true"
+      - "traefik.http.routers.exports-donations-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.exports-donations-https.middlewares=default-security@file,rate-limit-files@file"
+      - "traefik.http.routers.exports-donations-https.priority=2"
+      # HTTP Router for exports/infaqs (redirects to HTTPS)
+      - "traefik.http.routers.exports-infaqs-http.rule=Host(`${CLIENT_DOMAIN}`) && PathPrefix(`/exports/infaqs`)"
+      - "traefik.http.routers.exports-infaqs-http.entrypoints=web"
+      - "traefik.http.routers.exports-infaqs-http.middlewares=redirect-to-https@file"
+      # HTTPS Router for exports/infaqs (with rate limiting)
+      - "traefik.http.routers.exports-infaqs-https.rule=Host(`${CLIENT_DOMAIN}`) && PathPrefix(`/exports/infaqs`)"
+      - "traefik.http.routers.exports-infaqs-https.entrypoints=websecure"
+      - "traefik.http.routers.exports-infaqs-https.tls=true"
+      - "traefik.http.routers.exports-infaqs-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.exports-infaqs-https.middlewares=default-security@file,rate-limit-files@file"
+      - "traefik.http.routers.exports-infaqs-https.priority=2"
       # HTTP Router for uploads (redirects to HTTPS)
       - "traefik.http.routers.uploads-http.rule=Host(`${CLIENT_DOMAIN}`) && PathPrefix(`/uploads`)"
       - "traefik.http.routers.uploads-http.entrypoints=web"
