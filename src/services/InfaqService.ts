@@ -76,6 +76,29 @@ export interface ExportInfaqsResponse {
   file_name?: string;
 }
 
+// ── Recap ─────────────────────────────────────────────────────────────────────
+
+export interface InfaqsRecapYearsResponse {
+  years: number[];
+}
+
+export interface InfaqsRecapPasaransResponse {
+  dates: string[]; // "YYYY-MM-DD" strings, each a Jum'at Pon date
+}
+
+export interface InfaqsRecapKecamatan {
+  name: string;
+  total_masjid: number;
+  total_infaq: number;
+}
+
+export interface InfaqsRecapResponse {
+  name: string;         // kabupaten/kota name
+  total_masjid: number;
+  total_infaq: number;
+  kecamatan: InfaqsRecapKecamatan[];
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const getAuthHeaders = (token: string) => ({
@@ -132,6 +155,46 @@ export const deleteInfaq = async (token: string, id: string): Promise<DeleteInfa
   } catch (error) {
     handleError(error, "Gagal menghapus infaq.");
     throw error;
+  }
+};
+
+// ── Recap ─────────────────────────────────────────────────────────────────────
+
+/** GET /infaqs-recap/year → { years: number[] } */
+export const getInfaqsRecapYears = async (): Promise<number[]> => {
+  try {
+    const response = await axios.get<InfaqsRecapYearsResponse>(`${VITE_API_URL}/infaqs-recap/year`);
+    return response.data?.years ?? [];
+  } catch (error) {
+    console.error("Failed to fetch infaq recap years:", error);
+    return [];
+  }
+};
+
+/** GET /infaqs-recap/pasaran?year=YYYY → { dates: string[] } */
+export const getInfaqsRecapPasarans = async (year: number): Promise<string[]> => {
+  try {
+    const response = await axios.get<InfaqsRecapPasaransResponse>(
+      `${VITE_API_URL}/infaqs-recap/pasaran`,
+      { params: { year } }
+    );
+    return response.data?.dates ?? [];
+  } catch (error) {
+    console.error(`Failed to fetch infaq pasarans for year ${year}:`, error);
+    return [];
+  }
+};
+
+/** GET /infaqs-recap?pasaran=YYYY-MM-DD → InfaqsRecapResponse */
+export const getInfaqsRecap = async (pasaran: string): Promise<InfaqsRecapResponse | null> => {
+  try {
+    const response = await axios.get<InfaqsRecapResponse>(`${VITE_API_URL}/infaqs-recap`, {
+      params: { pasaran },
+    });
+    return response.data ?? null;
+  } catch (error) {
+    console.error(`Failed to fetch infaq recap for pasaran ${pasaran}:`, error);
+    return null;
   }
 };
 

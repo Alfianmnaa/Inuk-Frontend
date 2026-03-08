@@ -1,6 +1,7 @@
 // import HeroSection from "../components/landing/HeroSection";
 import Navbar from "../components/layout/Navbar";
 import RekapDonasi from "../components/landing/RekapDonasi";
+import RekapInfaq from "../components/landing/RekapInfaq";
 // import Tentang from "../components/landing/Tentang";
 // import Program from "../components/landing/Program";
 // import Layanan from "../components/landing/Layanan";
@@ -16,6 +17,7 @@ const Landing = () => {
       <Navbar />
       {/* <HeroSection /> */}
       <RekapDonasi />
+      <RekapInfaq />
       {/* <Tentang />
       <Program />
       <Layanan />
