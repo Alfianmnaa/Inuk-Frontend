@@ -5,7 +5,6 @@ import {
   FaTable,
   FaLeaf,
   FaSpinner,
-  FaMosque,
   FaFilter,
 } from "react-icons/fa";
 import { BiChevronDown } from "react-icons/bi";
@@ -130,12 +129,11 @@ const RekapInfaq: React.FC = () => {
   }, []);
 
   // ── Fetch available pasarans (when year changes) ──────────────────────────────
+  // NOTE: do NOT set selectedPasaran here — that belongs in the year onChange
+  // handler. Setting state synchronously inside a useEffect body causes React 18
+  // Strict Mode to overwrite user selections on the second effect invocation.
   useEffect(() => {
     if (!selectedYear) return;
-
-    // Reset to full-year view when year changes
-    setSelectedPasaran(String(selectedYear));
-    setSelectedKecamatan("");
 
     const fetchPasarans = async () => {
       const cacheKey = `inuk_infaq_recap_pasarans_${selectedYear}`;
@@ -172,21 +170,36 @@ const RekapInfaq: React.FC = () => {
       return;
     }
 
+    // AbortController cancels the in-flight request if pasaran changes again
+    // before the previous fetch completes, preventing stale data from
+    // overwriting a newer selection's result.
+    const controller = new AbortController();
+
+    setIsLoading(true);
+    setSelectedKecamatan(""); // reset filter before fetch, not inside async callback
+
     const fetchData = async () => {
-      setIsLoading(true);
       try {
         const data = await getInfaqsRecap(selectedPasaran);
-        setRecapData(data);
-        setSelectedKecamatan(""); // reset kecamatan filter on new data
+        if (!controller.signal.aborted) {
+          setRecapData(data);
+        }
       } catch (error) {
-        console.error("Failed to fetch infaq recap data:", error);
-        setRecapData(null);
+        if (!controller.signal.aborted) {
+          console.error("Failed to fetch infaq recap data:", error);
+          setRecapData(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
+
+    return () => controller.abort();
+
   }, [selectedPasaran]);
 
   // ── Derived values ────────────────────────────────────────────────────────────
@@ -289,7 +302,12 @@ const RekapInfaq: React.FC = () => {
                 <select
                   className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                   value={selectedYear}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  onChange={(e) => {
+                    const newYear = Number(e.target.value);
+                    setSelectedYear(newYear);
+                    setSelectedPasaran(String(newYear)); // explicit reset to full-year view
+                    setSelectedKecamatan("");
+                  }}
                   disabled={isLoadingYears}
                 >
                   {availableYears.length > 0 ? (
@@ -385,9 +403,8 @@ const RekapInfaq: React.FC = () => {
                     </div>
                     <div className="flex justify-between">
                       <span className="font-semibold">Jumlah Masjid</span>
-                      <span className="font-bold text-gray-900 flex items-center gap-1">
-                        : <FaMosque className="inline text-primary" />{" "}
-                        {recapData?.total_masjid ?? 0}
+                      <span className="font-bold text-gray-900">
+                        : {recapData?.total_masjid ?? 0}
                       </span>
                     </div>
                   </div>
@@ -486,10 +503,7 @@ const RekapInfaq: React.FC = () => {
                             {index + 1}
                           </td>
                           <td className="py-3 px-4 border border-gray-200 font-medium">
-                            <span className="flex items-center gap-1.5">
-                              <FaMosque className="text-primary w-3 h-3 shrink-0" />
-                              {row.masjidName}
-                            </span>
+                            {row.masjidName}
                           </td>
                           <td className="py-3 px-4 border border-gray-200 text-gray-600">
                             <span className="font-medium text-gray-800">{row.kecamatan}</span>
