@@ -6,6 +6,7 @@ import {
   FaLeaf,
   FaSpinner,
   FaMosque,
+  FaFilter,
 } from "react-icons/fa";
 import { BiChevronDown } from "react-icons/bi";
 import DonationChart from "../../utils/DonationChart";
@@ -30,6 +31,8 @@ const formatRupiah = (angka: number) =>
  * e.g. "2026-01-02" → "2 Januari 2026"
  */
 const formatPasaranLabel = (dateStr: string): string => {
+  // "YYYY" format → show as full year label
+  if (/^\d{4}$/.test(dateStr)) return `Seluruh Tahun ${dateStr}`;
   const [year, month, day] = dateStr.split("-").map(Number);
   const date = new Date(year, month - 1, day);
   return new Intl.DateTimeFormat("id-ID", {
@@ -38,6 +41,15 @@ const formatPasaranLabel = (dateStr: string): string => {
     year: "numeric",
   }).format(date);
 };
+
+// ── Flat row type for the masjid table ───────────────────────────────────────
+
+interface MasjidRow {
+  masjidName: string;
+  kecamatan: string;
+  desa: string;
+  totalInfaq: number;
+}
 
 // ── Animation variants ────────────────────────────────────────────────────────
 
@@ -71,7 +83,11 @@ const RekapInfaq: React.FC = () => {
   const [isLoadingPasarans, setIsLoadingPasarans] = useState(false);
 
   const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear());
-  const [selectedPasaran, setSelectedPasaran] = useState<string>("");
+  // Default to full-year view ("YYYY" format)
+  const [selectedPasaran, setSelectedPasaran] = useState<string>(
+    String(currentDate.getFullYear())
+  );
+  const [selectedKecamatan, setSelectedKecamatan] = useState<string>("");
 
   // ── Fetch available years (once on mount) ────────────────────────────────────
   useEffect(() => {
@@ -83,7 +99,8 @@ const RekapInfaq: React.FC = () => {
         const years = JSON.parse(cached) as number[];
         setAvailableYears(years);
         if (years.length > 0 && !years.includes(currentDate.getFullYear())) {
-          setSelectedYear(years[0]); // most recent first (DESC)
+          setSelectedYear(years[0]);
+          setSelectedPasaran(String(years[0]));
         }
         setIsLoadingYears(false);
         return;
@@ -97,7 +114,8 @@ const RekapInfaq: React.FC = () => {
           setAvailableYears(years);
           sessionStorage.setItem(cacheKey, JSON.stringify(years));
           if (!years.includes(currentDate.getFullYear())) {
-            setSelectedYear(years[0]); // most recent
+            setSelectedYear(years[0]);
+            setSelectedPasaran(String(years[0]));
           }
         }
       } catch (error) {
@@ -115,35 +133,29 @@ const RekapInfaq: React.FC = () => {
   useEffect(() => {
     if (!selectedYear) return;
 
+    // Reset to full-year view when year changes
+    setSelectedPasaran(String(selectedYear));
+    setSelectedKecamatan("");
+
     const fetchPasarans = async () => {
       const cacheKey = `inuk_infaq_recap_pasarans_${selectedYear}`;
       const cached = sessionStorage.getItem(cacheKey);
 
       if (cached) {
-        const dates = JSON.parse(cached) as string[];
-        setAvailablePasarans(dates);
-        // Auto-select the most recent pasaran if current selection not in list
-        if (dates.length > 0 && !dates.includes(selectedPasaran)) {
-          setSelectedPasaran(dates[0]); // DESC order, so [0] is most recent
-        }
+        setAvailablePasarans(JSON.parse(cached) as string[]);
         return;
       }
 
       setIsLoadingPasarans(true);
       try {
         const dates = await getInfaqsRecapPasarans(selectedYear);
-        if (dates.length === 0) {
-          setAvailablePasarans([]);
-          setSelectedPasaran("");
-        } else {
-          setAvailablePasarans(dates);
+        setAvailablePasarans(dates);
+        if (dates.length > 0) {
           sessionStorage.setItem(cacheKey, JSON.stringify(dates));
-          setSelectedPasaran(dates[0]); // most recent
         }
       } catch (error) {
         console.error(`Error fetching pasarans for year ${selectedYear}:`, error);
         setAvailablePasarans([]);
-        setSelectedPasaran("");
       } finally {
         setIsLoadingPasarans(false);
       }
@@ -165,6 +177,7 @@ const RekapInfaq: React.FC = () => {
       try {
         const data = await getInfaqsRecap(selectedPasaran);
         setRecapData(data);
+        setSelectedKecamatan(""); // reset kecamatan filter on new data
       } catch (error) {
         console.error("Failed to fetch infaq recap data:", error);
         setRecapData(null);
@@ -177,11 +190,50 @@ const RekapInfaq: React.FC = () => {
   }, [selectedPasaran]);
 
   // ── Derived values ────────────────────────────────────────────────────────────
+
   const kecamatanList = recapData?.kecamatan ?? [];
   const isDataAvailable = kecamatanList.length > 0;
 
-  const totalInfaq = useMemo(
-    () => kecamatanList.reduce((sum, kec) => sum + kec.total_infaq, 0),
+  // Unique kecamatan names for the filter dropdown
+  const kecamatanOptions = useMemo(
+    () => kecamatanList.map((kec) => kec.name),
+    [kecamatanList]
+  );
+
+  // Flatten nested structure → one row per masjid, filtered by kecamatan
+  const masjidRows = useMemo<MasjidRow[]>(() => {
+    const rows: MasjidRow[] = [];
+    for (const kec of kecamatanList) {
+      if (selectedKecamatan && kec.name !== selectedKecamatan) continue;
+      for (const desa of kec.desa_kelurahan) {
+        for (const masjid of desa.masjid) {
+          rows.push({
+            masjidName: masjid.name,
+            kecamatan: kec.name,
+            desa: desa.name,
+            totalInfaq: masjid.total_infaq,
+          });
+        }
+      }
+    }
+    return rows;
+  }, [kecamatanList, selectedKecamatan]);
+
+  const filteredTotalInfaq = useMemo(
+    () => masjidRows.reduce((sum, row) => sum + row.totalInfaq, 0),
+    [masjidRows]
+  );
+
+  const grandTotalInfaq = recapData?.total_infaq ?? 0;
+
+  // Chart data always shows all kecamatan regardless of table filter
+  const chartData = useMemo(
+    () =>
+      kecamatanList.map((kec) => ({
+        desa: kec.name,
+        jumlahDonatur: kec.total_masjid,
+        totalDonasi: kec.total_infaq,
+      })),
     [kecamatanList]
   );
 
@@ -216,7 +268,7 @@ const RekapInfaq: React.FC = () => {
           <p className="text-primary font-bold text-lg">Rekap Infaq</p>
           <h2 className="text-4xl font-bold text-gray-800">Per Jum'at Pon</h2>
           <p className="text-gray-600 mt-3 max-w-xl mx-auto">
-            Pilih tahun dan tanggal Jum'at Pon untuk melihat rekap infaq masjid
+            Pilih tahun dan periode Jum'at Pon untuk melihat rekap infaq masjid
             per kecamatan di Kabupaten Kudus.
           </p>
         </motion.div>
@@ -261,14 +313,18 @@ const RekapInfaq: React.FC = () => {
                 </div>
               </div>
 
-              {/* Pasaran (date) dropdown */}
+              {/* Pasaran (date) dropdown — includes "Semua" option */}
               <div className="relative">
                 <select
                   className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-3 px-4 pr-8 leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                   value={selectedPasaran}
                   onChange={(e) => setSelectedPasaran(e.target.value)}
-                  disabled={isLoadingPasarans || availablePasarans.length === 0}
+                  disabled={isLoadingPasarans}
                 >
+                  {/* Full-year option always present */}
+                  <option value={String(selectedYear)}>
+                    Semua Jum'at Pon
+                  </option>
                   {availablePasarans.length > 0 ? (
                     availablePasarans.map((dateStr) => (
                       <option key={dateStr} value={dateStr}>
@@ -276,11 +332,11 @@ const RekapInfaq: React.FC = () => {
                       </option>
                     ))
                   ) : (
-                    <option value="">
-                      {isLoadingPasarans
-                        ? "Memuat..."
-                        : "Tidak ada data"}
-                    </option>
+                    !isLoadingPasarans && (
+                      <option disabled value="">
+                        Tidak ada data
+                      </option>
+                    )
                   )}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
@@ -304,7 +360,7 @@ const RekapInfaq: React.FC = () => {
         ) : (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Ringkasan kecamatan */}
+              {/* Ringkasan */}
               <motion.div
                 variants={itemVariants}
                 className="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border-t-4 border-primary"
@@ -321,29 +377,17 @@ const RekapInfaq: React.FC = () => {
                         : {recapData?.name || "-"}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="font-semibold">Tanggal</span>
-                      <span className="font-bold text-gray-900">
-                        : {selectedPasaran ? formatPasaranLabel(selectedPasaran) : "-"}
-                      </span>
-                    </div>
                     <div className="flex justify-between border-t pt-3">
                       <span className="font-semibold">Total Infaq</span>
                       <span className="font-bold text-gray-900">
-                        : {formatRupiah(recapData?.total_infaq ?? 0)}
+                        : {formatRupiah(grandTotalInfaq)}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="font-semibold">Total Masjid</span>
+                      <span className="font-semibold">Jumlah Masjid</span>
                       <span className="font-bold text-gray-900 flex items-center gap-1">
                         : <FaMosque className="inline text-primary" />{" "}
                         {recapData?.total_masjid ?? 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="font-semibold">Jumlah Kecamatan</span>
-                      <span className="font-bold text-gray-900">
-                        : {kecamatanList.length}
                       </span>
                     </div>
                   </div>
@@ -365,89 +409,95 @@ const RekapInfaq: React.FC = () => {
                 <div className="grow">
                   {isDataAvailable ? (
                     <DonationChart
-                      data={kecamatanList.map((kec) => ({
-                        desa: kec.name,
-                        jumlahDonatur: kec.total_masjid,
-                        totalDonasi: kec.total_infaq,
-                      }))}
+                      data={chartData}
                       areaName={recapData?.name ?? "Kabupaten/Kota"}
                       dataLevel="Kecamatan"
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center bg-gray-100 rounded-lg h-64 md:h-80">
-                      {selectedPasaran ? (
-                        <>
-                          <h2 className="text-lg font-bold text-gray-500 mb-1">
-                            Tidak Ada Data
-                          </h2>
-                          <p className="text-gray-400 text-sm text-center px-4">
-                            Belum ada infaq yang tercatat pada{" "}
-                            {formatPasaranLabel(selectedPasaran)}.
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-gray-400 italic text-sm">
-                          Pilih tanggal Jum'at Pon untuk melihat grafik.
-                        </p>
-                      )}
+                      <h2 className="text-lg font-bold text-gray-500 mb-1">
+                        Tidak Ada Data
+                      </h2>
+                      <p className="text-gray-400 text-sm text-center px-4">
+                        Belum ada infaq yang tercatat pada periode ini.
+                      </p>
                     </div>
                   )}
                 </div>
               </motion.div>
             </div>
 
-            {/* ── Tabel Kecamatan ── */}
+            {/* ── Tabel Masjid ── */}
             <motion.div
               variants={itemVariants}
               className="mt-8 bg-white p-6 rounded-xl shadow-lg overflow-x-auto"
             >
-              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
-                <FaTable className="mr-2 text-primary" /> Tabel Infaq per Kecamatan
-              </h3>
+              {/* Table header + kecamatan filter */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <h3 className="text-lg font-bold text-gray-800 flex items-center">
+                  <FaTable className="mr-2 text-primary" /> Tabel Infaq per Masjid
+                </h3>
+
+                {isDataAvailable && (
+                  <div className="relative w-full sm:w-56">
+                    <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-3 h-3 pointer-events-none" />
+                    <select
+                      className="block w-full appearance-none bg-white border border-gray-300 rounded-lg py-2 pl-8 pr-8 text-sm leading-tight focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                      value={selectedKecamatan}
+                      onChange={(e) => setSelectedKecamatan(e.target.value)}
+                    >
+                      <option value="">Semua Kecamatan</option>
+                      {kecamatanOptions.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                      <BiChevronDown className="w-4 h-4" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <table className="min-w-full table-auto border-collapse">
                 <thead>
                   <tr className="bg-yellow-50 text-gray-800 text-sm font-semibold">
-                    <th className="py-3 px-4 border border-yellow-200">No</th>
-                    <th className="py-3 px-4 border border-yellow-200 text-left">
-                      Kecamatan
-                    </th>
-                    <th className="py-3 px-4 border border-yellow-200">
-                      Jumlah Masjid
-                    </th>
-                    <th className="py-3 px-4 border border-yellow-200">
-                      Total Infaq
-                    </th>
-                    <th className="py-3 px-4 border border-yellow-200">
-                      Persentase
-                    </th>
+                    <th className="py-3 px-4 border border-yellow-200 text-center">No</th>
+                    <th className="py-3 px-4 border border-yellow-200 text-left">Nama Masjid</th>
+                    <th className="py-3 px-4 border border-yellow-200 text-left">Kecamatan / Desa</th>
+                    <th className="py-3 px-4 border border-yellow-200 text-right">Total Infaq</th>
+                    <th className="py-3 px-4 border border-yellow-200 text-center">Persentase</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {isDataAvailable ? (
-                    kecamatanList.map((kec, index) => {
+                  {isDataAvailable && masjidRows.length > 0 ? (
+                    masjidRows.map((row, index) => {
                       const percentage =
-                        totalInfaq > 0
-                          ? ((kec.total_infaq / totalInfaq) * 100).toFixed(2)
+                        grandTotalInfaq > 0
+                          ? ((row.totalInfaq / grandTotalInfaq) * 100).toFixed(2)
                           : "0";
                       return (
                         <tr
-                          key={kec.name}
+                          key={`${row.masjidName}-${row.desa}-${index}`}
                           className="text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                         >
                           <td className="py-3 px-4 border border-gray-200 text-center">
                             {index + 1}
                           </td>
                           <td className="py-3 px-4 border border-gray-200 font-medium">
-                            {kec.name}
-                          </td>
-                          <td className="py-3 px-4 border border-gray-200 text-center">
-                            <span className="inline-flex items-center gap-1">
-                              <FaMosque className="text-primary w-3 h-3" />
-                              {kec.total_masjid}
+                            <span className="flex items-center gap-1.5">
+                              <FaMosque className="text-primary w-3 h-3 shrink-0" />
+                              {row.masjidName}
                             </span>
                           </td>
+                          <td className="py-3 px-4 border border-gray-200 text-gray-600">
+                            <span className="font-medium text-gray-800">{row.kecamatan}</span>
+                            <span className="text-gray-400 mx-1">/</span>
+                            {row.desa}
+                          </td>
                           <td className="py-3 px-4 border border-gray-200 text-right font-semibold">
-                            {formatRupiah(kec.total_infaq)}
+                            {formatRupiah(row.totalInfaq)}
                           </td>
                           <td className="py-3 px-4 border border-gray-200 text-center">
                             {percentage}%
@@ -457,37 +507,33 @@ const RekapInfaq: React.FC = () => {
                     })
                   ) : (
                     <tr>
-                      <td
-                        colSpan={5}
-                        className="py-8 text-center text-gray-400 italic"
-                      >
-                        {selectedPasaran
-                          ? `Tidak ada data infaq pada ${formatPasaranLabel(selectedPasaran)}.`
-                          : "Pilih tanggal Jum'at Pon untuk melihat data."}
+                      <td colSpan={5} className="py-8 text-center text-gray-400 italic">
+                        {isDataAvailable
+                          ? `Tidak ada masjid di kecamatan ${selectedKecamatan}.`
+                          : "Tidak ada data infaq untuk periode ini."}
                       </td>
                     </tr>
                   )}
 
                   {/* Total row */}
-                  {isDataAvailable && (
-                    <tr className="bg-yellow-100 text-gray-800 font-bold text-base">
+                  {isDataAvailable && masjidRows.length > 0 && (
+                    <tr className="bg-yellow-100 text-gray-800 font-bold text-sm">
                       <td
-                        colSpan={2}
+                        colSpan={3}
                         className="py-3 px-4 border border-gray-300 text-center"
                       >
-                        Total Keseluruhan
-                      </td>
-                      <td className="py-3 px-4 border border-gray-300 text-center">
-                        <span className="inline-flex items-center gap-1">
-                          <FaMosque className="text-primary w-3 h-3" />
-                          {recapData?.total_masjid ?? 0}
-                        </span>
+                        {selectedKecamatan
+                          ? `Total Kecamatan ${selectedKecamatan}`
+                          : "Total Keseluruhan"}
                       </td>
                       <td className="py-3 px-4 border border-gray-300 text-right">
-                        {formatRupiah(totalInfaq)}
+                        {formatRupiah(filteredTotalInfaq)}
                       </td>
                       <td className="py-3 px-4 border border-gray-300 text-center">
-                        100%
+                        {grandTotalInfaq > 0
+                          ? ((filteredTotalInfaq / grandTotalInfaq) * 100).toFixed(1)
+                          : "0"}
+                        %
                       </td>
                     </tr>
                   )}

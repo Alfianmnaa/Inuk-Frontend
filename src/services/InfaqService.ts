@@ -86,14 +86,27 @@ export interface InfaqsRecapPasaransResponse {
   dates: string[]; // "YYYY-MM-DD" strings, each a Jum'at Pon date
 }
 
+export interface InfaqsRecapMasjid {
+  name: string;
+  total_infaq: number;
+}
+
+export interface InfaqsRecapVillage {
+  name: string;
+  total_masjid: number;
+  total_infaq: number;
+  masjid: InfaqsRecapMasjid[];
+}
+
 export interface InfaqsRecapKecamatan {
   name: string;
   total_masjid: number;
   total_infaq: number;
+  desa_kelurahan: InfaqsRecapVillage[];
 }
 
 export interface InfaqsRecapResponse {
-  name: string;         // kabupaten/kota name
+  name: string; // kabupaten/kota name
   total_masjid: number;
   total_infaq: number;
   kecamatan: InfaqsRecapKecamatan[];
@@ -185,7 +198,13 @@ export const getInfaqsRecapPasarans = async (year: number): Promise<string[]> =>
   }
 };
 
-/** GET /infaqs-recap?pasaran=YYYY-MM-DD → InfaqsRecapResponse */
+/**
+ * GET /infaqs-recap?pasaran=... → InfaqsRecapResponse
+ *
+ * pasaran formats:
+ *  - "YYYY-MM-DD" → data for a specific Jum'at Pon
+ *  - "YYYY"       → aggregated data for the entire year
+ */
 export const getInfaqsRecap = async (pasaran: string): Promise<InfaqsRecapResponse | null> => {
   try {
     const response = await axios.get<InfaqsRecapResponse>(`${VITE_API_URL}/infaqs-recap`, {
