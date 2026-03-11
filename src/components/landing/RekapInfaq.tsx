@@ -380,7 +380,9 @@ const RekapInfaq: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Ringkasan */}
               <motion.div
-                variants={itemVariants}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
                 className="lg:col-span-1 bg-white p-6 rounded-xl shadow-lg border-t-4 border-primary"
               >
                 <h3 className="text-lg font-bold text-primary mb-4 flex items-center">
@@ -417,7 +419,9 @@ const RekapInfaq: React.FC = () => {
 
               {/* Grafik per kecamatan */}
               <motion.div
-                variants={itemVariants}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
                 className="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg flex flex-col"
               >
                 <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
@@ -446,7 +450,9 @@ const RekapInfaq: React.FC = () => {
 
             {/* ── Tabel Masjid ── */}
             <motion.div
-              variants={itemVariants}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
               className="mt-8 bg-white p-6 rounded-xl shadow-lg overflow-x-auto"
             >
               {/* Table header + kecamatan filter */}
