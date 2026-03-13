@@ -1,4 +1,5 @@
-import { defineConfig } from "vite";
+/// <reference types="vitest" />
+import { defineConfig } from "vitest/config";
 import tailwindcss from "@tailwindcss/vite";
 import React from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
@@ -186,4 +187,15 @@ export default defineConfig({
       },
     }),
   ],
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setupTests.tsx',
+    include: ['src/**/*.test.{ts,tsx}', 'src/**/*.spec.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      exclude: ['src/test/**', '**/node_modules/**', '**/vite-env.d.ts'],
+    },
+  },
 });
