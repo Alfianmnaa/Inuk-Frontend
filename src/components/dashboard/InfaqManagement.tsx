@@ -78,7 +78,7 @@ interface DeleteInfaqModalProps {
 const DeleteInfaqModal: React.FC<DeleteInfaqModalProps> = ({ isOpen, onClose, onConfirm, infaq, isDeleting }) => {
   if (!isOpen || !infaq) return null;
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-[1050]">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-1050">
       <div className="bg-white p-6 rounded-xl w-full max-w-sm shadow-2xl mx-4">
         <h3 className="text-lg font-bold text-gray-800 mb-2">Hapus Data Infaq?</h3>
         <p className="text-sm text-gray-600 mb-6">
@@ -467,18 +467,16 @@ const InfaqManagement: React.FC = () => {
                   filteredInfaqs.map((inf, idx) => (
                     <tr key={inf.id} className="hover:bg-green-50/40 transition-colors">
                       <td className="py-3 px-4 text-gray-400 text-xs">{idx + 1}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 bg-green-100 rounded-full flex items-center justify-center shrink-0">
-                            <FaMosque className="text-primary text-xs" />
-                          </div>
-                          <span className="font-medium text-gray-800">{inf.name}</span>
-                        </div>
+                      <td className="py-3 px-4 max-w-40">
+                        <span className="font-medium text-gray-800 block truncate" title={inf.name}>
+                          {inf.name}
+                        </span>
                       </td>
-                      <td className="py-3 px-4 text-gray-600 text-xs">
-                        {inf.desa_kelurahan}
-                        <br />
-                        <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-medium">
+                      <td className="py-3 px-4 text-xs max-w-36">
+                        <span className="text-gray-600 block truncate" title={inf.desa_kelurahan}>
+                          {inf.desa_kelurahan}
+                        </span>
+                        <span className="text-blue-700 font-medium block truncate" title={inf.kecamatan}>
                           {inf.kecamatan}
                         </span>
                       </td>

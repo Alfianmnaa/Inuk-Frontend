@@ -337,7 +337,7 @@ const RekapDonasi: React.FC = () => {
       <div className="container mx-auto max-w-7xl mt-20">
         {/* Header Section */}
         <motion.div variants={itemVariants} className="text-center mb-12">
-          <p className="text-primary font-bold text-lg">Rekap Donasi</p>
+          <p className="text-primary font-bold text-lg">Rekap Infaq NU Kudus</p>
           <h2 className="text-4xl font-bold text-gray-800">Per Wilayah</h2>
           <p className="text-gray-600 mt-3 max-w-xl mx-auto">
             Pilih kecamatan untuk melihat rekap donasi dari masing-masing desa.

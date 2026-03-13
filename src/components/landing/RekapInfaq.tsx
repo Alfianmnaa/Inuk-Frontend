@@ -278,7 +278,7 @@ const RekapInfaq: React.FC = () => {
       <div className="container mx-auto max-w-7xl">
         {/* ── Header ── */}
         <motion.div variants={itemVariants} className="text-center mb-12">
-          <p className="text-primary font-bold text-lg">Rekap Infaq</p>
+          <p className="text-primary font-bold text-lg">Rekap Infaq LTMNU Kudus</p>
           <h2 className="text-4xl font-bold text-gray-800">Per Jum'at Pon</h2>
           <p className="text-gray-600 mt-3 max-w-xl mx-auto">
             Pilih tahun dan periode Jum'at Pon untuk melihat rekap infaq masjid
