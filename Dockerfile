@@ -11,7 +11,7 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # ---------- BUILD ----------
-FROM node:25-bookworm AS build
+FROM node:25-bookworm-slim AS build
 WORKDIR /app
 
 # Copy package files
