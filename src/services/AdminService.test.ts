@@ -344,4 +344,33 @@ describe('AdminService', () => {
       await expect(updateAdminTreasurer('', { treasurer_name: 'Test', treasurer_phone: '123' })).rejects.toThrow();
     });
   });
+
+  describe('Error handling - network failures', () => {
+    it('getAdminProfile should handle network error', async () => {
+      server.use(
+        http.get('*/admin/profile', () => {
+          return new HttpResponse(null, { status: 500 });
+        })
+      );
+      await expect(getAdminProfile(validToken)).rejects.toThrow();
+    });
+
+    it('getAdmins should handle network error', async () => {
+      server.use(
+        http.get('*/superadmin/admins', () => {
+          return new HttpResponse(null, { status: 500 });
+        })
+      );
+      await expect(getAdmins(validToken)).rejects.toThrow();
+    });
+
+    it('adminRegisterAdmin should handle network error', async () => {
+      server.use(
+        http.post('*/admin/register', () => {
+          return new HttpResponse(null, { status: 500 });
+        })
+      );
+      await expect(adminRegisterAdmin(validToken, { name: 'Test', phone: '123', password: '123' })).rejects.toThrow();
+    });
+  });
 });

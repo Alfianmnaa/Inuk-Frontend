@@ -316,5 +316,38 @@ describe('UserService', () => {
     it('should throw error for nonexistent user', async () => {
       await expect(deleteUser(validToken, 'nonexistent')).rejects.toThrow();
     });
+
+    it('should throw error when token is missing', async () => {
+      await expect(deleteUser('', 'user-1')).rejects.toThrow();
+    });
+  });
+
+  describe('Error handling - network failures', () => {
+    it('getUserProfile should handle network error', async () => {
+      server.use(
+        http.get('*/user/profile', () => {
+          return new HttpResponse(null, { status: 500 });
+        })
+      );
+      await expect(getUserProfile(validToken)).rejects.toThrow();
+    });
+
+    it('getUsers should handle network error', async () => {
+      server.use(
+        http.get('*/admin/users', () => {
+          return new HttpResponse(null, { status: 500 });
+        })
+      );
+      await expect(getUsers(validToken)).rejects.toThrow();
+    });
+
+    it('updateUser should handle network error', async () => {
+      server.use(
+        http.patch('*/admin/user/:id', () => {
+          return new HttpResponse(null, { status: 500 });
+        })
+      );
+      await expect(updateUser(validToken, 'user-1', { name: 'Test' })).rejects.toThrow();
+    });
   });
 });
