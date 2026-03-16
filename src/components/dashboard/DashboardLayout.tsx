@@ -1,34 +1,60 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FaBars, FaTimes, FaUsers, FaMapMarkerAlt, FaMosque, FaNewspaper, FaChartBar, FaMoneyBillWave, FaHandHoldingHeart, FaFileExport } from "react-icons/fa";
+import {
+  FaBars, FaTimes, FaUsers, FaMapMarkerAlt, FaMosque,
+  FaNewspaper, FaChartBar, FaMoneyBillWave, FaHandHoldingHeart,
+  FaFileExport,
+} from "react-icons/fa";
+import type { IconType } from "react-icons";
 import { MdOutlineReceiptLong } from "react-icons/md";
 import { ChevronDown, LogOut, Lock, User } from "lucide-react";
-import { toast } from "react-hot-toast";
 
 import { useAuth } from "../../context/AuthContext";
 import { logoutApi } from "../../services/AuthService";
 import { getUserProfile } from "../../services/UserService";
 import ChangePasswordModal from "./ui/ChangePasswordModal";
 
-// ─── Navigation items ─────────────────────────────────────────────────────────
+// ─── Nav types ────────────────────────────────────────────────────────────────
 
-const DASHBOARD_NAV = [
-  { name: "MENU INUK", isHeader: true, roles: ["user", "admin", "superadmin"] as const },
-  { name: "Dashboard Utama", link: "/dashboard", icon: FaChartBar, roles: ["user", "admin", "superadmin"] as const },
-  { name: "Pencatatan Donasi", link: "/dashboard/donation", icon: MdOutlineReceiptLong, roles: ["user"] as const },
+type UserRoleType = "user" | "admin" | "superadmin";
 
-  { name: "MENU ADMIN", isHeader: true, roles: ["admin", "superadmin"] as const },
-  { name: "Pencatatan Infaq", link: "/dashboard/infaq", icon: FaMoneyBillWave, roles: ["admin", "superadmin"] as const },
-  { name: "Manajemen Pengguna", link: "/dashboard/user-management", icon: FaUsers, roles: ["admin", "superadmin"] as const },
-  { name: "Manajemen Wilayah", link: "/dashboard/region-management", icon: FaMapMarkerAlt, roles: ["admin", "superadmin"] as const },
-  { name: "Manajemen Masjid", link: "/dashboard/masjid-management", icon: FaMosque, roles: ["admin", "superadmin"] as const },
+interface NavHeader {
+  name: string;
+  isHeader: true;
+  roles: UserRoleType[];
+  link?: never;
+  icon?: never;
+}
 
-  { name: "MENU ADMIN PUSAT", isHeader: true, roles: ["superadmin"] as const },
-  { name: "Manajemen Admin", link: "/dashboard/admin-management", icon: FaUsers, roles: ["superadmin"] as const },
-  { name: "Manajemen Berita/Blog", link: "/dashboard/cms-berita", icon: FaNewspaper, roles: ["superadmin"] as const },
-  { name: "Manajemen Donatur", link: "/dashboard/donatur-management", icon: FaHandHoldingHeart, roles: ["admin", "superadmin"] as const },
-  { name: "Export Data", link: "/dashboard/export", icon: FaFileExport, roles: ["admin", "superadmin"] as const },
+interface NavItem {
+  name: string;
+  isHeader?: false;
+  roles: UserRoleType[];
+  link: string;
+  icon: IconType;
+}
+
+type NavEntry = NavHeader | NavItem;
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+
+const DASHBOARD_NAV: NavEntry[] = [
+  { name: "MENU INUK", isHeader: true, roles: ["user", "admin", "superadmin"] },
+  { name: "Dashboard Utama", link: "/dashboard", icon: FaChartBar, roles: ["user", "admin", "superadmin"] },
+  { name: "Pencatatan Donasi", link: "/dashboard/donation", icon: MdOutlineReceiptLong as IconType, roles: ["user"] },
+
+  { name: "MENU ADMIN", isHeader: true, roles: ["admin", "superadmin"] },
+  { name: "Pencatatan Infaq", link: "/dashboard/infaq", icon: FaMoneyBillWave, roles: ["admin", "superadmin"] },
+  { name: "Manajemen Pengguna", link: "/dashboard/user-management", icon: FaUsers, roles: ["admin", "superadmin"] },
+  { name: "Manajemen Wilayah", link: "/dashboard/region-management", icon: FaMapMarkerAlt, roles: ["admin", "superadmin"] },
+  { name: "Manajemen Masjid", link: "/dashboard/masjid-management", icon: FaMosque, roles: ["admin", "superadmin"] },
+  { name: "Manajemen Donatur", link: "/dashboard/donatur-management", icon: FaHandHoldingHeart, roles: ["admin", "superadmin"] },
+  { name: "Export Data", link: "/dashboard/export", icon: FaFileExport, roles: ["admin", "superadmin"] },
+
+  { name: "MENU ADMIN PUSAT", isHeader: true, roles: ["superadmin"] },
+  { name: "Manajemen Admin", link: "/dashboard/admin-management", icon: FaUsers, roles: ["superadmin"] },
+  { name: "Manajemen Berita/Blog", link: "/dashboard/cms-berita", icon: FaNewspaper, roles: ["superadmin"] },
 ];
 
 // ─── Role label helpers ───────────────────────────────────────────────────────
@@ -51,7 +77,7 @@ const Sidebar: React.FC<{
   isOpen: boolean;
   toggleSidebar: () => void;
   activeLink: string;
-  userRole: "user" | "admin" | "superadmin" | null;
+  userRole: UserRoleType | null;
 }> = ({ isOpen, toggleSidebar, activeLink, userRole }) => (
   <motion.div
     initial={false}
@@ -69,30 +95,36 @@ const Sidebar: React.FC<{
     </div>
 
     <nav className="grow p-4 overflow-y-auto">
-      {DASHBOARD_NAV.filter(
-        (item) => !item.roles || (userRole && item.roles.includes(userRole as any))
-      ).map((item, index) =>
-        item.isHeader ? (
-          <p key={index} className="text-xs font-bold text-gray-500 uppercase mt-4 mb-2 tracking-wider">
-            {item.name.replace("--- ", "").replace(" ---", "")}
-          </p>
-        ) : (
-          <motion.a
-            key={item.link}
-            href={item.link}
-            className={`flex items-center p-3 rounded-lg text-sm font-medium transition-colors mb-1 ${
-              activeLink === item.link
-                ? "bg-primary text-white shadow-md"
-                : "text-gray-300 hover:bg-gray-800 hover:text-white"
-            }`}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <item.icon className="w-5 h-5 mr-3" />
-            {item.name}
-          </motion.a>
+      {DASHBOARD_NAV
+        .filter((item): item is NavEntry =>
+          !userRole ? false : item.roles.includes(userRole)
         )
-      )}
+        .map((item, index) => {
+          if (item.isHeader) {
+            return (
+              <p key={index} className="text-xs font-bold text-gray-500 uppercase mt-4 mb-2 tracking-wider">
+                {item.name.replace("--- ", "").replace(" ---", "")}
+              </p>
+            );
+          }
+          const Icon = item.icon;
+          return (
+            <motion.a
+              key={item.link}
+              href={item.link}
+              className={`flex items-center p-3 rounded-lg text-sm font-medium transition-colors mb-1 ${
+                activeLink === item.link
+                  ? "bg-primary text-white shadow-md"
+                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Icon className="w-5 h-5 mr-3" />
+              {item.name}
+            </motion.a>
+          );
+        })}
     </nav>
 
     <div className="p-4 border-t border-gray-700/50 text-xs text-gray-500">
@@ -171,22 +203,20 @@ const DashboardLayout: React.FC<{
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // ── Logout: call backend first, then clear local state ──────────────────────
+  // Logout: call server first, then always clear local state
   const handleLogout = async () => {
     if (!token || !userRole || isLoggingOut) return;
     setIsLoggingOut(true);
     setIsDropdownOpen(false);
     try {
-      // Fire-and-forget to server (logoutApi never throws)
       await logoutApi(token, userRole);
     } finally {
-      // Always clear local state, regardless of server response
       logout();
       navigate("/");
     }
   };
 
-  // ── After own-password change: forced logout ─────────────────────────────────
+  // After own-password change: forced logout
   const handlePasswordChanged = () => {
     logout();
     navigate("/");
@@ -220,17 +250,15 @@ const DashboardLayout: React.FC<{
             )}
           </div>
 
-          {/* ── User dropdown (replaces the plain Logout button) ────────────── */}
+          {/* User dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors"
             >
-              {/* Avatar circle */}
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <User size={16} className="text-primary" />
               </div>
-              {/* Role badge */}
               {userRole && (
                 <span
                   className={`hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${
@@ -248,7 +276,6 @@ const DashboardLayout: React.FC<{
               />
             </button>
 
-            {/* Dropdown menu */}
             <AnimatePresence>
               {isDropdownOpen && (
                 <motion.div
@@ -258,7 +285,6 @@ const DashboardLayout: React.FC<{
                   transition={{ duration: 0.12 }}
                   className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50"
                 >
-                  {/* Change password */}
                   <button
                     onClick={() => {
                       setIsDropdownOpen(false);
@@ -272,7 +298,6 @@ const DashboardLayout: React.FC<{
 
                   <div className="border-t border-gray-100" />
 
-                  {/* Logout */}
                   <button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
@@ -299,7 +324,6 @@ const DashboardLayout: React.FC<{
         </main>
       </div>
 
-      {/* Change Password Modal */}
       <ChangePasswordModal
         isOpen={isChangePasswordOpen}
         onClose={() => setIsChangePasswordOpen(false)}
