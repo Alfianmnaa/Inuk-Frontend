@@ -10,6 +10,7 @@ import {
   getDonationRecapYears,
   getDonationRecapMonths,
   exportDonations,
+  getDonationsExtract,
 } from '../services/DonationService';
 
 // Mock data for donations
@@ -182,6 +183,38 @@ const donationHandlers = [
       message: 'Export started',
     });
   }),
+
+  // GET /donations/extract - returns all matching records
+  http.get('*/donations/extract', async ({ request }) => {
+    await delay(100);
+    
+    // Check for authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return HttpResponse.json(
+        { message: 'Authorization required' },
+        { status: 401 }
+      );
+    }
+
+    const url = new URL(request.url);
+    const filters = {
+      provinsi: url.searchParams.get('provinsi') || undefined,
+      kabupaten_kota: url.searchParams.get('kabupaten_kota') || undefined,
+      kecamatan: url.searchParams.get('kecamatan') || undefined,
+      desa_kelurahan: url.searchParams.get('desa_kelurahan') || undefined,
+      startDate: url.searchParams.get('startDate') || undefined,
+      endDate: url.searchParams.get('endDate') || undefined,
+    };
+
+    // Return filtered mock data
+    let filteredData = [...mockDonations];
+    if (filters.provinsi) {
+      filteredData = filteredData.filter(d => d.provinsi === filters.provinsi);
+    }
+
+    return HttpResponse.json(filteredData);
+  }),
 ];
 
 // Create server instance for Node.js environment
@@ -333,6 +366,29 @@ describe('DonationService', () => {
       expect(response).toHaveProperty('job_id');
       expect(response).toHaveProperty('status');
       expect(response).toHaveProperty('message');
+    });
+  });
+
+  describe('getDonationsExtract', () => {
+    it('should return all donations matching filters', async () => {
+      const response = await getDonationsExtract(validToken, {});
+
+      expect(Array.isArray(response)).toBe(true);
+      expect(response.length).toBeGreaterThan(0);
+      expect(response[0]).toHaveProperty('id');
+      expect(response[0]).toHaveProperty('total');
+    });
+
+    it('should accept filter parameters', async () => {
+      const response = await getDonationsExtract(validToken, {
+        provinsi: 'Provinsi 1',
+      });
+
+      expect(Array.isArray(response)).toBe(true);
+    });
+
+    it('should throw error when token is missing', async () => {
+      await expect(getDonationsExtract('', {})).rejects.toThrow();
     });
   });
 });

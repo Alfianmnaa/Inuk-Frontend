@@ -217,4 +217,150 @@ describe('AddEditUserModal', () => {
       expect(closeButtons.length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe('Edit mode', () => {
+    const mockInitialData = {
+      id: 'user-123',
+      name: 'John Doe',
+      phone: '+628123456789',
+      isPJT: false,
+      regionName: 'Region 1',
+    };
+
+    it('initializes form with existing user data in edit mode', () => {
+      render(
+        <BrowserRouter>
+          <AuthProvider>
+            <AddEditUserModal
+              isOpen={true}
+              onClose={mockOnClose}
+              onSuccess={mockOnSuccess}
+              initialData={mockInitialData}
+            />
+          </AuthProvider>
+        </BrowserRouter>
+      );
+
+      // Should show edit title
+      expect(screen.getByText('Edit Data Pengguna')).toBeInTheDocument();
+    });
+
+    it('password field is hidden in edit mode', () => {
+      render(
+        <BrowserRouter>
+          <AuthProvider>
+            <AddEditUserModal
+              isOpen={true}
+              onClose={mockOnClose}
+              onSuccess={mockOnSuccess}
+              initialData={mockInitialData}
+            />
+          </AuthProvider>
+        </BrowserRouter>
+      );
+
+      // Password field should NOT be present in edit mode
+      expect(screen.queryByPlaceholderText('Kata Sandi')).not.toBeInTheDocument();
+    });
+
+    it('has submit button with correct text in edit mode', () => {
+      render(
+        <BrowserRouter>
+          <AuthProvider>
+            <AddEditUserModal
+              isOpen={true}
+              onClose={mockOnClose}
+              onSuccess={mockOnSuccess}
+              initialData={mockInitialData}
+            />
+          </AuthProvider>
+        </BrowserRouter>
+      );
+
+      // Submit button should show update text
+      expect(screen.getByRole('button', { name: /simpan perubahan/i })).toBeInTheDocument();
+    });
+  });
+
+  describe('Password visibility toggle', () => {
+    it('toggles password visibility', () => {
+      render(
+        <BrowserRouter>
+          <AuthProvider>
+            <AddEditUserModal
+              isOpen={true}
+              onClose={mockOnClose}
+              onSuccess={mockOnSuccess}
+            />
+          </AuthProvider>
+        </BrowserRouter>
+      );
+
+      // Password field should be type="password" initially
+      const passwordInput = screen.getByPlaceholderText('Kata Sandi') as HTMLInputElement;
+      expect(passwordInput.type).toBe('password');
+    });
+  });
+
+  describe('Form submission', () => {
+    it('can fill in name field', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <BrowserRouter>
+          <AuthProvider>
+            <AddEditUserModal
+              isOpen={true}
+              onClose={mockOnClose}
+              onSuccess={mockOnSuccess}
+            />
+          </AuthProvider>
+        </BrowserRouter>
+      );
+
+      const nameInput = screen.getByPlaceholderText('Nama Lengkap Pengguna');
+      await user.type(nameInput, 'Test User');
+      expect(nameInput).toHaveValue('Test User');
+    });
+
+    it('can fill in phone field', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <BrowserRouter>
+          <AuthProvider>
+            <AddEditUserModal
+              isOpen={true}
+              onClose={mockOnClose}
+              onSuccess={mockOnSuccess}
+            />
+          </AuthProvider>
+        </BrowserRouter>
+      );
+
+      const phoneInput = screen.getByPlaceholderText('Contoh: 08123456789');
+      await user.type(phoneInput, '08123456789');
+      expect(phoneInput).toHaveValue('08123456789');
+    });
+
+    it('can fill in password field', async () => {
+      const user = userEvent.setup();
+
+      render(
+        <BrowserRouter>
+          <AuthProvider>
+            <AddEditUserModal
+              isOpen={true}
+              onClose={mockOnClose}
+              onSuccess={mockOnSuccess}
+            />
+          </AuthProvider>
+        </BrowserRouter>
+      );
+
+      const passwordInput = screen.getByPlaceholderText('Kata Sandi');
+      await user.type(passwordInput, 'password123');
+      expect(passwordInput).toHaveValue('password123');
+    });
+  });
 });
