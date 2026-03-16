@@ -1,336 +1,270 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  FaBars, FaTimes, FaUsers, FaMapMarkerAlt, FaMosque,
-  FaNewspaper, FaChartBar, FaMoneyBillWave, FaHandHoldingHeart,
-  FaFileExport,
-} from "react-icons/fa";
-import type { IconType } from "react-icons";
-import { MdOutlineReceiptLong } from "react-icons/md";
-import { ChevronDown, LogOut, Lock, User } from "lucide-react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
+import { FaSearch, FaTimes, FaPlus, FaUsers, FaSpinner, FaSortUp, FaSortDown, FaMapMarkerAlt } from "react-icons/fa";
+import { Edit, Trash2, KeyRound } from "lucide-react";
+import { toast } from "react-hot-toast";
 
+import DashboardLayout from "./DashboardLayout";
+import AddEditUserModal from "./ui/AddEditUserModal";
+import DeleteUserModal from "./ui/DeleteUserModal";
+import ResetPasswordModal from "./ui/ResetPasswordModal";
+
+import { getUsers, deleteUser, type GetUsersResponse } from "../../services/UserService";
+import { resetUserPassword } from "../../services/AuthService";
 import { useAuth } from "../../context/AuthContext";
-import { logoutApi } from "../../services/AuthService";
-import { getUserProfile } from "../../services/UserService";
-import ChangePasswordModal from "./ui/ChangePasswordModal";
 
-// ─── Nav types ────────────────────────────────────────────────────────────────
-
-type UserRoleType = "user" | "admin" | "superadmin";
-
-interface NavHeader {
+export interface UserDisplay {
+  id: string;
   name: string;
-  isHeader: true;
-  roles: UserRoleType[];
-  link?: never;
-  icon?: never;
+  phone: string;
+  isPJT: boolean;
+  regionName: string;
 }
 
-interface NavItem {
-  name: string;
-  isHeader?: false;
-  roles: UserRoleType[];
-  link: string;
-  icon: IconType;
+type SortKeys = keyof UserDisplay | null;
+interface SortConfig {
+  key: SortKeys;
+  direction: "ascending" | "descending";
 }
 
-type NavEntry = NavHeader | NavItem;
-
-// ─── Navigation ───────────────────────────────────────────────────────────────
-
-const DASHBOARD_NAV: NavEntry[] = [
-  { name: "MENU INUK", isHeader: true, roles: ["user", "admin", "superadmin"] },
-  { name: "Dashboard Utama", link: "/dashboard", icon: FaChartBar, roles: ["user", "admin", "superadmin"] },
-  { name: "Pencatatan Donasi", link: "/dashboard/donation", icon: MdOutlineReceiptLong as IconType, roles: ["user"] },
-
-  { name: "MENU ADMIN", isHeader: true, roles: ["admin", "superadmin"] },
-  { name: "Pencatatan Infaq", link: "/dashboard/infaq", icon: FaMoneyBillWave, roles: ["admin", "superadmin"] },
-  { name: "Manajemen Pengguna", link: "/dashboard/user-management", icon: FaUsers, roles: ["admin", "superadmin"] },
-  { name: "Manajemen Wilayah", link: "/dashboard/region-management", icon: FaMapMarkerAlt, roles: ["admin", "superadmin"] },
-  { name: "Manajemen Masjid", link: "/dashboard/masjid-management", icon: FaMosque, roles: ["admin", "superadmin"] },
-  { name: "Manajemen Donatur", link: "/dashboard/donatur-management", icon: FaHandHoldingHeart, roles: ["admin", "superadmin"] },
-  { name: "Export Data", link: "/dashboard/export", icon: FaFileExport, roles: ["admin", "superadmin"] },
-
-  { name: "MENU ADMIN PUSAT", isHeader: true, roles: ["superadmin"] },
-  { name: "Manajemen Admin", link: "/dashboard/admin-management", icon: FaUsers, roles: ["superadmin"] },
-  { name: "Manajemen Berita/Blog", link: "/dashboard/cms-berita", icon: FaNewspaper, roles: ["superadmin"] },
-];
-
-// ─── Role label helpers ───────────────────────────────────────────────────────
-
-const ROLE_LABELS: Record<string, string> = {
-  user: "User",
-  admin: "Admin",
-  superadmin: "Super Admin",
-};
-
-const ROLE_COLORS: Record<string, string> = {
-  user: "bg-blue-100 text-blue-700",
-  admin: "bg-green-100 text-green-700",
-  superadmin: "bg-purple-100 text-purple-700",
-};
-
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
-
-const Sidebar: React.FC<{
-  isOpen: boolean;
-  toggleSidebar: () => void;
-  activeLink: string;
-  userRole: UserRoleType | null;
-}> = ({ isOpen, toggleSidebar, activeLink, userRole }) => (
-  <motion.div
-    initial={false}
-    animate={{ x: typeof window !== "undefined" && window.innerWidth < 1024 ? (isOpen ? 0 : "-100%") : 0 }}
-    transition={{ type: "tween", duration: 0.3 }}
-    className="fixed lg:relative top-0 left-0 h-full w-64 bg-gray-900 z-40 lg:translate-x-0 transition-shadow shadow-2xl flex flex-col"
-  >
-    <div className="flex justify-between items-center p-4 border-b border-gray-700/50">
-      <h1 className="text-xl font-extrabold text-primary flex items-center">
-        INUK <span className="text-white ml-1 font-light">Admin</span>
-      </h1>
-      <button onClick={toggleSidebar} className="text-gray-400 hover:text-white lg:hidden">
-        <FaTimes size={20} />
-      </button>
-    </div>
-
-    <nav className="grow p-4 overflow-y-auto">
-      {DASHBOARD_NAV
-        .filter((item): item is NavEntry =>
-          !userRole ? false : item.roles.includes(userRole)
-        )
-        .map((item, index) => {
-          if (item.isHeader) {
-            return (
-              <p key={index} className="text-xs font-bold text-gray-500 uppercase mt-4 mb-2 tracking-wider">
-                {item.name.replace("--- ", "").replace(" ---", "")}
-              </p>
-            );
-          }
-          const Icon = item.icon;
-          return (
-            <motion.a
-              key={item.link}
-              href={item.link}
-              className={`flex items-center p-3 rounded-lg text-sm font-medium transition-colors mb-1 ${
-                activeLink === item.link
-                  ? "bg-primary text-white shadow-md"
-                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
-              }`}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Icon className="w-5 h-5 mr-3" />
-              {item.name}
-            </motion.a>
-          );
-        })}
-    </nav>
-
-    <div className="p-4 border-t border-gray-700/50 text-xs text-gray-500">
-      <p>INUK Dashboard v1.0</p>
-    </div>
-  </motion.div>
-);
-
-// ─── DashboardLayout ──────────────────────────────────────────────────────────
-
-const DashboardLayout: React.FC<{
-  children: React.ReactNode;
-  activeLink: string;
-  pageTitle: string;
-}> = ({ children, activeLink, pageTitle }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [userRegionVillage, setUserRegionVillage] = useState("Memuat...");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const { logout, userRole, token } = useAuth();
-  const navigate = useNavigate();
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  // Fetch region for user role
-  useEffect(() => {
-    if (userRole === "user" && token) {
-      getUserProfile(token)
-        .then((profile) => {
-          const village = profile.desa_kelurahan || "belum ditetapkan";
-          const subdistrict = profile.kecamatan || "N/A";
-          const city = profile.kabupaten_kota || "N/A";
-          const province = profile.provinsi || "N/A";
-          setUserRegionVillage(village);
-          localStorage.setItem("user_province", province);
-          localStorage.setItem("user_city", city);
-          localStorage.setItem("user_subdistrict", subdistrict);
-          localStorage.setItem("user_village", village);
-        })
-        .catch(() => {
-          setUserRegionVillage("Gagal Memuat Region");
-          localStorage.removeItem("user_province");
-          localStorage.removeItem("user_city");
-          localStorage.removeItem("user_subdistrict");
-          localStorage.removeItem("user_village");
-        });
-    } else {
-      setUserRegionVillage("");
-      localStorage.removeItem("user_province");
-      localStorage.removeItem("user_city");
-      localStorage.removeItem("user_subdistrict");
-      localStorage.removeItem("user_village");
-    }
-  }, [userRole, token]);
-
-  const statusText = useMemo(() => {
-    const role = localStorage.getItem("userRole");
-    const village = localStorage.getItem("user_village") || userRegionVillage;
-    if (role === "user") return `login sebagai USER | Region: ${village}`;
-    if (role === "admin") return `login sebagai ADMIN`;
-    if (role === "superadmin") return `login sebagai SUPER ADMIN`;
-    return "Guest";
-  }, [userRegionVillage]);
-
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-
-  // Logout: call server first, then always clear local state
-  const handleLogout = async () => {
-    if (!token || !userRole || isLoggingOut) return;
-    setIsLoggingOut(true);
-    setIsDropdownOpen(false);
-    try {
-      await logoutApi(token, userRole);
-    } finally {
-      logout();
-      navigate("/");
-    }
-  };
-
-  // After own-password change: forced logout
-  const handlePasswordChanged = () => {
-    logout();
-    navigate("/");
-  };
+const TableSortHeader: React.FC<{ label: string; sortKey: keyof UserDisplay; sortConfig: SortConfig; requestSort: (key: keyof UserDisplay) => void }> = ({ label, sortKey, sortConfig, requestSort }) => {
+  const isSorted = sortConfig.key === sortKey;
+  const direction = sortConfig.direction;
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {isSidebarOpen && (
-        <div onClick={toggleSidebar} className="fixed inset-0 bg-black/50 z-30 lg:hidden" />
-      )}
-
-      <Sidebar
-        isOpen={isSidebarOpen}
-        toggleSidebar={toggleSidebar}
-        activeLink={activeLink}
-        userRole={userRole}
-      />
-
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10">
-        {/* Top navbar */}
-        <header className="flex items-center justify-between p-4 bg-white shadow-md z-20">
-          <div className="flex items-center">
-            <button onClick={toggleSidebar} className="text-gray-800 mr-4 lg:hidden">
-              <FaBars size={24} />
-            </button>
-            <h2 className="text-2xl font-bold text-gray-800">{pageTitle}</h2>
-            {userRole && (
-              <span className="ml-4 px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 hidden sm:inline-block">
-                {statusText}
-              </span>
-            )}
-          </div>
-
-          {/* User dropdown */}
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors"
-            >
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <User size={16} className="text-primary" />
-              </div>
-              {userRole && (
-                <span
-                  className={`hidden sm:inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${
-                    ROLE_COLORS[userRole] ?? "bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  {ROLE_LABELS[userRole] ?? userRole}
-                </span>
-              )}
-              <ChevronDown
-                size={14}
-                className={`text-gray-400 transition-transform duration-200 ${
-                  isDropdownOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            <AnimatePresence>
-              {isDropdownOpen && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                  transition={{ duration: 0.12 }}
-                  className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50"
-                >
-                  <button
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      setIsChangePasswordOpen(true);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    <Lock size={15} className="text-gray-400" />
-                    Ganti Kata Sandi
-                  </button>
-
-                  <div className="border-t border-gray-100" />
-
-                  <button
-                    onClick={handleLogout}
-                    disabled={isLoggingOut}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                  >
-                    {isLoggingOut ? (
-                      <svg className="animate-spin w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                      </svg>
-                    ) : (
-                      <LogOut size={15} />
-                    )}
-                    {isLoggingOut ? "Keluar..." : "Keluar"}
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6 lg:p-8">
-          {children}
-        </main>
+    <th className="py-3 px-4 text-left cursor-pointer select-none hover:text-gray-900 transition-colors" onClick={() => requestSort(sortKey)}>
+      <div className="flex items-center">
+        {label}
+        {isSorted && <span className="ml-2">{direction === "ascending" ? <FaSortUp className="w-3 h-3 text-primary" /> : <FaSortDown className="w-3 h-3 text-primary" />}</span>}
+        {!isSorted && <FaSortUp className="w-3 h-3 ml-2 text-gray-400 opacity-50" />}
       </div>
-
-      <ChangePasswordModal
-        isOpen={isChangePasswordOpen}
-        onClose={() => setIsChangePasswordOpen(false)}
-        onPasswordChanged={handlePasswordChanged}
-      />
-    </div>
+    </th>
   );
 };
 
-export default DashboardLayout;
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+};
+
+const UserManagement: React.FC = () => {
+  const { token } = useAuth();
+  const [usersList, setUsersList] = useState<UserDisplay[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "name", direction: "ascending" });
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserDisplay | null>(null);
+
+  const fetchUsers = useCallback(async () => {
+    if (!token) return;
+    setIsLoading(true);
+    try {
+      const verifiedUsersData: GetUsersResponse[] = await getUsers(token, searchTerm, undefined, true);
+      const unverifiedUsersData: GetUsersResponse[] = await getUsers(token, searchTerm, undefined, false);
+
+      const combinedUsersMap = new Map<string, GetUsersResponse>();
+      verifiedUsersData?.forEach((user) => combinedUsersMap.set(user.id, user));
+      unverifiedUsersData?.forEach((user) => {
+        if (!combinedUsersMap.has(user.id)) {
+          combinedUsersMap.set(user.id, user);
+        }
+      });
+
+      const uniqueUsersData = Array.from(combinedUsersMap.values());
+
+      // GetUsersResponse only returns region_id (no desa_kelurahan).
+      // The list endpoint is intentionally lightweight — use the ID prefix as placeholder.
+      const mappedData: UserDisplay[] = uniqueUsersData.map((u) => ({
+        id: u.id,
+        name: u.name,
+        phone: u.phone,
+        isPJT: u.region_id !== "00000000-0000-0000-0000-000000000000" && !!u.region_id,
+        regionName: u.region_id && u.region_id !== "00000000-0000-0000-0000-000000000000"
+          ? `Terikat (${u.region_id.substring(0, 8)}...)`
+          : "-",
+      }));
+      setUsersList(mappedData);
+    } catch (error: any) {
+      setUsersList([]);
+      toast.error(error.message || "Gagal memuat data pengguna.");
+      console.error("Fetch Users Error:", error.response?.data || error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token, searchTerm]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleSuccess = () => {
+    fetchUsers();
+    setIsAddEditModalOpen(false);
+    setIsDeleteModalOpen(false);
+    setIsResetPasswordModalOpen(false);
+    setSelectedUser(null);
+  };
+
+  const filteredUsers = useMemo(() => {
+    const filtered = usersList;
+    const sortableItems = [...filtered];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        const aValue = a[sortConfig.key!];
+        const bValue = b[sortConfig.key!];
+        if (aValue < bValue) return sortConfig.direction === "ascending" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "ascending" ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [usersList, sortConfig]);
+
+  const requestSort = (key: keyof UserDisplay) => {
+    let direction: "ascending" | "descending" = "ascending";
+    if (sortConfig.key === key && sortConfig.direction === "ascending") {
+      direction = "descending";
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const handleAddClick = () => { setSelectedUser(null); setIsAddEditModalOpen(true); };
+  const handleEditClick = (user: UserDisplay) => { setSelectedUser(user); setIsAddEditModalOpen(true); };
+  const handleDeleteClick = (user: UserDisplay) => { setSelectedUser(user); setIsDeleteModalOpen(true); };
+  const handleResetPasswordClick = (user: UserDisplay) => { setSelectedUser(user); setIsResetPasswordModalOpen(true); };
+
+  const handleConfirmDelete = async (id: string) => {
+    if (!token) return;
+    setIsLoading(true);
+    try {
+      await deleteUser(token, id);
+      toast.success(`Pengguna berhasil dihapus!`);
+      handleSuccess();
+    } catch (error: any) {
+      toast.error(error.message || "Gagal menghapus pengguna. Mungkin terikat Region.");
+      console.error("Delete Error:", error);
+    }
+  };
+
+  return (
+    <DashboardLayout activeLink="/dashboard/user-management" pageTitle="Manajemen Pengguna (Inputer/Admin)">
+      <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
+        {/* Modal Tambah/Edit */}
+        <AddEditUserModal isOpen={isAddEditModalOpen} onClose={() => setIsAddEditModalOpen(false)} onSuccess={handleSuccess} initialData={selectedUser} />
+
+        {/* Modal Hapus */}
+        {selectedUser && <DeleteUserModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} user={selectedUser} onConfirmDelete={handleConfirmDelete} />}
+
+        {/* Modal Reset Password */}
+        {selectedUser && (
+          <ResetPasswordModal
+            isOpen={isResetPasswordModalOpen}
+            onClose={() => setIsResetPasswordModalOpen(false)}
+            onSuccess={handleSuccess}
+            targetName={selectedUser.name}
+            onConfirmReset={async (newPassword) => {
+              if (!token) throw new Error("Token tidak ditemukan.");
+              await resetUserPassword(token, selectedUser.id, newPassword);
+            }}
+          />
+        )}
+
+        {/* Filter dan Aksi */}
+        <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+              <FaUsers className="mr-2 text-primary" /> Kelola Daftar Pengguna ({usersList.length})
+            </h3>
+            <motion.button onClick={handleAddClick} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="bg-primary text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-green-600 transition-colors">
+              <FaPlus className="mr-2" /> Tambah Pengguna
+            </motion.button>
+          </div>
+
+          <div className="relative">
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Cari Nama atau Telepon..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-4 focus:ring-primary focus:border-primary transition-colors"
+            />
+          </div>
+
+          {searchTerm && (
+            <motion.button onClick={() => setSearchTerm("")} className="mt-4 text-sm text-red-600 hover:text-red-800 font-medium flex items-center">
+              <FaTimes className="mr-1" /> Bersihkan Pencarian
+            </motion.button>
+          )}
+        </motion.div>
+
+        {/* Tabel Data Pengguna */}
+        <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg overflow-x-auto">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <FaUsers className="mr-2 text-primary" /> Daftar Pengguna (Total: {usersList.length})
+          </h3>
+          {isLoading ? (
+            <div className="text-center py-10 text-gray-500 flex items-center justify-center">
+              <FaSpinner className="animate-spin mr-3" /> Memuat data pengguna...
+            </div>
+          ) : (
+            <table className="min-w-full table-auto border-collapse">
+              <thead>
+                <tr className="bg-gray-50 text-gray-600 text-sm uppercase">
+                  <th className="py-3 px-4 text-left">ID (Awal)</th>
+                  <TableSortHeader label="Nama" sortKey="name" sortConfig={sortConfig} requestSort={requestSort} />
+                  <th className="py-3 px-4 text-left">Telepon</th>
+                  <th className="py-3 px-4 text-left">Status Region</th>
+                  <th className="py-3 px-4 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((u) => (
+                    <tr key={u.id} className="text-sm text-gray-700 border-b hover:bg-green-50/50 transition-colors">
+                      <td className="py-3 px-4 font-mono text-xs max-w-25 truncate">{u.id.substring(0, 8)}...</td>
+                      <td className="py-3 px-4 font-semibold text-gray-900">{u.name}</td>
+                      <td className="py-3 px-4">{u.phone}</td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${u.isPJT ? "bg-primary/20 text-primary" : "bg-red-100 text-red-700"}`}>
+                          <FaMapMarkerAlt className="w-3 h-3 mr-1" />
+                          {u.isPJT ? u.regionName : "Belum Terikat"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <div className="flex items-center justify-center space-x-2">
+                          <button onClick={() => handleEditClick(u)} className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 transition-colors" title="Edit Pengguna">
+                            <Edit size={18} />
+                          </button>
+                          {/* NEW: Reset Password */}
+                          <button onClick={() => handleResetPasswordClick(u)} className="text-amber-500 hover:text-amber-700 p-1 rounded hover:bg-amber-50 transition-colors" title="Reset Kata Sandi">
+                            <KeyRound size={18} />
+                          </button>
+                          <button onClick={() => handleDeleteClick(u)} className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors" title="Hapus Pengguna">
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-gray-500 italic">
+                      Tidak ada data pengguna yang ditemukan.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+        </motion.div>
+      </motion.div>
+    </DashboardLayout>
+  );
+};
+
+export default UserManagement;
