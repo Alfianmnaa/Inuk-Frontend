@@ -7,20 +7,25 @@ import { toast } from "react-hot-toast";
 import DashboardLayout from "./DashboardLayout";
 import AddEditUserModal from "./ui/AddEditUserModal";
 import DeleteUserModal from "./ui/DeleteUserModal";
-import ResetPasswordModal from "./ui/ResetPasswordModal";
+import ResetPasswordModal from "./ui/ResetPasswordModal"; // NEW
 
+// [BARU] Import fungsi API
 import { getUsers, deleteUser, type GetUsersResponse } from "../../services/UserService";
-import { resetUserPassword } from "../../services/AuthService";
+import { resetUserPassword } from "../../services/AuthService"; // NEW
 import { useAuth } from "../../context/AuthContext";
 
+// --- Data & Interfaces ---
+
+// Interface UserDisplay harus konsisten dengan modal
 export interface UserDisplay {
   id: string;
   name: string;
   phone: string;
-  isPJT: boolean;
-  regionName: string;
+  isPJT: boolean; // Penanggung Jawab Terikat (RegionID !== null)
+  regionName: string; // Nama desa/kelurahan jika ada
 }
 
+// Helper function untuk Sorting
 type SortKeys = keyof UserDisplay | null;
 interface SortConfig {
   key: SortKeys;
@@ -42,6 +47,7 @@ const TableSortHeader: React.FC<{ label: string; sortKey: keyof UserDisplay; sor
   );
 };
 
+// Varian Framer Motion untuk item
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
@@ -49,25 +55,34 @@ const itemVariants = {
 
 const UserManagement: React.FC = () => {
   const { token } = useAuth();
-  const [usersList, setUsersList] = useState<UserDisplay[]>([]);
+  const [usersList, setUsersList] = useState<UserDisplay[]>([]); // State untuk data nyata
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: "name", direction: "ascending" });
   const [isLoading, setIsLoading] = useState(true);
 
+  // State untuk Modal
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false); // NEW
   const [selectedUser, setSelectedUser] = useState<UserDisplay | null>(null);
 
+  // --- Data Fetching Function (MODIFIKASI INI) ---
   const fetchUsers = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
     try {
+      // 1. Panggil API untuk Verified Users (terikat region)
       const verifiedUsersData: GetUsersResponse[] = await getUsers(token, searchTerm, undefined, true);
+
+      // 2. Panggil API untuk Unverified Users (tidak terikat region)
       const unverifiedUsersData: GetUsersResponse[] = await getUsers(token, searchTerm, undefined, false);
 
+      // 3. Gabungkan hasil dari kedua panggilan ke dalam Map untuk menghilangkan duplikasi
       const combinedUsersMap = new Map<string, GetUsersResponse>();
+
+      // Tambahkan verified users
       verifiedUsersData?.forEach((user) => combinedUsersMap.set(user.id, user));
+      // Tambahkan unverified users (yang belum ada di Map)
       unverifiedUsersData?.forEach((user) => {
         if (!combinedUsersMap.has(user.id)) {
           combinedUsersMap.set(user.id, user);
@@ -76,16 +91,16 @@ const UserManagement: React.FC = () => {
 
       const uniqueUsersData = Array.from(combinedUsersMap.values());
 
-      // GetUsersResponse only returns region_id (no desa_kelurahan).
-      // The list endpoint is intentionally lightweight — use the ID prefix as placeholder.
+      // Mengubah data API ke format tampilan
+      // Note: GetUsersResponse only has region_id (no desa_kelurahan) — use ID prefix as label
       const mappedData: UserDisplay[] = uniqueUsersData.map((u) => ({
         id: u.id,
         name: u.name,
         phone: u.phone,
+        // Cek jika region_id bukan nilai nol dan ada isinya
         isPJT: u.region_id !== "00000000-0000-0000-0000-000000000000" && !!u.region_id,
-        regionName: u.region_id && u.region_id !== "00000000-0000-0000-0000-000000000000"
-          ? `Terikat (${u.region_id.substring(0, 8)}...)`
-          : "-",
+        // Untuk Region Name, kita pakai placeholder ID atau "Terikat"
+        regionName: u.region_id && u.region_id !== "00000000-0000-0000-0000-000000000000" ? `Terikat (${u.region_id.substring(0, 8)}...)` : "-",
       }));
       setUsersList(mappedData);
     } catch (error: any) {
@@ -97,25 +112,30 @@ const UserManagement: React.FC = () => {
     }
   }, [token, searchTerm]);
 
+  // Effect untuk memuat data pengguna saat mount dan saat search term berubah
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
+  // Handler sukses (refresh data)
   const handleSuccess = () => {
     fetchUsers();
     setIsAddEditModalOpen(false);
     setIsDeleteModalOpen(false);
-    setIsResetPasswordModalOpen(false);
     setSelectedUser(null);
   };
 
+  // 1. Logika Filtering & Searching
   const filteredUsers = useMemo(() => {
     const filtered = usersList;
+
+    // 2. Logika Sorting
     const sortableItems = [...filtered];
     if (sortConfig.key !== null) {
       sortableItems.sort((a, b) => {
         const aValue = a[sortConfig.key!];
         const bValue = b[sortConfig.key!];
+
         if (aValue < bValue) return sortConfig.direction === "ascending" ? -1 : 1;
         if (aValue > bValue) return sortConfig.direction === "ascending" ? 1 : -1;
         return 0;
@@ -132,16 +152,33 @@ const UserManagement: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  const handleAddClick = () => { setSelectedUser(null); setIsAddEditModalOpen(true); };
-  const handleEditClick = (user: UserDisplay) => { setSelectedUser(user); setIsAddEditModalOpen(true); };
-  const handleDeleteClick = (user: UserDisplay) => { setSelectedUser(user); setIsDeleteModalOpen(true); };
-  const handleResetPasswordClick = (user: UserDisplay) => { setSelectedUser(user); setIsResetPasswordModalOpen(true); };
+  // Handlers Modal
+  const handleAddClick = () => {
+    setSelectedUser(null); // Mode Add
+    setIsAddEditModalOpen(true);
+  };
+
+  const handleEditClick = (user: UserDisplay) => {
+    setSelectedUser(user); // Mode Edit
+    setIsAddEditModalOpen(true);
+  };
+
+  const handleDeleteClick = (user: UserDisplay) => {
+    setSelectedUser(user);
+    setIsDeleteModalOpen(true);
+  };
+
+  // NEW
+  const handleResetPasswordClick = (user: UserDisplay) => {
+    setSelectedUser(user);
+    setIsResetPasswordModalOpen(true);
+  };
 
   const handleConfirmDelete = async (id: string) => {
     if (!token) return;
     setIsLoading(true);
     try {
-      await deleteUser(token, id);
+      await deleteUser(token, id); // Panggil fungsi DELETE API yang baru
       toast.success(`Pengguna berhasil dihapus!`);
       handleSuccess();
     } catch (error: any) {
@@ -159,7 +196,7 @@ const UserManagement: React.FC = () => {
         {/* Modal Hapus */}
         {selectedUser && <DeleteUserModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} user={selectedUser} onConfirmDelete={handleConfirmDelete} />}
 
-        {/* Modal Reset Password */}
+        {/* NEW: Modal Reset Password */}
         {selectedUser && (
           <ResetPasswordModal
             isOpen={isResetPasswordModalOpen}
@@ -184,6 +221,7 @@ const UserManagement: React.FC = () => {
             </motion.button>
           </div>
 
+          {/* Search Bar */}
           <div className="relative">
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input

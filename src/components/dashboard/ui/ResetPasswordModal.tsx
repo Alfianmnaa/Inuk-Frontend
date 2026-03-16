@@ -8,14 +8,12 @@ interface ResetPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  // The name of the target account (shown in the modal title)
   targetName: string;
-  // Called with the new password when the form is submitted
   onConfirmReset: (newPassword: string) => Promise<void>;
 }
 
-const MAX_PASSWORD_LENGTH = 30;
-const MIN_PASSWORD_LENGTH = 8;
+const MAX_LEN = 30;
+const MIN_LEN = 8;
 
 const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
   isOpen,
@@ -30,18 +28,19 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
   const [showConfirm, setShowConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleClose = () => {
+  const reset = () => {
     setNewPassword("");
     setConfirmPassword("");
     setShowNew(false);
     setShowConfirm(false);
-    onClose();
   };
+
+  const handleClose = () => { reset(); onClose(); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < MIN_PASSWORD_LENGTH) {
-      toast.error(`Kata sandi minimal ${MIN_PASSWORD_LENGTH} karakter.`);
+    if (newPassword.length < MIN_LEN) {
+      toast.error(`Kata sandi minimal ${MIN_LEN} karakter.`);
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -63,8 +62,8 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
 
   if (!isOpen) return null;
 
-  const passwordsMatch = newPassword === confirmPassword && confirmPassword !== "";
-  const passwordTooShort = newPassword.length > 0 && newPassword.length < MIN_PASSWORD_LENGTH;
+  const match = newPassword === confirmPassword && confirmPassword !== "";
+  const tooShort = newPassword.length > 0 && newPassword.length < MIN_LEN;
 
   return (
     <AnimatePresence>
@@ -102,9 +101,10 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
               </button>
             </div>
 
-            {/* Warning banner */}
+            {/* Warning */}
             <div className="mx-6 mt-5 mb-1 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700 leading-relaxed">
-              Sesi aktif akun ini akan <span className="font-semibold">langsung berakhir</span> setelah kata sandi direset. Pengguna harus login ulang.
+              Sesi aktif akun ini akan{" "}
+              <span className="font-semibold">langsung berakhir</span> setelah kata sandi direset.
             </div>
 
             {/* Form */}
@@ -118,25 +118,17 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                   <input
                     type={showNew ? "text" : "password"}
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value.slice(0, MAX_PASSWORD_LENGTH))}
-                    placeholder={`${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH} karakter`}
+                    onChange={(e) => setNewPassword(e.target.value.slice(0, MAX_LEN))}
+                    placeholder={`${MIN_LEN}–${MAX_LEN} karakter`}
                     required
                     className="w-full border border-gray-300 rounded-xl py-2.5 px-3 pr-10 text-sm focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-none transition"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowNew(!showNew)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
+                  <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                     {showNew ? <FaEyeSlash size={15} /> : <FaEye size={15} />}
                   </button>
                 </div>
-                {passwordTooShort && (
-                  <p className="text-xs text-red-500 mt-1">Minimal {MIN_PASSWORD_LENGTH} karakter.</p>
-                )}
-                <p className="text-xs text-gray-400 mt-1 text-right">
-                  {newPassword.length}/{MAX_PASSWORD_LENGTH}
-                </p>
+                {tooShort && <p className="text-xs text-red-500 mt-1">Minimal {MIN_LEN} karakter.</p>}
+                <p className="text-xs text-gray-400 mt-1 text-right">{newPassword.length}/{MAX_LEN}</p>
               </div>
 
               {/* Confirm password */}
@@ -148,57 +140,36 @@ const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
                   <input
                     type={showConfirm ? "text" : "password"}
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value.slice(0, MAX_PASSWORD_LENGTH))}
+                    onChange={(e) => setConfirmPassword(e.target.value.slice(0, MAX_LEN))}
                     placeholder="Ketik ulang kata sandi baru"
                     required
                     className={`w-full border rounded-xl py-2.5 px-3 pr-10 text-sm outline-none transition focus:ring-2 ${
                       confirmPassword.length > 0
-                        ? passwordsMatch
+                        ? match
                           ? "border-green-400 focus:ring-green-300"
                           : "border-red-400 focus:ring-red-300"
                         : "border-gray-300 focus:ring-amber-400 focus:border-amber-400"
                     }`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
+                  <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                     {showConfirm ? <FaEyeSlash size={15} /> : <FaEye size={15} />}
                   </button>
                 </div>
-                {confirmPassword.length > 0 && !passwordsMatch && (
-                  <p className="text-xs text-red-500 mt-1">Kata sandi tidak cocok.</p>
-                )}
-                {passwordsMatch && (
-                  <p className="text-xs text-green-600 mt-1">✓ Kata sandi cocok.</p>
-                )}
+                {confirmPassword.length > 0 && !match && <p className="text-xs text-red-500 mt-1">Kata sandi tidak cocok.</p>}
+                {match && <p className="text-xs text-green-600 mt-1">✓ Kata sandi cocok.</p>}
               </div>
 
               {/* Buttons */}
               <div className="flex justify-end gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-50"
-                >
+                <button type="button" onClick={handleClose} disabled={isSubmitting} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-xl transition-colors disabled:opacity-50">
                   Batal
                 </button>
                 <button
                   type="submit"
-                  disabled={
-                    isSubmitting ||
-                    !passwordsMatch ||
-                    newPassword.length < MIN_PASSWORD_LENGTH
-                  }
+                  disabled={isSubmitting || !match || newPassword.length < MIN_LEN}
                   className="px-5 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? (
-                    <FaSpinner className="animate-spin" size={14} />
-                  ) : (
-                    <FaSave size={14} />
-                  )}
+                  {isSubmitting ? <FaSpinner className="animate-spin" size={14} /> : <FaSave size={14} />}
                   Reset Kata Sandi
                 </button>
               </div>

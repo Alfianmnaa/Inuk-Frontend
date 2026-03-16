@@ -7,46 +7,46 @@ const getAuthHeaders = (token: string) => ({
 });
 
 // ─── Logout ───────────────────────────────────────────────────────────────────
-// Blacklists the current token's JTI on the server.
-// Always call BEFORE clearing the local token.
-// Never throws — if the server is unreachable, local logout must still proceed.
+// Blacklists the current token's JTI on the server so it's rejected on all
+// future requests. Never throws — local logout must always succeed even if the
+// server is unreachable.
 export const logoutApi = async (
   token: string,
   role: "user" | "admin" | "superadmin"
 ): Promise<void> => {
-  const endpointMap: Record<string, string> = {
+  const endpoints: Record<string, string> = {
     user: "/logout",
     admin: "/admin/logout",
     superadmin: "/superadmin/logout",
   };
   try {
     await axios.post(
-      `${VITE_API_URL}${endpointMap[role] ?? "/logout"}`,
+      `${VITE_API_URL}${endpoints[role] ?? "/logout"}`,
       {},
       getAuthHeaders(token)
     );
   } catch {
-    // Swallowed intentionally — local state is always cleared regardless.
+    // Swallowed — local state is always cleared regardless.
   }
 };
 
 // ─── Change own password ──────────────────────────────────────────────────────
-// On success the backend blacklists the current session. The caller MUST
-// also call logout() locally and redirect to login after this resolves.
+// On success the backend blacklists the current session. Caller must call
+// logout() locally and redirect to login immediately after this resolves.
 export const changeOwnPassword = async (
   token: string,
   role: "user" | "admin" | "superadmin",
   currentPassword: string,
   newPassword: string
 ): Promise<void> => {
-  const endpointMap: Record<string, string> = {
+  const endpoints: Record<string, string> = {
     user: "/change-password",
     admin: "/admin/change-password",
     superadmin: "/superadmin/change-password",
   };
   try {
     await axios.post(
-      `${VITE_API_URL}${endpointMap[role] ?? "/change-password"}`,
+      `${VITE_API_URL}${endpoints[role] ?? "/change-password"}`,
       { current_password: currentPassword, new_password: newPassword },
       getAuthHeaders(token)
     );
