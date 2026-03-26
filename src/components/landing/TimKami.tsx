@@ -16,7 +16,7 @@ const PENGURUS_DATA: PengurusItem[] = [
   { jabatan: "Wakil Ketua", nama: "H. Hasan Junaidi, S.Pd" },
   { jabatan: "Wakil Ketua", nama: "Sih Karyadi" },
   { jabatan: "Wakil Ketua", nama: "H. Suparno, SHI., MH" },
-  { jabatan: "Sekretaris", nama: "Arif Mustaqiim, M.Pd.I" },
+  { jabatan: "Sekretaris", nama: "Arif Musta'in, M.Pd.I" },
   { jabatan: "Wakil Sekretaris", nama: "Vera Fitri Apriliani, SE" },
   { jabatan: "Bendahara", nama: "Arum Nugroho, SE, MM" },
   // { jabatan: "Wakil Bendahara", nama: "Arum Nugroho, SE., MM" },
