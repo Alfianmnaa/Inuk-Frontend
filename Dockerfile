@@ -28,7 +28,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
 
 # ---------- PROD: nginx (bookworm) ----------
-FROM nginx:1.29-bookworm AS prod
+FROM nginx:1.30.3-trixie AS prod
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 RUN apt-get update && apt-get install -y curl gettext-base && rm -rf /var/lib/apt/lists/*
