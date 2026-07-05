@@ -82,7 +82,7 @@ const RekapDonasi: React.FC = () => {
 
   // Set default to current month and year
   const currentDate = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<number>(currentDate.getMonth() + 1); // Current month (1-12)
+  const [selectedMonth, setSelectedMonth] = useState<number>(0); // Change from current month (currentDate.getMonth() + 1) to all months
   const [selectedYear, setSelectedYear] = useState<number>(currentDate.getFullYear()); // Current year
 
   // --- Fetch Available Years (Only Once on Mount) ---
