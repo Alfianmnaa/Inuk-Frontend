@@ -150,8 +150,11 @@ const TransaksiDonasi: React.FC = () => {
 
     const getRfc3339 = (dateStr: string, isEnd: boolean) => {
       if (!dateStr) return undefined;
-      const time = isEnd ? "T23:59:59Z" : "T00:00:00Z";
-      return `${dateStr}${time}`;
+      const [y, m, d] = dateStr.split("-").map(Number);
+      const localDate = isEnd
+        ? new Date(y, m - 1, d, 23, 59, 59)
+        : new Date(y, m - 1, d);
+      return localDate.toISOString();
     };
 
     const startDateTime = getRfc3339(startDateFilter, false);
@@ -282,8 +285,11 @@ const TransaksiDonasi: React.FC = () => {
 
     const getRfc3339 = (dateStr: string, isEnd: boolean) => {
       if (!dateStr) return undefined;
-      const time = isEnd ? "T23:59:59Z" : "T00:00:00Z";
-      return `${dateStr}${time}`;
+      const [y, m, d] = dateStr.split("-").map(Number);
+      const localDate = isEnd
+        ? new Date(y, m - 1, d, 23, 59, 59)
+        : new Date(y, m - 1, d);
+      return localDate.toISOString();
     };
 
     let extractFilters: {

@@ -17,6 +17,15 @@ const formatRupiah = (angka: number) => {
   return new Intl.NumberFormat("id-ID", { minimumFractionDigits: 0 }).format(angka);
 };
 
+const formatDateTimeLocal = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { token } = useAuth();
   // REMOVED: const [methods, setMethods] = useState<string[]>([]);
@@ -35,7 +44,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
     donor_id: "", // State untuk ID Donatur
     total: 0,
     // REMOVED: method: "",
-    date_time: new Date().toISOString().substring(0, 16),
+    date_time: formatDateTimeLocal(new Date()),
   };
 
   const [formData, setFormData] = useState(initialForm);
@@ -45,7 +54,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClo
       donor_id: donors.length > 0 ? donors[0].id : "",
       total: 0,
       // REMOVED: method: "",
-      date_time: new Date().toISOString().substring(0, 16),
+      date_time: formatDateTimeLocal(new Date()),
     });
     setSearchTerm("");
     setSelectedDonor(donors.length > 0 ? donors[0] : null);
