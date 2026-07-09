@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
 import { FaUserShield, FaTrash, FaSpinner } from "react-icons/fa";
-import { type RegionDetail, setRegionUsers } from "../../../services/RegionService";
+import { type RegionDetail } from "../../../services/RegionService";
+import { updateUser } from "../../../services/UserService";
 import { useAuth } from "../../../context/AuthContext";
 import { toast } from "react-hot-toast";
 
@@ -26,11 +27,7 @@ const ViewUsersModal: React.FC<ViewUsersModalProps> = ({ isOpen, onClose, region
 
     setLoadingId(userIdToRemove);
     try {
-      // Logic: Ambil semua user yg ada sekarang, filter yang mau dihapus, lalu set ulang
-      const currentUsers = region.user || [];
-      const newUserIds = currentUsers.filter((u) => u.user_id !== userIdToRemove).map((u) => u.user_id);
-
-      await setRegionUsers(region.id, newUserIds, token);
+      await updateUser(token, userIdToRemove, { region_id: "" });
       toast.success("User berhasil dihapus dari region.");
       onUpdate(); // Refresh data region di parent
       onClose(); // Tutup modal (opsional, atau biarkan terbuka dan fetch ulang region detail)
