@@ -238,3 +238,20 @@ export const deleteUser = async (token: string, id: string): Promise<void> => {
     throw new Error("Terjadi kesalahan jaringan saat menghapus pengguna.");
   }
 };
+
+export const updateUserRegion = async (token: string, userId: string, regionId: string): Promise<any> => {
+  if (!token) throw new Error("Autentikasi diperlukan.");
+  try {
+    const response = await axios.patch(
+      `${VITE_API_URL}/admin/user/${userId}/region`,
+      { region_id: regionId },
+      getAuthHeaders(token)
+    );
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error(error.response.data?.message || "Gagal memperbarui region pengguna.");
+    }
+    throw new Error("Terjadi kesalahan jaringan saat memperbarui region pengguna.");
+  }
+};
