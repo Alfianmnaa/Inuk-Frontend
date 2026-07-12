@@ -42,6 +42,7 @@ const formatRupiah = (angka: number) => {
 const TransaksiDonasi: React.FC = () => {
   const { token, userRole } = useAuth();
   const isUserRole = userRole === "user";
+  const isAdminRole = userRole === "admin";
 
   // State Filter Waktu BARU
   const [startDateFilter, setStartDateFilter] = useState("");
@@ -171,11 +172,15 @@ const TransaksiDonasi: React.FC = () => {
         sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
       };
     } else {
+      const adminProvince = isAdminRole ? localStorage.getItem("user_province") || "" : "";
+      const adminCity = isAdminRole ? localStorage.getItem("user_city") || "" : "";
+      const adminSubdistrict = isAdminRole ? localStorage.getItem("user_subdistrict") || "" : "";
+
       enforcedFilters = {
         page: page,
-        province: addressFilters.province || undefined,
-        city: addressFilters.city || undefined,
-        subdistrict: addressFilters.subdistrict || undefined,
+        province: addressFilters.province || adminProvince || undefined,
+        city: addressFilters.city || adminCity || undefined,
+        subdistrict: addressFilters.subdistrict || adminSubdistrict || undefined,
         village: addressFilters.village || undefined,
         startDate: startDateTime,
         endDate: endDateTime,
@@ -311,10 +316,14 @@ const TransaksiDonasi: React.FC = () => {
         endDate: getRfc3339(endDateFilter, true),
       };
     } else {
+      const adminProvince = isAdminRole ? localStorage.getItem("user_province") || "" : "";
+      const adminCity = isAdminRole ? localStorage.getItem("user_city") || "" : "";
+      const adminSubdistrict = isAdminRole ? localStorage.getItem("user_subdistrict") || "" : "";
+
       extractFilters = {
-        provinsi: addressFilters.province || undefined,
-        kabupaten_kota: addressFilters.city || undefined,
-        kecamatan: addressFilters.subdistrict || undefined,
+        provinsi: addressFilters.province || adminProvince || undefined,
+        kabupaten_kota: addressFilters.city || adminCity || undefined,
+        kecamatan: addressFilters.subdistrict || adminSubdistrict || undefined,
         desa_kelurahan: addressFilters.village || undefined,
         startDate: getRfc3339(startDateFilter, false),
         endDate: getRfc3339(endDateFilter, true),
