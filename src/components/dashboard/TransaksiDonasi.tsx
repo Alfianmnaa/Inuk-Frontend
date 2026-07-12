@@ -13,6 +13,7 @@ import { getDonations, getDonationsExtract, type TransactionAPI, type DonationsR
 import { useAuth } from "../../context/AuthContext";
 import { generateExcelBlob, downloadExcelFromBlob } from "../../utils/ExportToExcel";
 import { getTreasurer, type GetTreasurerResponse } from "../../services/UserService";
+import { getAdminProfile } from "../../services/AdminService";
 
 import EditDonationModal from "./ui/EditDonationModal";
 import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
@@ -42,7 +43,6 @@ const formatRupiah = (angka: number) => {
 const TransaksiDonasi: React.FC = () => {
   const { token, userRole } = useAuth();
   const isUserRole = userRole === "user";
-  const isAdminRole = userRole === "admin";
 
   // State Filter Waktu BARU
   const [startDateFilter, setStartDateFilter] = useState("");
@@ -106,42 +106,74 @@ const TransaksiDonasi: React.FC = () => {
 
   // FUNGSI: Load Region User dari LocalStorage untuk Enforcement
   const loadUserRegionForEnforcement = useCallback(() => {
-    if (userRole !== "user") {
-      setUserRegionFilter({});
+    if (userRole === "user") {
+      const province = localStorage.getItem("user_province");
+      const city = localStorage.getItem("user_city");
+      const subdistrict = localStorage.getItem("user_subdistrict");
+      const village = localStorage.getItem("user_village");
+
+      if (village && subdistrict && province && city && village !== "Gagal Memuat Region") {
+        if (village === "N/A" || subdistrict === "N/A") {
+          setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
+        } else {
+          setUserRegionFilter({
+            province: province,
+            city: city,
+            subdistrict: subdistrict,
+            village: village,
+          });
+        }
+      } else if (village === "Gagal Memuat Region") {
+        setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
+      } else {
+        setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
+      }
       setIsRegionEnforcementLoading(false);
       return;
     }
 
-    const province = localStorage.getItem("user_province");
-    const city = localStorage.getItem("user_city");
-    const subdistrict = localStorage.getItem("user_subdistrict");
-    const village = localStorage.getItem("user_village");
-
-    if (village && subdistrict && province && city && village !== "Gagal Memuat Region") {
-      if (village === "N/A" || subdistrict === "N/A") {
-        setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
-      } else {
-        setUserRegionFilter({
-          province: province,
-          city: city,
-          subdistrict: subdistrict,
-          village: village,
+    if (userRole === "admin" && token) {
+      getAdminProfile(token)
+        .then((profile) => {
+          const subdistrict = profile.kecamatan || "";
+          if (subdistrict && subdistrict !== "N/A") {
+            setUserRegionFilter({
+              province: profile.provinsi || "",
+              city: profile.kabupaten_kota || "",
+              subdistrict: profile.kecamatan || "",
+              village: profile.desa_kelurahan || "",
+            });
+          } else {
+            setUserRegionFilter({
+              province: "NONE", city: "NONE",
+              subdistrict: "NONE", village: "NONE",
+            });
+          }
+        })
+        .catch(() => {
+          setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
+        })
+        .finally(() => {
+          setIsRegionEnforcementLoading(false);
         });
-      }
-    } else if (village === "Gagal Memuat Region") {
-      setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
-    } else {
-      setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
+      return;
     }
+
+    setUserRegionFilter({});
     setIsRegionEnforcementLoading(false);
-  }, [userRole]);
+  }, [userRole, token]);
 
   // Data Fetching Utama
   const fetchTransactions = async (page: number) => {
     if (!token) return;
 
     if (userRole === "user" && isRegionEnforcementLoading) return;
-    if (userRole === "user" && userRegionFilter.province === "NONE" && !userRegionFilter.village) {
+    if (isRegionEnforcementLoading) return;
+    if (userRole === "user" && userRegionFilter.province === "NONE") {
+      setTransactionsData({ total_page: 0, current_page: 1, has_next_page: false, result: [] });
+      return;
+    }
+    if (userRole === "admin" && userRegionFilter.province === "NONE") {
       setTransactionsData({ total_page: 0, current_page: 1, has_next_page: false, result: [] });
       return;
     }
@@ -171,16 +203,23 @@ const TransaksiDonasi: React.FC = () => {
         endDate: endDateTime,
         sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
       };
-    } else {
-      const adminProvince = isAdminRole ? localStorage.getItem("user_province") || "" : "";
-      const adminCity = isAdminRole ? localStorage.getItem("user_city") || "" : "";
-      const adminSubdistrict = isAdminRole ? localStorage.getItem("user_subdistrict") || "" : "";
-
+    } else if (userRole === "admin") {
       enforcedFilters = {
         page: page,
-        province: addressFilters.province || adminProvince || undefined,
-        city: addressFilters.city || adminCity || undefined,
-        subdistrict: addressFilters.subdistrict || adminSubdistrict || undefined,
+        province: addressFilters.province || userRegionFilter.province || undefined,
+        city: addressFilters.city || userRegionFilter.city || undefined,
+        subdistrict: addressFilters.subdistrict || userRegionFilter.subdistrict || undefined,
+        village: addressFilters.village || undefined,
+        startDate: startDateTime,
+        endDate: endDateTime,
+        sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
+      };
+    } else {
+      enforcedFilters = {
+        page: page,
+        province: addressFilters.province || undefined,
+        city: addressFilters.city || undefined,
+        subdistrict: addressFilters.subdistrict || undefined,
         village: addressFilters.village || undefined,
         startDate: startDateTime,
         endDate: endDateTime,
@@ -315,15 +354,20 @@ const TransaksiDonasi: React.FC = () => {
         startDate: getRfc3339(startDateFilter, false),
         endDate: getRfc3339(endDateFilter, true),
       };
-    } else {
-      const adminProvince = isAdminRole ? localStorage.getItem("user_province") || "" : "";
-      const adminCity = isAdminRole ? localStorage.getItem("user_city") || "" : "";
-      const adminSubdistrict = isAdminRole ? localStorage.getItem("user_subdistrict") || "" : "";
-
+    } else if (userRole === "admin") {
       extractFilters = {
-        provinsi: addressFilters.province || adminProvince || undefined,
-        kabupaten_kota: addressFilters.city || adminCity || undefined,
-        kecamatan: addressFilters.subdistrict || adminSubdistrict || undefined,
+        provinsi: addressFilters.province || userRegionFilter.province || undefined,
+        kabupaten_kota: addressFilters.city || userRegionFilter.city || undefined,
+        kecamatan: addressFilters.subdistrict || userRegionFilter.subdistrict || undefined,
+        desa_kelurahan: addressFilters.village || undefined,
+        startDate: getRfc3339(startDateFilter, false),
+        endDate: getRfc3339(endDateFilter, true),
+      };
+    } else {
+      extractFilters = {
+        provinsi: addressFilters.province || undefined,
+        kabupaten_kota: addressFilters.city || undefined,
+        kecamatan: addressFilters.subdistrict || undefined,
         desa_kelurahan: addressFilters.village || undefined,
         startDate: getRfc3339(startDateFilter, false),
         endDate: getRfc3339(endDateFilter, true),
@@ -517,13 +561,13 @@ const TransaksiDonasi: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-              {userRole === "admin" ? (
-                <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["subdistrict", "village"]} kecamatanName="Kecamatan Donatur" />
-              ) : (
+              {isUserRole ? (
                 <div className="text-sm text-gray-600 flex items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
                   {finalLoading ? <FaSpinner className="animate-spin mr-2" /> : isUserBlocked ? <FaInfoCircle className="mr-2 text-red-500" /> : <FaInfoCircle className="mr-2 text-blue-500" />}
                   {finalLoading ? "Memuat Region Konteks..." : isUserBlocked ? "Akses Dibatasi: Akun Anda tidak terikat pada Region manapun." : `Data dibatasi untuk Region: ${userRegionFilter.subdistrict} / ${userRegionFilter.village}`}
                 </div>
+              ) : (
+                <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["subdistrict", "village"]} kecamatanName="Kecamatan Donatur" />
               )}
             </div>
           </div>
