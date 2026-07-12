@@ -5,6 +5,7 @@ import { ChevronDown, LogOut, Lock, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { getUserProfile } from "../../services/UserService"; // NEW: Import getUserProfile
+import { getAdminProfile } from "../../services/AdminService";
 import { logoutApi } from "../../services/AuthService"; // NEW: blacklist JTI on server
 import ChangePasswordModal from "./ui/ChangePasswordModal"; // NEW: change-password modal
 
@@ -138,9 +139,32 @@ const DashboardLayout: React.FC<{ children: React.ReactNode; activeLink: string;
           localStorage.removeItem("user_subdistrict");
           localStorage.removeItem("user_village");
         });
+    } else if (userRole === "admin" && token) {
+      getAdminProfile(token)
+        .then((profile) => {
+          const village = profile.desa_kelurahan || "belum ditetapkan";
+          const subdistrict = profile.kecamatan || "N/A";
+          const city = profile.kabupaten_kota || "N/A";
+          const province = profile.provinsi || "N/A";
+
+          setUserRegionVillage(village);
+
+          localStorage.setItem("user_province", province);
+          localStorage.setItem("user_city", city);
+          localStorage.setItem("user_subdistrict", subdistrict);
+          localStorage.setItem("user_village", village);
+          localStorage.removeItem("user_id_temp_hack");
+        })
+        .catch(() => {
+          setUserRegionVillage("Gagal Memuat Region");
+          localStorage.removeItem("user_province");
+          localStorage.removeItem("user_city");
+          localStorage.removeItem("user_subdistrict");
+          localStorage.removeItem("user_village");
+        });
     } else {
       setUserRegionVillage("");
-      // Hapus data region lama dari Local Storage jika bukan user
+      // Hapus data region lama dari Local Storage jika bukan user/admin
       localStorage.removeItem("user_province");
       localStorage.removeItem("user_city");
       localStorage.removeItem("user_subdistrict");
