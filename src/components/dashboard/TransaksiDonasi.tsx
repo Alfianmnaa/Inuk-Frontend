@@ -7,30 +7,27 @@ import { toast } from "react-hot-toast";
 import DashboardLayout from "./DashboardLayout";
 import Pagination from "./ui/Pagination";
 import AddressSelector, { type AddressSelection } from "./AddressSelector";
+import AdminVillagePicker from "./ui/AdminVillagePicker";
 import AddTransactionModal from "./ui/AddTransactionModal";
 import BendaharaModal from "./ui/BendaharaModal";
 import { getDonations, getDonationsExtract, type TransactionAPI, type DonationsResponse, type DonationsFilter, updateDonation, deleteDonation, type UpdateDonationRequest } from "../../services/DonationService";
 import { useAuth } from "../../context/AuthContext";
 import { generateExcelBlob, downloadExcelFromBlob } from "../../utils/ExportToExcel";
 import { getTreasurer, type GetTreasurerResponse } from "../../services/UserService";
-import { getAdminProfile } from "../../services/AdminService";
+import { getRegionProfile, NONE_REGION, type RegionProfile } from "../../services/UserRegionService";
 
 import EditDonationModal from "./ui/EditDonationModal";
 import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
 
-// Data Type Transaksi LOKAL
-// Kita export agar bisa diimport di modal jika perlu tipe yang spesifik
 export interface Transaction extends TransactionAPI {
   tanggalFormatted: string;
 }
 
-// Data Bendahara DEFAULT
 const INITIAL_TREASURER_DATA: GetTreasurerResponse = {
   treasurer_name: "Belum Ditetapkan",
   treasurer_phone: "",
 };
 
-// Helper function
 const formatRupiah = (angka: number) => {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -39,21 +36,17 @@ const formatRupiah = (angka: number) => {
   }).format(angka);
 };
 
-// Component Utama Halaman
 const TransaksiDonasi: React.FC = () => {
   const { token, userRole } = useAuth();
   const isUserRole = userRole === "user";
 
-  // State Filter Waktu BARU
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
 
-  // State Bendahara (DARI API)
   const [treasurerData, setTreasurerData] = useState<GetTreasurerResponse>(INITIAL_TREASURER_DATA);
   const [isTreasurerLoading, setIsTreasurerLoading] = useState(false);
 
-  // State untuk Enforced Filtering (Frontend-Only Restriction)
-  const [userRegionFilter, setUserRegionFilter] = useState<DonationsFilter>({});
+  const [userRegionFilter, setUserRegionFilter] = useState<RegionProfile>(NONE_REGION);
   const [isRegionEnforcementLoading, setIsRegionEnforcementLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -71,7 +64,6 @@ const TransaksiDonasi: React.FC = () => {
     direction: "desc",
   });
 
-  // FUNGSI: Fetch Data Bendahara
   const fetchTreasurer = useCallback(async () => {
     if (!token || userRole !== "user") return;
     setIsTreasurerLoading(true);
@@ -86,7 +78,6 @@ const TransaksiDonasi: React.FC = () => {
     }
   }, [token, userRole]);
 
-  // Logika Cek Data Bendahara
   const isTreasurerValid = useMemo(() => {
     return !!(treasurerData.treasurer_name && treasurerData.treasurer_phone);
   }, [treasurerData]);
@@ -104,76 +95,24 @@ const TransaksiDonasi: React.FC = () => {
     return transactionsData.result.reduce((sum, t) => sum + t.total, 0);
   }, [transactionsData.result]);
 
-  // FUNGSI: Load Region User dari LocalStorage untuk Enforcement
-  const loadUserRegionForEnforcement = useCallback(() => {
-    if (userRole === "user") {
-      const province = localStorage.getItem("user_province");
-      const city = localStorage.getItem("user_city");
-      const subdistrict = localStorage.getItem("user_subdistrict");
-      const village = localStorage.getItem("user_village");
-
-      if (village && subdistrict && province && city && village !== "Gagal Memuat Region") {
-        if (village === "N/A" || subdistrict === "N/A") {
-          setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
-        } else {
-          setUserRegionFilter({
-            province: province,
-            city: city,
-            subdistrict: subdistrict,
-            village: village,
-          });
-        }
-      } else if (village === "Gagal Memuat Region") {
-        setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
-      } else {
-        setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
-      }
+  useEffect(() => {
+    if (!token || (userRole !== "user" && userRole !== "admin")) {
+      setUserRegionFilter(NONE_REGION);
       setIsRegionEnforcementLoading(false);
       return;
     }
+    setIsRegionEnforcementLoading(true);
+    getRegionProfile(token, userRole).then((region) => {
+      setUserRegionFilter(region);
+      setIsRegionEnforcementLoading(false);
+    });
+  }, [token, userRole]);
 
-    if (userRole === "admin" && token) {
-      getAdminProfile(token)
-        .then((profile) => {
-          const subdistrict = profile.kecamatan || "";
-          if (subdistrict && subdistrict !== "N/A") {
-            setUserRegionFilter({
-              province: profile.provinsi || "",
-              city: profile.kabupaten_kota || "",
-              subdistrict: profile.kecamatan || "",
-              village: profile.desa_kelurahan || "",
-            });
-          } else {
-            setUserRegionFilter({
-              province: "NONE", city: "NONE",
-              subdistrict: "NONE", village: "NONE",
-            });
-          }
-        })
-        .catch(() => {
-          setUserRegionFilter({ province: "NONE", city: "NONE", subdistrict: "NONE", village: "NONE" });
-        })
-        .finally(() => {
-          setIsRegionEnforcementLoading(false);
-        });
-      return;
-    }
-
-    setUserRegionFilter({});
-    setIsRegionEnforcementLoading(false);
-  }, [userRole, token]);
-
-  // Data Fetching Utama
   const fetchTransactions = async (page: number) => {
     if (!token) return;
-
-    if (userRole === "user" && isRegionEnforcementLoading) return;
     if (isRegionEnforcementLoading) return;
-    if (userRole === "user" && userRegionFilter.province === "NONE") {
-      setTransactionsData({ total_page: 0, current_page: 1, has_next_page: false, result: [] });
-      return;
-    }
-    if (userRole === "admin" && userRegionFilter.province === "NONE") {
+
+    if ((userRole === "user" || userRole === "admin") && userRegionFilter.province === "NONE") {
       setTransactionsData({ total_page: 0, current_page: 1, has_next_page: false, result: [] });
       return;
     }
@@ -206,9 +145,9 @@ const TransaksiDonasi: React.FC = () => {
     } else if (userRole === "admin") {
       enforcedFilters = {
         page: page,
-        province: addressFilters.province || userRegionFilter.province || undefined,
-        city: addressFilters.city || userRegionFilter.city || undefined,
-        subdistrict: addressFilters.subdistrict || userRegionFilter.subdistrict || undefined,
+        province: userRegionFilter.province || undefined,
+        city: userRegionFilter.city || undefined,
+        subdistrict: userRegionFilter.subdistrict || undefined,
         village: addressFilters.village || undefined,
         startDate: startDateTime,
         endDate: endDateTime,
@@ -244,7 +183,6 @@ const TransaksiDonasi: React.FC = () => {
     }
   };
 
-  // Handler CRUD
   const handleOpenEditModal = (transaction: Transaction) => {
     setSelectedTransaction(transaction);
     setIsEditModalOpen(true);
@@ -281,14 +219,9 @@ const TransaksiDonasi: React.FC = () => {
     }
   };
 
-  // Effects
   useEffect(() => {
     fetchTreasurer();
   }, [fetchTreasurer]);
-
-  useEffect(() => {
-    loadUserRegionForEnforcement();
-  }, [loadUserRegionForEnforcement]);
 
   useEffect(() => {
     if (userRole && !isRegionEnforcementLoading) {
@@ -296,14 +229,12 @@ const TransaksiDonasi: React.FC = () => {
     }
   }, [addressFilters.subdistrict, addressFilters.village, startDateFilter, endDateFilter, sortConfig.key, sortConfig.direction, token, userRole, isRegionEnforcementLoading]);
 
-  // Search
   const filteredBySearch = useMemo(() => {
     const lowerCaseSearch = searchTerm.toLowerCase();
     if (!lowerCaseSearch) return transactionsData.result as Transaction[];
     return transactionsData.result.filter((t) => t.name.toLowerCase().includes(lowerCaseSearch) || t.id.includes(lowerCaseSearch)) as Transaction[];
   }, [searchTerm, transactionsData.result]);
 
-  // Sorting Lokal
   const sortedTransactions = useMemo(() => {
     let items = [...filteredBySearch];
     if (sortConfig.key === "total") {
@@ -323,7 +254,6 @@ const TransaksiDonasi: React.FC = () => {
     setSortConfig({ key, direction });
   };
 
-  // Helper untuk Download Instan (Manual)
   const handleInstantDownload = async () => {
     if (!token) return;
 
@@ -356,9 +286,9 @@ const TransaksiDonasi: React.FC = () => {
       };
     } else if (userRole === "admin") {
       extractFilters = {
-        provinsi: addressFilters.province || userRegionFilter.province || undefined,
-        kabupaten_kota: addressFilters.city || userRegionFilter.city || undefined,
-        kecamatan: addressFilters.subdistrict || userRegionFilter.subdistrict || undefined,
+        provinsi: userRegionFilter.province || undefined,
+        kabupaten_kota: userRegionFilter.city || undefined,
+        kecamatan: userRegionFilter.subdistrict || undefined,
         desa_kelurahan: addressFilters.village || undefined,
         startDate: getRfc3339(startDateFilter, false),
         endDate: getRfc3339(endDateFilter, true),
@@ -405,7 +335,6 @@ const TransaksiDonasi: React.FC = () => {
     }
   };
 
-  // UI Variables
   const isFiltered = addressFilters.subdistrict || addressFilters.village || searchTerm || startDateFilter || endDateFilter;
   const clearFilters = () => {
     setSearchTerm("");
@@ -419,21 +348,19 @@ const TransaksiDonasi: React.FC = () => {
   };
 
   const finalLoading = isLoading || isRegionEnforcementLoading || isTreasurerLoading;
-  const isUserBlocked = userRole === "user" && userRegionFilter.province === "NONE";
+  const isUserBlocked = (userRole === "user" || userRole === "admin") && userRegionFilter.province === "NONE";
 
   return (
     <DashboardLayout activeLink="/dashboard/transaksi" pageTitle="Pencatatan Donasi">
       <motion.div initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.1 } } }} className="space-y-6">
-        {/* Modal Tambah Transaksi */}
         <AddTransactionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => fetchTransactions(1)} />
 
-        {/* Modal Bendahara - SEKARANG MENERIMA PROPS TRANSAKSI */}
         <BendaharaModal
           isOpen={isBendaharaModalOpen}
           onClose={() => setIsBendaharaModalOpen(false)}
           onSuccess={fetchTreasurer}
           currentTreasurer={treasurerData}
-          transactionData={sortedTransactions} // <-- PASSING DATA DISINI
+          transactionData={sortedTransactions}
           dateFilter={{
             startDate: startDateFilter,
             endDate: endDateFilter,
@@ -441,13 +368,10 @@ const TransaksiDonasi: React.FC = () => {
           }}
         />
 
-        {/* Modal Edit */}
         {selectedTransaction && isEditModalOpen && <EditDonationModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} transaction={selectedTransaction} onUpdate={handleUpdate} />}
 
-        {/* Modal Hapus */}
         {selectedTransaction && isDeleteModalOpen && <DeleteConfirmationModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} transaction={selectedTransaction} onConfirmDelete={handleDelete} />}
 
-        {/* Ringkasan Statistik */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-5 rounded-xl shadow-md border-l-4 border-yellow-500">
             <p className="text-sm font-medium text-gray-500">Total Jumlah Donasi (Halaman Ini)</p>
@@ -463,7 +387,6 @@ const TransaksiDonasi: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Filter dan Aksi */}
         <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg">
           <div className="flex justify-between items-start mb-4">
             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
@@ -472,7 +395,6 @@ const TransaksiDonasi: React.FC = () => {
             <div className="flex space-x-2 flex-wrap justify-end">
               {isUserRole && (
                 <>
-                  {/* Tampilkan Data Bendahara */}
                   <div className="bg-yellow-50 p-2 rounded-lg text-xs self-center border border-yellow-200 mr-4 hidden sm:block">
                     <p className="font-semibold text-yellow-800">Bendahara Aktif:</p>
                     {isTreasurerLoading ? (
@@ -484,7 +406,6 @@ const TransaksiDonasi: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Tombol Konfirmasi & Kirim Laporan */}
                   <motion.button
                     onClick={() => setIsBendaharaModalOpen(true)}
                     whileHover={{ scale: 1.05 }}
@@ -497,7 +418,6 @@ const TransaksiDonasi: React.FC = () => {
                 </>
               )}
 
-              {/* Tombol Download Excel - visible for all roles */}
               <motion.button
                 onClick={handleInstantDownload}
                 whileHover={{ scale: 1.05 }}
@@ -520,7 +440,6 @@ const TransaksiDonasi: React.FC = () => {
               </div>
           </div>
 
-          {/* Input Filter Grid */}
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="relative md:col-span-1">
@@ -566,6 +485,24 @@ const TransaksiDonasi: React.FC = () => {
                   {finalLoading ? <FaSpinner className="animate-spin mr-2" /> : isUserBlocked ? <FaInfoCircle className="mr-2 text-red-500" /> : <FaInfoCircle className="mr-2 text-blue-500" />}
                   {finalLoading ? "Memuat Region Konteks..." : isUserBlocked ? "Akses Dibatasi: Akun Anda tidak terikat pada Region manapun." : `Data dibatasi untuk Region: ${userRegionFilter.subdistrict} / ${userRegionFilter.village}`}
                 </div>
+              ) : userRole === "admin" ? (
+                finalLoading ? (
+                  <div className="text-sm text-gray-600 flex items-center bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <FaSpinner className="animate-spin mr-2" /> Memuat Region Konteks...
+                  </div>
+                ) : isUserBlocked ? (
+                  <div className="text-sm text-red-600 flex items-center bg-red-50 p-3 rounded-lg border border-red-200">
+                    <FaInfoCircle className="mr-2" /> Akun Admin tidak terikat pada Kecamatan manapun. Hubungi Super Admin.
+                  </div>
+                ) : (
+                  <AdminVillagePicker
+                    province={userRegionFilter.province}
+                    city={userRegionFilter.city}
+                    subdistrict={userRegionFilter.subdistrict}
+                    village={addressFilters.village}
+                    onChange={(village) => setAddressFilters((prev) => ({ ...prev, village }))}
+                  />
+                )
               ) : (
                 <AddressSelector value={addressFilters} onChange={setAddressFilters} levels={["subdistrict", "village"]} kecamatanName="Kecamatan Donatur" />
               )}
@@ -579,7 +516,6 @@ const TransaksiDonasi: React.FC = () => {
           )}
         </motion.div>
 
-        {/* Tabel Data Transaksi */}
         <motion.div variants={itemVariants} className="bg-white p-6 rounded-xl shadow-lg overflow-x-auto">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Tabel Detail Transaksi</h3>
           {finalLoading ? (

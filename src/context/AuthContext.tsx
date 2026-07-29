@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext } from "react";
 import type { ReactNode } from "react";
+import { clearRegionProfileCache } from "../services/UserRegionService";
 
-// Tipe data untuk Context
 interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
@@ -16,12 +16,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
 
   const storedRole = localStorage.getItem("userRole");
-  const initialRole = storedRole === "user" || storedRole === "admin"  || storedRole == "superadmin" ? storedRole : null;
+  const initialRole = storedRole === "user" || storedRole === "admin" || storedRole == "superadmin" ? storedRole : null;
   const [userRole, setUserRole] = useState<"user" | "admin" | "superadmin" | null>(initialRole);
 
   const isAuthenticated = !!token;
 
   const login = (newToken: string, role: "user" | "admin" | "superadmin") => {
+    clearRegionProfileCache();
     localStorage.setItem("token", newToken);
     localStorage.setItem("userRole", role);
     setToken(newToken);
@@ -31,6 +32,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userRole");
+    localStorage.removeItem("user_province");
+    localStorage.removeItem("user_city");
+    localStorage.removeItem("user_subdistrict");
+    localStorage.removeItem("user_village");
+    clearRegionProfileCache();
     setToken(null);
     setUserRole(null);
   };
@@ -38,7 +44,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return <AuthContext.Provider value={{ token, isAuthenticated, userRole, login, logout }}>{children}</AuthContext.Provider>;
 };
 
-// Hook kustom untuk mempermudah penggunaan
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
