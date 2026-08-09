@@ -31,9 +31,9 @@ export interface InfaqDetailResponse {
 }
 
 export interface GetInfaqsQuery {
-  province?: string;
-  city?: string;
-  subdistrict?: string;
+  provinsi?: string;
+  kabupaten_kota?: string;
+  kecamatan?: string;
   date_time?: string;
 }
 

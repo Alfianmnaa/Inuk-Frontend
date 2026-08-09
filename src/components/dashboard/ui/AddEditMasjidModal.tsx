@@ -41,13 +41,13 @@ const AddEditMasjidModal: React.FC<AddEditMasjidModalProps> = ({ isOpen, onClose
         let baseFilters: Record<string, any> = {};
 
         if (userRole === "superadmin") {
-          baseFilters = { province: "Jawa Tengah", city: "Kudus" };
+          baseFilters = { provinsi: "Jawa Tengah", kabupaten_kota: "Kudus" };
         } else {
           const profile = await getAdminProfile(token);
           baseFilters = {
-            province: profile.provinsi,
-            city: profile.kabupaten_kota,
-            subdistrict: profile.kecamatan,
+            provinsi: profile.provinsi,
+            kabupaten_kota: profile.kabupaten_kota,
+            kecamatan: profile.kecamatan,
           };
         }
 

@@ -1,6 +1,7 @@
 import { beforeAll, afterAll, beforeEach, describe, it, expect } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse, delay } from 'msw';
+import axios from 'axios';
 import {
   getDonations,
   createDonation,
@@ -68,6 +69,22 @@ const donationHandlers = [
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
     const paginatedResult = mockDonations.slice(start, end);
+
+    const regionKeys = ['provinsi', 'kabupaten_kota', 'kecamatan', 'desa_kelurahan'] as const;
+    const englishKeys = ['province', 'city', 'subdistrict', 'village'] as const;
+    for (const key of regionKeys) {
+      const value = url.searchParams.get(key);
+      if (value) {
+        paginatedResult.length = 0;
+        paginatedResult.push(...mockDonations.filter(d => d[key] === value));
+      }
+    }
+    if (englishKeys.some(key => url.searchParams.has(key))) {
+      return HttpResponse.json(
+        { message: 'Unsupported query parameter' },
+        { status: 400 }
+      );
+    }
 
     return HttpResponse.json({
       total_page: Math.ceil(mockDonations.length / pageSize),
@@ -271,6 +288,32 @@ describe('DonationService', () => {
 
       expect(response.current_page).toBe(1);
       expect(typeof response.has_next_page).toBe('boolean');
+    });
+
+    it('should send region filters using Indonesian query keys', async () => {
+      const response = await getDonations(validToken, {
+        page: 1,
+        provinsi: 'Provinsi 1',
+        kabupaten_kota: 'Kota 1',
+        kecamatan: 'Kecamatan 1',
+        desa_kelurahan: 'Desa 1',
+      });
+
+      expect(response.result).toHaveLength(1);
+      expect(response.result[0].provinsi).toBe('Provinsi 1');
+    });
+
+    it('should reject English region query keys', async () => {
+      // Simulate a legacy English-keyed request to guarantee the contract stays Indonesian
+      const legacyUrl = `http://localhost:8000/donations?page=1&province=Provinsi%201&city=Kota%201&subdistrict=Kecamatan%201&village=Desa%201`;
+      try {
+        await axios.get(legacyUrl, {
+          headers: { Authorization: `Bearer ${validToken}` },
+        });
+        throw new Error('Expected legacy English-keyed request to be rejected');
+      } catch (error: any) {
+        expect(error.response?.status).toBe(400);
+      }
     });
   });
 

@@ -136,7 +136,10 @@ const TransaksiDonasi: React.FC = () => {
 
     if (userRole === "user") {
       enforcedFilters = {
-        ...userRegionFilter,
+        provinsi: userRegionFilter.province,
+        kabupaten_kota: userRegionFilter.city,
+        kecamatan: userRegionFilter.subdistrict,
+        desa_kelurahan: userRegionFilter.village,
         page: page,
         startDate: startDateTime,
         endDate: endDateTime,
@@ -145,10 +148,10 @@ const TransaksiDonasi: React.FC = () => {
     } else if (userRole === "admin") {
       enforcedFilters = {
         page: page,
-        province: userRegionFilter.province || undefined,
-        city: userRegionFilter.city || undefined,
-        subdistrict: userRegionFilter.subdistrict || undefined,
-        village: addressFilters.village || undefined,
+        provinsi: userRegionFilter.province || undefined,
+        kabupaten_kota: userRegionFilter.city || undefined,
+        kecamatan: userRegionFilter.subdistrict || undefined,
+        desa_kelurahan: addressFilters.village || undefined,
         startDate: startDateTime,
         endDate: endDateTime,
         sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,
@@ -156,10 +159,10 @@ const TransaksiDonasi: React.FC = () => {
     } else {
       enforcedFilters = {
         page: page,
-        province: addressFilters.province || undefined,
-        city: addressFilters.city || undefined,
-        subdistrict: addressFilters.subdistrict || undefined,
-        village: addressFilters.village || undefined,
+        provinsi: addressFilters.province || undefined,
+        kabupaten_kota: addressFilters.city || undefined,
+        kecamatan: addressFilters.subdistrict || undefined,
+        desa_kelurahan: addressFilters.village || undefined,
         startDate: startDateTime,
         endDate: endDateTime,
         sortBy: sortConfig.key === "date_time" ? (sortConfig.direction === "desc" ? "newest" : "oldest") : undefined,

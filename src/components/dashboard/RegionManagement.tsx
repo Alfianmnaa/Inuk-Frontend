@@ -48,10 +48,10 @@ const RegionManagement: React.FC = () => {
     try {
       // 1. Siapkan Filter Dasar (Lokasi)
       const baseFilters = {
-        province: filterLocation.province,
-        city: filterLocation.city,
-        subdistrict: filterLocation.subdistrict,
-        village: filterLocation.village,
+        provinsi: filterLocation.province,
+        kabupaten_kota: filterLocation.city,
+        kecamatan: filterLocation.subdistrict,
+        desa_kelurahan: filterLocation.village,
       };
 
       // Bersihkan filter kosong

@@ -171,9 +171,9 @@ const InfaqManagement: React.FC = () => {
 
       const [infaqData, masjidData] = await Promise.all([
         getInfaqs(token, {
-          province: profile.provinsi,
-          city: profile.kabupaten_kota,
-          subdistrict: profile.kecamatan,
+          provinsi: profile.provinsi,
+          kabupaten_kota: profile.kabupaten_kota,
+          kecamatan: profile.kecamatan,
           date_time: pasaran || undefined,
         }),
         getMasjids(token),

@@ -12,10 +12,10 @@ export interface RegionUser {
 
 // Tipe data untuk filter (menggunakan nama parameter backend)
 export interface RegionFilterBody {
-  province?: string;
-  city?: string;
-  subdistrict?: string;
-  village?: string;
+  provinsi?: string;
+  kabupaten_kota?: string;
+  kecamatan?: string;
+  desa_kelurahan?: string;
   is_active?: boolean;
 }
 
@@ -140,7 +140,7 @@ export const getCities = async (province: string) => {
   if (!province) return [];
   try {
     const response = await axios.get<Array<{ kabupaten_kota: string }>>(`${VITE_API_URL}/region/cities`, {
-      params: { province: province },
+      params: { provinsi: province },
     });
     if (Array.isArray(response.data)) {
       return response.data.map((item) => item.kabupaten_kota).filter((c) => c !== "");
@@ -155,7 +155,7 @@ export const getSubdistricts = async (province: string, city: string) => {
   if (!province || !city) return [];
   try {
     const response = await axios.get<Array<{ kecamatan: string }>>(`${VITE_API_URL}/region/subdistricts`, {
-      params: { province: province, city: city },
+      params: { provinsi: province, kabupaten_kota: city },
     });
     if (Array.isArray(response.data)) {
       return response.data.map((item) => item.kecamatan).filter((s) => s !== "");
@@ -170,7 +170,7 @@ export const getVillages = async (province: string, city: string, subdistrict: s
   if (!province || !city || !subdistrict) return [];
   try {
     const response = await axios.get<Array<{ desa_kelurahan: string }>>(`${VITE_API_URL}/region/villages`, {
-      params: { province: province, city: city, subdistrict: subdistrict },
+      params: { provinsi: province, kabupaten_kota: city, kecamatan: subdistrict },
     });
     if (Array.isArray(response.data)) {
       return response.data.map((item) => item.desa_kelurahan).filter((v) => v !== "");
