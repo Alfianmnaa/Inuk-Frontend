@@ -213,7 +213,7 @@ export const getDonationsExtract = async (token: string, filters: DonationsExtra
     params: filters,
     ...getAuthHeaders(token),
   });
-  return response.data;
+  return response.data ?? [];
 };
 
 export const exportDonations = async (

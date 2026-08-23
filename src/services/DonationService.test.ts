@@ -430,6 +430,21 @@ describe('DonationService', () => {
       expect(Array.isArray(response)).toBe(true);
     });
 
+    it('should return an empty array when the API returns null', async () => {
+      server.use(
+        http.get('*/donations/extract', async () => {
+          await delay(10);
+          return HttpResponse.json(null);
+        })
+      );
+
+      const response = await getDonationsExtract(validToken, {
+        provinsi: 'Provinsi 1',
+      });
+
+      expect(response).toEqual([]);
+    });
+
     it('should throw error when token is missing', async () => {
       await expect(getDonationsExtract('', {})).rejects.toThrow();
     });

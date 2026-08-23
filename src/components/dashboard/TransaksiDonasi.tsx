@@ -15,6 +15,7 @@ import { useAuth } from "../../context/AuthContext";
 import { generateExcelBlob, downloadExcelFromBlob } from "../../utils/ExportToExcel";
 import { getTreasurer, type GetTreasurerResponse } from "../../services/UserService";
 import { getRegionProfile, NONE_REGION, type RegionProfile } from "../../services/UserRegionService";
+import { isDonationExportReady, buildExtractFilters } from "../../utils/donationExport";
 
 import EditDonationModal from "./ui/EditDonationModal";
 import DeleteConfirmationModal from "./ui/DeleteConfirmationModal";
@@ -259,57 +260,19 @@ const TransaksiDonasi: React.FC = () => {
 
   const handleInstantDownload = async () => {
     if (!token) return;
-
-    const getRfc3339 = (dateStr: string, isEnd: boolean) => {
-      if (!dateStr) return undefined;
-      const [y, m, d] = dateStr.split("-").map(Number);
-      const localDate = isEnd
-        ? new Date(y, m - 1, d, 23, 59, 59)
-        : new Date(y, m - 1, d);
-      return localDate.toISOString();
-    };
-
-    let extractFilters: {
-      provinsi?: string;
-      kabupaten_kota?: string;
-      kecamatan?: string;
-      desa_kelurahan?: string;
-      startDate?: string;
-      endDate?: string;
-    };
-
-    if (userRole === "user") {
-      extractFilters = {
-        provinsi: userRegionFilter.province,
-        kabupaten_kota: userRegionFilter.city,
-        kecamatan: userRegionFilter.subdistrict,
-        desa_kelurahan: userRegionFilter.village,
-        startDate: getRfc3339(startDateFilter, false),
-        endDate: getRfc3339(endDateFilter, true),
-      };
-    } else if (userRole === "admin") {
-      extractFilters = {
-        provinsi: userRegionFilter.province || undefined,
-        kabupaten_kota: userRegionFilter.city || undefined,
-        kecamatan: userRegionFilter.subdistrict || undefined,
-        desa_kelurahan: addressFilters.village || undefined,
-        startDate: getRfc3339(startDateFilter, false),
-        endDate: getRfc3339(endDateFilter, true),
-      };
-    } else {
-      extractFilters = {
-        provinsi: addressFilters.province || undefined,
-        kabupaten_kota: addressFilters.city || undefined,
-        kecamatan: addressFilters.subdistrict || undefined,
-        desa_kelurahan: addressFilters.village || undefined,
-        startDate: getRfc3339(startDateFilter, false),
-        endDate: getRfc3339(endDateFilter, true),
-      };
+    if (!isExportReady) {
+      toast(
+        isUserBlocked ? "Akses dibatasi: akun tidak terikat pada Region manapun." : "Mohon tunggu, data wilayah masih dimuat...",
+        { icon: "⚠️" }
+      );
+      return;
     }
+
+    const extractFilters = buildExtractFilters(userRole, userRegionFilter, addressFilters, startDateFilter, endDateFilter);
 
     const toastId = toast.loading("Mengambil data untuk Excel...");
     try {
-      const results = await getDonationsExtract(token, extractFilters);
+      const results = (await getDonationsExtract(token, extractFilters)) ?? [];
 
       if (results.length === 0) {
         toast("Tidak ada data untuk diunduh.", { icon: "⚠️", id: toastId });
@@ -352,6 +315,7 @@ const TransaksiDonasi: React.FC = () => {
 
   const finalLoading = isLoading || isRegionEnforcementLoading || isTreasurerLoading;
   const isUserBlocked = (userRole === "user" || userRole === "admin") && userRegionFilter.province === "NONE";
+  const isExportReady = isDonationExportReady({ userRole, isRegionEnforcementLoading, isUserBlocked, addressFilters });
 
   return (
     <DashboardLayout activeLink="/dashboard/transaksi" pageTitle="Pencatatan Donasi">
@@ -423,9 +387,11 @@ const TransaksiDonasi: React.FC = () => {
 
               <motion.button
                 onClick={handleInstantDownload}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-indigo-600 transition-colors mb-2"
+                disabled={!isExportReady}
+                whileHover={{ scale: isExportReady ? 1.05 : 1 }}
+                whileTap={{ scale: isExportReady ? 0.95 : 1 }}
+                className="bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center hover:bg-indigo-600 transition-colors mb-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-500"
+                title={!isExportReady ? "Mohon tunggu, data wilayah masih dimuat..." : "Unduh data sesuai filter lokasi dan tanggal"}
               >
                 <FaFileExcel className="mr-2" /> Download Excel
               </motion.button>
