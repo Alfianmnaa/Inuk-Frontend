@@ -2,7 +2,7 @@
   description = "Frontend React environment";
   
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
   };
   
   outputs = { self, nixpkgs }:
@@ -13,7 +13,7 @@
     {
       devShells.${system}.default = pkgs.mkShell {
         buildInputs = with pkgs; [
-          nodejs
+          nodejs_26
         ];
         
         shellHook = ''

@@ -1,7 +1,7 @@
 # client/Dockerfile
 
 # ---------- DEV (alpine) ----------
-FROM node:25-alpine AS dev
+FROM node:26-alpine AS dev
 WORKDIR /app
 RUN apk add --no-cache git
 COPY package*.json ./
@@ -11,7 +11,7 @@ EXPOSE 5173
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 # ---------- BUILD ----------
-FROM node:25-bookworm-slim AS build
+FROM node:26-bookworm-slim AS build
 WORKDIR /app
 
 # Copy package files
@@ -28,7 +28,7 @@ ENV VITE_API_URL=${VITE_API_URL}
 RUN npm run build
 
 # ---------- PROD: nginx (bookworm) ----------
-FROM nginx:1.30.3-trixie AS prod
+FROM nginx:1.30.6-trixie AS prod
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 RUN apt-get update && apt-get install -y curl gettext-base && rm -rf /var/lib/apt/lists/*
